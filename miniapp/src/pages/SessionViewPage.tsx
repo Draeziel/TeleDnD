@@ -48,6 +48,8 @@ export function SessionViewPage() {
       joinCode: summary.joinCode,
       updatedAt: summary.updatedAt,
       playersCount: summary.playersCount,
+      hasActiveGm: summary.hasActiveGm,
+      events: summary.events,
       characters: nextCharacters,
     };
   };
@@ -184,6 +186,13 @@ export function SessionViewPage() {
         <div>Персонажи: {session.characters.length}</div>
       </div>
 
+      {!session.hasActiveGm && (
+        <StatusBox
+          type="info"
+          message="В сессии сейчас нет активного ГМа. GM-действия временно недоступны."
+        />
+      )}
+
       {status && <StatusBox type="success" message={status} />}
 
       <div className="section-card">
@@ -210,9 +219,9 @@ export function SessionViewPage() {
                   >
                     {removingId === entry.character.id ? 'Открепление...' : 'Открепить'}
                   </button>
-                  <button onClick={() => onSetHp(entry.character.id, Math.max(currentHp - 1, 0))}>HP -1</button>
-                  <button onClick={() => onSetHp(entry.character.id, currentHp + 1)}>HP +1</button>
-                  <button onClick={() => onSetInitiative(entry.character.id, initiative + 1)}>Иниц. +1</button>
+                  <button disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, Math.max(currentHp - 1, 0))}>HP -1</button>
+                  <button disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, currentHp + 1)}>HP +1</button>
+                  <button disabled={!session.hasActiveGm} onClick={() => onSetInitiative(entry.character.id, initiative + 1)}>Иниц. +1</button>
                 </div>
               </div>
             );
@@ -258,6 +267,25 @@ export function SessionViewPage() {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="section-card">
+        <h2>Журнал событий</h2>
+        {session.events.length === 0 ? (
+          <StatusBox type="info" message="Событий пока нет" />
+        ) : (
+          <div className="list-grid">
+            {session.events.map((event) => (
+              <div className="list-item" key={event.id}>
+                <div>
+                  <strong>{event.message}</strong>
+                  <div>Кто: {event.actorTelegramId}</div>
+                </div>
+                <span>{new Date(event.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

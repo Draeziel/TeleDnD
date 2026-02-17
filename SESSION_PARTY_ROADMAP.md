@@ -40,8 +40,8 @@ Build a multiplayer session (party) system where:
    - unique `(sessionId, characterId)` in `SessionCharacter`
    - unique index for `Session.joinCode`
 6. Leave policy for GM must be explicit:
-   - either prohibit leaving as last GM,
-   - or transfer GM role before leaving.
+   - GM can leave without transfer,
+   - session remains active even if no GM is currently present.
 7. Validation rules:
    - `currentHp >= 0`
    - `tempHp >= 0`
@@ -83,7 +83,7 @@ Build a multiplayer session (party) system where:
 - [x] `POST /api/sessions/join` by `joinCode`
 - [x] `POST /api/sessions/:id/leave`
 - [x] `GET /api/sessions/:id` (players + characters + states + effects summary)
-- [x] Add future lightweight polling endpoint note: `GET /api/sessions/:id/summary`
+- [x] `GET /api/sessions/:id/summary` for lightweight polling
 
 ### D) Character assignment endpoints
 
@@ -109,10 +109,17 @@ Build a multiplayer session (party) system where:
 
 ### G) Docs & ops
 
-- [~] Update `README.md` with session model and endpoint docs
+- [x] Update `README.md` with session model and endpoint docs
 - [x] Update `PROJECT_SNAPSHOT.md` with phase progress
-- [~] Add smoke checks for session endpoints
+- [x] Add smoke checks for session endpoints
 - [x] Verify `npm run build` (backend + miniapp)
+
+### J) Session UX & observability refinement
+
+- [x] Show explicit “no active GM” state in session view
+- [x] Disable GM controls when session has no active GM
+- [x] Show actor-aware removal messages in UI
+- [x] Add lightweight session event journal (join/leave/remove/HP/init/effects)
 
 ### I) Combat initiative automation (deferred)
 
@@ -157,21 +164,24 @@ Build a multiplayer session (party) system where:
 - 2026-02-17: Added session deletion flow (GM-only) and reduced session view flicker with silent polling refresh.
 - 2026-02-17: Added initiative order block in session view (sorted descending by initiative).
 - 2026-02-17: Initiative dice automation explicitly deferred and tracked in roadmap for a later phase.
+- 2026-02-17: Updated GM leave policy: GM can leave without transfer; session remains without active GM.
+- 2026-02-17: Implemented `GET /api/sessions/:id/summary` and switched session polling to summary payload.
+- 2026-02-17: Added lightweight session event journal and no-GM UX handling (banner + GM control lock).
 
 ---
 
 ## Next Sprint (proposed)
 
-1. Complete session smoke checks to include create/get/delete session flow.
-2. Update README session docs (auth expectations + endpoint matrix + ownership rules).
-3. Add manual refresh action in session view header.
-4. Prepare Phase 2 spec for initiative dice automation (GM-all + player-self modes).
+1. Add compact event filters in UI (all/system/combat).
+2. Add `/api/sessions/:id/events` endpoint (optional dedicated feed, independent from summary).
+3. Prepare Phase 2 spec for initiative dice automation (GM-all + player-self modes).
+4. Implement initiative automation only after prior UX/ops tasks are closed.
 
 ---
 
 ## Open Questions
 
-- Should GM transfer be automatic or explicit when GM leaves?
+- Should we allow explicit “assign new GM” action in Phase 2 while keeping current leave policy?
 - Should players be allowed to detach characters attached by GM?
 - Do we need soft-delete/audit trail for session events in Phase 1 or later?
 - Should `/api/sessions/:id/summary` ship in late Phase 1 or move to Phase 2 optimization?

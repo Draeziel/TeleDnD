@@ -186,6 +186,14 @@ export interface SessionEffect {
   updatedAt: string;
 }
 
+export interface SessionEvent {
+  id: string;
+  type: string;
+  message: string;
+  actorTelegramId: string;
+  createdAt: string;
+}
+
 export interface SessionDetails {
   id: string;
   name: string;
@@ -194,6 +202,8 @@ export interface SessionDetails {
   createdByUserId: string;
   createdAt: string;
   updatedAt: string;
+  hasActiveGm: boolean;
+  events: SessionEvent[];
   players: SessionPlayer[];
   characters: Array<{
     id: string;
@@ -218,6 +228,8 @@ export interface SessionSummary {
   createdAt: string;
   updatedAt: string;
   playersCount: number;
+  hasActiveGm: boolean;
+  events: SessionEvent[];
   characters: Array<{
     id: string;
     character: {

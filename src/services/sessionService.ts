@@ -1,11 +1,44 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import crypto from 'crypto';
 
+interface SessionEventEntry {
+  id: string;
+  type: string;
+  message: string;
+  actorTelegramId: string;
+  createdAt: Date;
+}
+
 export class SessionService {
   private prisma: PrismaClient;
+  private sessionEvents = new Map<string, SessionEventEntry[]>();
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
+  }
+
+  private addSessionEvent(sessionId: string, type: string, message: string, actorTelegramId: string) {
+    const current = this.sessionEvents.get(sessionId) ?? [];
+
+    current.unshift({
+      id: crypto.randomUUID(),
+      type,
+      message,
+      actorTelegramId,
+      createdAt: new Date(),
+    });
+
+    this.sessionEvents.set(sessionId, current.slice(0, 100));
+  }
+
+  private getSessionEvents(sessionId: string) {
+    return (this.sessionEvents.get(sessionId) ?? []).map((event) => ({
+      id: event.id,
+      type: event.type,
+      message: event.message,
+      actorTelegramId: event.actorTelegramId,
+      createdAt: event.createdAt,
+    }));
   }
 
   private async resolveUserByTelegramId(telegramUserId: string) {
@@ -78,6 +111,11 @@ export class SessionService {
       },
       include: {
         state: true,
+        character: {
+          select: {
+            name: true,
+          },
+        },
       },
     });
 
@@ -160,6 +198,8 @@ export class SessionService {
       return created;
     });
 
+    this.addSessionEvent(session.id, 'session_created', `Сессия "${session.name}" создана`, telegramUserId);
+
     return session;
   }
 
@@ -236,6 +276,8 @@ export class SessionService {
       },
     });
 
+    this.addSessionEvent(session.id, 'player_joined', `Игрок ${telegramUserId} присоединился к сессии`, telegramUserId);
+
     return {
       sessionId: membership.sessionId,
       userId: membership.userId,
@@ -267,6 +309,8 @@ export class SessionService {
         },
       },
     });
+
+    this.addSessionEvent(sessionId, 'player_left', `Игрок ${telegramUserId} покинул сессию`, telegramUserId);
 
     return { message: 'Left session successfully' };
   }
@@ -350,6 +394,8 @@ export class SessionService {
       joinCode: session.joinCode,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
+      hasActiveGm: session.players.some((player) => player.role === 'GM'),
+      events: this.getSessionEvents(session.id),
       players: session.players.map((player) => ({
         id: player.id,
         role: player.role,
@@ -382,6 +428,7 @@ export class SessionService {
       where: { id: characterId },
       select: {
         id: true,
+        name: true,
         ownerUserId: true,
       },
     });
@@ -439,6 +486,8 @@ export class SessionService {
       },
     });
 
+    this.addSessionEvent(sessionId, 'character_attached', `${character.name} добавлен в сессию`, telegramUserId);
+
     return {
       sessionCharacterId: sessionCharacter.id,
       sessionId: sessionCharacter.sessionId,
@@ -489,10 +538,14 @@ export class SessionService {
     });
 
     if (isOwner) {
-      return { message: `${sessionCharacter.character.name} покинул сессию`, characterName: sessionCharacter.character.name };
+      const message = `${sessionCharacter.character.name} покинул сессию`;
+      this.addSessionEvent(sessionId, 'character_left', message, telegramUserId);
+      return { message, characterName: sessionCharacter.character.name };
     }
 
-    return { message: `ГМ исключил ${sessionCharacter.character.name}`, characterName: sessionCharacter.character.name };
+    const message = `ГМ исключил ${sessionCharacter.character.name}`;
+    this.addSessionEvent(sessionId, 'character_removed_by_gm', message, telegramUserId);
+    return { message, characterName: sessionCharacter.character.name };
   }
 
   async getSessionSummary(sessionId: string, telegramUserId: string) {
@@ -511,6 +564,15 @@ export class SessionService {
           select: {
             players: true,
           },
+        },
+        players: {
+          where: {
+            role: 'GM',
+          },
+          select: {
+            id: true,
+          },
+          take: 1,
         },
         characters: {
           select: {
@@ -565,6 +627,8 @@ export class SessionService {
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
       playersCount: session._count.players,
+      hasActiveGm: session.players.length > 0,
+      events: this.getSessionEvents(session.id),
       characters: session.characters.map((entry) => ({
         id: entry.id,
         character: entry.character,
@@ -605,6 +669,13 @@ export class SessionService {
       },
     });
 
+    this.addSessionEvent(
+      sessionId,
+      'hp_updated',
+      `HP персонажа ${sessionCharacter.character.name} изменён на ${currentHp}`,
+      telegramUserId
+    );
+
     return state;
   }
 
@@ -636,6 +707,13 @@ export class SessionService {
       },
     });
 
+    this.addSessionEvent(
+      sessionId,
+      'initiative_updated',
+      `Инициатива персонажа ${sessionCharacter.character.name} изменена на ${initiative}`,
+      telegramUserId
+    );
+
     return state;
   }
 
@@ -660,7 +738,7 @@ export class SessionService {
 
     const sessionCharacter = await this.getSessionCharacterOrThrow(sessionId, characterId);
 
-    return this.prisma.sessionEffect.create({
+    const effect = await this.prisma.sessionEffect.create({
       data: {
         sessionCharacterId: sessionCharacter.id,
         effectType: effectType.trim(),
@@ -668,6 +746,15 @@ export class SessionService {
         payload,
       },
     });
+
+    this.addSessionEvent(
+      sessionId,
+      'effect_applied',
+      `Эффект ${effect.effectType} применён к ${sessionCharacter.character.name}`,
+      telegramUserId
+    );
+
+    return effect;
   }
 }
 

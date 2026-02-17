@@ -341,12 +341,6 @@ export function SessionViewPage() {
     <div className="page-stack">
       <div className="section-card">
         <div className="toolbar">
-          <button className="btn btn-secondary" disabled={loading} onClick={() => load()}>
-            {loading ? 'Обновление...' : 'Обновить'}
-          </button>
-          <button className="btn btn-secondary" disabled={copyingCode} onClick={onCopyJoinCode}>
-            {copyingCode ? 'Копируем...' : 'Скопировать код'}
-          </button>
           <button
             className="btn btn-primary"
             disabled={rollingAll || !session.hasActiveGm || session.initiativeLocked}
@@ -354,48 +348,79 @@ export function SessionViewPage() {
           >
             {rollingAll ? 'Бросаем...' : 'Бросок инициативы (всем)'}
           </button>
-          <button
-            className="btn btn-primary"
-            disabled={encounterActionLoading || !session.hasActiveGm || initiativeOrder.length === 0 || session.encounterActive}
-            onClick={onStartEncounter}
-          >
-            Start encounter
-          </button>
-          <button
-            className="btn btn-danger"
-            disabled={encounterActionLoading || !session.hasActiveGm || !session.encounterActive}
-            onClick={onEndEncounter}
-          >
-            End encounter
-          </button>
-          <button
-            className="btn btn-secondary"
-            disabled={initiativeActionLoading || !session.hasActiveGm || session.initiativeLocked}
-            onClick={onLockInitiative}
-          >
-            Lock
-          </button>
-          <button
-            className="btn btn-secondary"
-            disabled={initiativeActionLoading || !session.hasActiveGm || !session.initiativeLocked}
-            onClick={onUnlockInitiative}
-          >
-            Unlock
-          </button>
           <button className="btn btn-secondary" disabled={initiativeActionLoading || !session.hasActiveGm} onClick={onResetInitiative}>
             Reset
           </button>
         </div>
-        <h2>{session.name}</h2>
-        <div>Код входа: {session.joinCode}</div>
+        <h2
+          className="clickable-label"
+          role="button"
+          aria-label="Обновить сессию"
+          onClick={() => load()}
+        >
+          {loading ? `${session.name} (обновление...)` : session.name}
+        </h2>
+        <div>
+          Код входа:{' '}
+          <span
+            className="clickable-label"
+            role="button"
+            aria-label="Скопировать код входа"
+            onClick={onCopyJoinCode}
+          >
+            {copyingCode ? 'копируем...' : session.joinCode}
+          </span>
+        </div>
         <div>Игроки: {session.playersCount ?? session.players.length}</div>
         <div>Персонажи: {session.characters.length}</div>
-        <div>Инициатива: {session.initiativeLocked ? 'зафиксирована' : 'открыта'}</div>
+        <div>
+          Инициатива:{' '}
+          <span
+            className="clickable-label"
+            role="button"
+            aria-label="Переключить lock инициативы"
+            onClick={() => {
+              if (!session.hasActiveGm || initiativeActionLoading) {
+                return;
+              }
+
+              if (session.initiativeLocked) {
+                void onUnlockInitiative();
+                return;
+              }
+
+              void onLockInitiative();
+            }}
+          >
+            {session.initiativeLocked ? 'зафиксирована' : 'открыта'}
+          </span>
+        </div>
         <div>Encounter: {session.encounterActive ? `активен (раунд ${session.combatRound})` : 'не активен'}</div>
         <div className="list-item">
           <div>
             <strong>Combat</strong>
-            <div>Раунд: {session.encounterActive ? session.combatRound : '—'}</div>
+            <div>
+              Раунд: {session.encounterActive ? session.combatRound : '—'}{' '}
+              <span
+                className="clickable-label"
+                role="button"
+                aria-label={session.encounterActive ? 'Завершить раунд' : 'Начать раунд'}
+                onClick={() => {
+                  if (!session.hasActiveGm || encounterActionLoading) {
+                    return;
+                  }
+
+                  if (session.encounterActive) {
+                    void onEndEncounter();
+                    return;
+                  }
+
+                  void onStartEncounter();
+                }}
+              >
+                {session.encounterActive ? '⏹' : '▶'}
+              </span>
+            </div>
             <div>Текущий: {activeTurnCharacter?.character.name ?? '—'}</div>
             <div>Следующий: {nextTurnCharacter?.character.name ?? '—'}</div>
           </div>

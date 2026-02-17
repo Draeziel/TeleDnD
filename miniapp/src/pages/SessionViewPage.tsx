@@ -118,6 +118,11 @@ export function SessionViewPage() {
   return (
     <div className="page-stack">
       <div className="section-card">
+        <div className="toolbar">
+          <button disabled={loading} onClick={() => load()}>
+            {loading ? 'Обновление...' : 'Обновить'}
+          </button>
+        </div>
         <h2>{session.name}</h2>
         <div>Код входа: {session.joinCode}</div>
         <div>Игроки: {session.players.length}</div>

@@ -1,7 +1,7 @@
 # RPG Character Service - Project Snapshot
 
-**Last Updated**: 2026-02-17 20:30 UTC  
-**Status**: Beta - Sessions + ownership enforcement deployed  
+**Last Updated**: 2026-02-17 19:40 UTC  
+**Status**: Beta - Sessions + ownership + no-GM policy UX deployed  
 **Tech Stack**: Node.js + TypeScript, Express, PostgreSQL, Prisma ORM, React + Vite + TypeScript, Cloudflare Pages, Render
 
 ---
@@ -158,7 +158,11 @@ CharacterDraft
 - Session lifecycle: create/list/join/leave/get by `joinCode`
 - Session party model: attach/remove character with session-scoped state
 - GM gameplay actions: set HP, set initiative, apply effects
-- Session view polling in miniapp (7s interval)
+- Session view polling in miniapp via lightweight `summary` endpoint
+- Explicit no-GM policy: session remains active when GM leaves
+- No-GM UX safeguards: banner + GM action lock
+- Actor-aware remove messages and lightweight session event journal
+- Session list shows GM activity status (`active` / `no active GM`)
 
 ### ✅ Ownership & Access Control
 - `Character.ownerUserId` used for per-user visibility and access checks
@@ -246,6 +250,7 @@ CharacterDraft
 | `POST` | `/api/sessions/join` | Join session by code |
 | `POST` | `/api/sessions/:id/leave` | Leave session |
 | `GET` | `/api/sessions/:id` | Get session details (players/characters/state/effects) |
+| `GET` | `/api/sessions/:id/summary` | Get lightweight session state for polling |
 | `POST` | `/api/sessions/:id/characters` | Attach owned character to session |
 | `DELETE` | `/api/sessions/:id/characters/:characterId` | Detach character from session |
 | `POST` | `/api/sessions/:sessionId/characters/:characterId/set-hp` | GM: set HP |
@@ -292,6 +297,8 @@ The project is functionally complete for MVP usage with:
 - Public deployment on Cloudflare + Render
 - Error handling and validation
 - Session create/join and live party view with polling
+- Summary-based polling with no-GM state handling
+- Session event journal and actor-aware remove notifications
 - Owned-character deletion from miniapp list
 
 **What's not yet implemented**:

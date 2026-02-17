@@ -1,7 +1,7 @@
 # Session / Party System Roadmap
 
 **Last Updated**: 2026-02-17  
-**Status**: Phase 1 mostly implemented; docs/ops alignment in progress
+**Status**: Phase 1 implemented and stabilized for production MVP; initiative automation deferred
 
 ---
 
@@ -167,13 +167,15 @@ Build a multiplayer session (party) system where:
 - 2026-02-17: Updated GM leave policy: GM can leave without transfer; session remains without active GM.
 - 2026-02-17: Implemented `GET /api/sessions/:id/summary` and switched session polling to summary payload.
 - 2026-02-17: Added lightweight session event journal and no-GM UX handling (banner + GM control lock).
+- 2026-02-17: Added GM activity status to session list UI (`active / no active GM`) using `hasActiveGm` in `GET /api/sessions`.
+- 2026-02-17: Changes pushed and deployment triggered (`3e4dbcc`, `dac563b`).
 
 ---
 
 ## Next Sprint (proposed)
 
-1. Add compact event filters in UI (all/system/combat).
-2. Add `/api/sessions/:id/events` endpoint (optional dedicated feed, independent from summary).
+1. Stabilize production behavior with quick smoke checks after deploy (health + auth-gated session endpoints).
+2. Optionally add `/api/sessions/:id/events` endpoint if event volume outgrows summary payload.
 3. Prepare Phase 2 spec for initiative dice automation (GM-all + player-self modes).
 4. Implement initiative automation only after prior UX/ops tasks are closed.
 

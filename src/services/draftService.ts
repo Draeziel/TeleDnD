@@ -10,6 +10,14 @@ export class DraftService {
     this.characterSheetService = new CharacterSheetService(prisma);
   }
 
+  private async resolveUserByTelegramId(telegramUserId: string) {
+    return this.prisma.user.upsert({
+      where: { telegramId: telegramUserId },
+      update: {},
+      create: { telegramId: telegramUserId },
+    });
+  }
+
   /**
    * Create a new empty character draft
    */
@@ -352,7 +360,9 @@ export class DraftService {
   /**
    * Finalize the draft - validate and create character
    */
-  async finalizeDraft(draftId: string): Promise<any> {
+  async finalizeDraft(draftId: string, telegramUserId: string): Promise<any> {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+
     const draft = await this.prisma.characterDraft.findUnique({
       where: { id: draftId },
       include: {
@@ -422,6 +432,7 @@ export class DraftService {
       data: {
         name: draft.name,
         level: draft.level,
+        ownerUserId: user.id,
         classId: draft.classId,
         raceId: draft.raceId || undefined,
         backgroundId: draft.backgroundId || undefined,

@@ -2,6 +2,15 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { DraftService } from '../services/draftService';
 
+function getTelegramUserId(res: Response): string | null {
+  const telegramUserId = res.locals.telegramUserId;
+  if (!telegramUserId) {
+    return null;
+  }
+
+  return String(telegramUserId);
+}
+
 export class DraftController {
   private draftService: DraftService;
 
@@ -202,8 +211,14 @@ export class DraftController {
    */
   public async finalizeDraft(req: Request, res: Response): Promise<void> {
     try {
+      const telegramUserId = getTelegramUserId(res);
+      if (!telegramUserId) {
+        res.status(401).json({ message: 'Unauthorized: Telegram user context is missing' });
+        return;
+      }
+
       const { id } = req.params;
-      const result = await this.draftService.finalizeDraft(id);
+      const result = await this.draftService.finalizeDraft(id, telegramUserId);
       res.status(201).json(result);
     } catch (error) {
       if (error instanceof Error && error.message.includes('not found')) {

@@ -83,7 +83,7 @@ docker-compose up
 
 ### Telegram WebApp initData Validation
 
-The backend can validate Telegram Mini App `initData` signatures for draft endpoints.
+The backend validates Telegram Mini App user context for protected endpoints.
 
 Configure environment variables:
 
@@ -96,26 +96,81 @@ API_RATE_LIMIT_MAX=120
 ```
 
 - `TELEGRAM_BOT_TOKEN` – Telegram bot token used for signature verification.
-- `REQUIRE_TELEGRAM_AUTH` – when `true`, `/api/drafts/*` rejects requests without valid `x-telegram-init-data`.
+- `REQUIRE_TELEGRAM_AUTH` – when `true`, protected endpoints reject requests without valid `x-telegram-init-data`.
 - `TELEGRAM_INITDATA_MAX_AGE_SEC` – maximum allowed age of `auth_date` in seconds.
 - `API_RATE_LIMIT_WINDOW_MS` – rate-limit window for all `/api/*` routes in milliseconds (default: `60000`).
 - `API_RATE_LIMIT_MAX` – max requests per IP in one window for `/api/*` routes (default: `120`).
 
-In local/dev mode, set `REQUIRE_TELEGRAM_AUTH=false` to allow testing without Telegram client headers.
+Protected groups:
+- `/api/drafts/*`
+- `/api/sessions/*`
+- `/api/characters/*` except public reference endpoints:
+  - `GET /api/characters/classes`
+  - `GET /api/characters/races`
+  - `GET /api/characters/backgrounds`
+
+In local/dev mode, set `REQUIRE_TELEGRAM_AUTH=false` and pass `x-telegram-user-id` to emulate Telegram user context.
 
 ### Health Check
 
 - `GET /healthz` returns `{ "status": "ok" }` and can be used by uptime probes.
 
 ### API Endpoints
-- `GET /api/classes`: Retrieve all character classes.
-- `POST /api/characters`: Create a new character.
-- `GET /api/characters/:id`: Retrieve a character by ID.
-- `GET /api/characters/:id/sheet`: Retrieve the complete character sheet with computed features and choices.
-- `POST /api/characters/:id/choices`: Save choices for a character.
-- `POST /api/characters/:id/items`: Add an item to the character inventory.
-- `POST /api/characters/:id/items/:itemId/equip`: Mark an owned item as equipped.
-- `POST /api/characters/:id/items/:itemId/unequip`: Mark an owned item as unequipped.
+
+#### Public reference endpoints
+- `GET /api/characters/classes`: Retrieve all classes.
+- `GET /api/characters/races`: Retrieve all races.
+- `GET /api/characters/backgrounds`: Retrieve all backgrounds.
+
+#### Protected character endpoints (Telegram user required)
+- `GET /api/characters`: List current user's characters.
+- `POST /api/characters`: Create character owned by current user.
+- `GET /api/characters/:id`: Retrieve owned character by ID.
+- `DELETE /api/characters/:id`: Delete owned character.
+- `GET /api/characters/:id/sheet`: Retrieve owned complete character sheet.
+- `POST /api/characters/:id/choices`: Save choices for owned character.
+- `POST /api/characters/:id/items`: Add item to owned character inventory.
+- `POST /api/characters/:id/items/:itemId/equip`: Equip item on owned character.
+- `POST /api/characters/:id/items/:itemId/unequip`: Unequip item on owned character.
+
+#### Protected draft endpoints (Telegram user required)
+- `POST /api/drafts`
+- `GET /api/drafts/:id`
+- `POST /api/drafts/:id/class`
+- `POST /api/drafts/:id/race`
+- `POST /api/drafts/:id/background`
+- `POST /api/drafts/:id/ability-scores`
+- `POST /api/drafts/:id/choices`
+- `POST /api/drafts/:id/finalize`
+
+#### Protected session endpoints (Telegram user required)
+- `POST /api/sessions`: Create session (creator becomes GM).
+- `GET /api/sessions`: List sessions for current user.
+- `POST /api/sessions/join`: Join by `joinCode`.
+- `POST /api/sessions/:id/leave`: Leave session (GM leave is restricted).
+- `DELETE /api/sessions/:id`: Delete session (GM only).
+- `GET /api/sessions/:id`: Full session details (members/party/state/effects).
+- `POST /api/sessions/:id/characters`: Attach owned character to session.
+- `DELETE /api/sessions/:id/characters/:characterId`: Remove character from session (owner or GM).
+- `POST /api/sessions/:sessionId/characters/:characterId/set-hp`: GM only.
+- `POST /api/sessions/:sessionId/characters/:characterId/set-initiative`: GM only.
+- `POST /api/sessions/:sessionId/characters/:characterId/apply-effect`: GM only.
+
+### Smoke Testing
+
+Run post-deploy smoke checks:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File ./run-smoke.ps1 -BaseUrl https://telednd-backend.onrender.com
+```
+
+Optional local dev user for non-strict environments:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File ./run-smoke.ps1 -BaseUrl http://localhost:4000 -TestTelegramUserId 123456789
+```
+
+In strict Telegram auth environments, protected endpoints may return `401` without real `initData`; smoke output marks these checks as auth-gated instead of hard failures.
 
 #### Character Sheet Endpoint (`GET /api/characters/:id/sheet`)
 Returns a complete character sheet with computed features, required choices, and selected choices. This is the primary endpoint for displaying a character's full information.

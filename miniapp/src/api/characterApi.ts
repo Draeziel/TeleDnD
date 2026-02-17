@@ -4,22 +4,22 @@ import type { CharacterSheet, CharacterSummary, ContentEntity } from '../types/m
 export const characterApi = {
   async getCharacters(): Promise<CharacterSummary[]> {
     const { data } = await http.get<CharacterSummary[]>('/characters');
-    return data;
+    return Array.isArray(data) ? data : [];
   },
 
   async getClasses(): Promise<ContentEntity[]> {
     const { data } = await http.get<ContentEntity[]>('/characters/classes');
-    return data;
+    return Array.isArray(data) ? data : [];
   },
 
   async getRaces(): Promise<ContentEntity[]> {
     const { data } = await http.get<ContentEntity[]>('/characters/races');
-    return data;
+    return Array.isArray(data) ? data : [];
   },
 
   async getBackgrounds(): Promise<ContentEntity[]> {
     const { data } = await http.get<ContentEntity[]>('/characters/backgrounds');
-    return data;
+    return Array.isArray(data) ? data : [];
   },
 
   async getCharacterSheet(characterId: string): Promise<CharacterSheet> {

@@ -61,7 +61,10 @@ export function CreateCharacterWizardPage() {
   }, []);
 
   const selectedChoiceSet = useMemo(() => {
-    return new Set(draft?.selectedChoices.map((item) => item.choiceId) || []);
+    const selectedChoices = Array.isArray(draft?.selectedChoices)
+      ? draft.selectedChoices
+      : [];
+    return new Set(selectedChoices.map((item) => item.choiceId));
   }, [draft]);
 
   const createDraft = async (e: FormEvent) => {
@@ -318,11 +321,12 @@ export function CreateCharacterWizardPage() {
 
       {step === 5 && draft && (
         <SectionCard title="Step 6: Choices + Finalize">
-          {draft.requiredChoices.length === 0 && <div>Required choices отсутствуют.</div>}
+          {(Array.isArray(draft.requiredChoices) ? draft.requiredChoices : []).length === 0 && <div>Required choices отсутствуют.</div>}
 
-          {draft.requiredChoices.map((choice) => {
+          {(Array.isArray(draft.requiredChoices) ? draft.requiredChoices : []).map((choice) => {
             const selectedValue = choiceSelections[choice.id] || '';
             const alreadySaved = selectedChoiceSet.has(choice.id);
+            const options = Array.isArray(choice.options) ? choice.options : [];
 
             return (
               <div key={choice.id} className="choice-block">
@@ -330,7 +334,7 @@ export function CreateCharacterWizardPage() {
                   Choice {choice.id} · source: {choice.sourceType} · chooseCount: {choice.chooseCount}
                 </div>
                 <div className="choice-options">
-                  {choice.options.map((option) => (
+                  {options.map((option) => (
                     <label key={option.id}>
                       <input
                         type="radio"

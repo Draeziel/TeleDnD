@@ -50,6 +50,9 @@ export function CharacterSheetPage() {
   const abilityBase = sheet.abilityScores.base;
   const abilityEffective = sheet.abilityScores.effective;
   const abilityKeys: AbilityKey[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+  const savingThrows = Array.isArray(sheet.savingThrows) ? sheet.savingThrows : [];
+  const skills = Array.isArray(sheet.skills) ? sheet.skills : [];
+  const inventory = Array.isArray(sheet.inventory) ? sheet.inventory : [];
 
   return (
     <div className="page-stack">
@@ -110,7 +113,7 @@ export function CharacterSheetPage() {
               </tr>
             </thead>
             <tbody>
-              {sheet.savingThrows.map((save) => (
+              {savingThrows.map((save) => (
                 <tr key={save.ability}>
                   <td>{save.ability.toUpperCase()}</td>
                   <td>{save.proficient ? 'Yes' : 'No'}</td>
@@ -134,7 +137,7 @@ export function CharacterSheetPage() {
               </tr>
             </thead>
             <tbody>
-              {sheet.skills.map((skill) => (
+              {skills.map((skill) => (
                 <tr key={skill.id}>
                   <td>{skill.name}</td>
                   <td>{String(skill.ability).toUpperCase()}</td>
@@ -148,11 +151,11 @@ export function CharacterSheetPage() {
       </SectionCard>
 
       <SectionCard title="Inventory">
-        {sheet.inventory.length === 0 ? (
+        {inventory.length === 0 ? (
           <div>Inventory empty.</div>
         ) : (
           <div className="list-grid">
-            {sheet.inventory.map((entry) => (
+            {inventory.map((entry) => (
               <div className="list-item" key={entry.id}>
                 <div>
                   <strong>{entry.item.name}</strong>

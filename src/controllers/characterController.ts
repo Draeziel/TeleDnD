@@ -4,6 +4,15 @@ import { CharacterService } from '../services/characterService';
 import { CharacterSheetService } from '../services/characterSheetService';
 import { InventoryService } from '../services/inventoryService';
 
+function getTelegramUserId(res: Response): string | null {
+    const telegramUserId = res.locals.telegramUserId;
+    if (!telegramUserId) {
+        return null;
+    }
+
+    return String(telegramUserId);
+}
+
 export class CharacterController {
     private characterService: CharacterService;
     private characterSheetService: CharacterSheetService;
@@ -26,7 +35,13 @@ export class CharacterController {
 
     public async getCharacters(req: Request, res: Response): Promise<void> {
         try {
-            const characters = await this.characterService.fetchCharacters();
+            const telegramUserId = getTelegramUserId(res);
+            if (!telegramUserId) {
+                res.status(401).json({ message: 'Unauthorized: Telegram user context is missing' });
+                return;
+            }
+
+            const characters = await this.characterService.fetchCharacters(telegramUserId);
             res.status(200).json(characters);
         } catch (error) {
             res.status(500).json({ message: 'Error retrieving characters', error });
@@ -53,8 +68,14 @@ export class CharacterController {
 
     public async createCharacter(req: Request, res: Response): Promise<void> {
         try {
+            const telegramUserId = getTelegramUserId(res);
+            if (!telegramUserId) {
+                res.status(401).json({ message: 'Unauthorized: Telegram user context is missing' });
+                return;
+            }
+
             const characterData = req.body;
-            const newCharacter = await this.characterService.addCharacter(characterData);
+            const newCharacter = await this.characterService.addCharacter(characterData, telegramUserId);
             res.status(201).json(newCharacter);
         } catch (error) {
             res.status(500).json({ message: 'Error creating character', error });
@@ -63,8 +84,14 @@ export class CharacterController {
 
     public async getCharacter(req: Request, res: Response): Promise<void> {
         try {
+            const telegramUserId = getTelegramUserId(res);
+            if (!telegramUserId) {
+                res.status(401).json({ message: 'Unauthorized: Telegram user context is missing' });
+                return;
+            }
+
             const characterId = req.params.id;
-            const character = await this.characterService.fetchCharacter(characterId);
+            const character = await this.characterService.fetchCharacter(characterId, telegramUserId);
             if (character) {
                 res.status(200).json(character);
             } else {
@@ -75,9 +102,41 @@ export class CharacterController {
         }
     }
 
+    public async deleteCharacter(req: Request, res: Response): Promise<void> {
+        try {
+            const telegramUserId = getTelegramUserId(res);
+            if (!telegramUserId) {
+                res.status(401).json({ message: 'Unauthorized: Telegram user context is missing' });
+                return;
+            }
+
+            const characterId = req.params.id;
+            await this.characterService.deleteCharacter(characterId, telegramUserId);
+            res.status(200).json({ message: 'Character deleted successfully' });
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('Character not found')) {
+                res.status(404).json({ message: 'Character not found' });
+            } else {
+                res.status(500).json({ message: 'Error deleting character', error });
+            }
+        }
+    }
+
     public async getCharacterSheet(req: Request, res: Response): Promise<void> {
         try {
+            const telegramUserId = getTelegramUserId(res);
+            if (!telegramUserId) {
+                res.status(401).json({ message: 'Unauthorized: Telegram user context is missing' });
+                return;
+            }
+
             const characterId = req.params.id;
+            const character = await this.characterService.fetchCharacter(characterId, telegramUserId);
+            if (!character) {
+                res.status(404).json({ message: 'Character not found' });
+                return;
+            }
+
             const sheet = await this.characterSheetService.buildCharacterSheet(characterId);
             res.status(200).json(sheet);
         } catch (error) {
@@ -91,21 +150,51 @@ export class CharacterController {
 
     public async createCharacterChoices(req: Request, res: Response): Promise<void> {
         try {
-            const { characterId, choices } = req.body;
-            const updatedCharacter = await this.characterService.saveCharacterChoices(characterId, choices);
+            const telegramUserId = getTelegramUserId(res);
+            if (!telegramUserId) {
+                res.status(401).json({ message: 'Unauthorized: Telegram user context is missing' });
+                return;
+            }
+
+            const characterId = req.params.id || req.body.characterId;
+            const { choices } = req.body;
+
+            if (!characterId) {
+                res.status(400).json({ message: 'characterId is required' });
+                return;
+            }
+
+            const updatedCharacter = await this.characterService.saveCharacterChoices(characterId, choices, telegramUserId);
             res.status(200).json(updatedCharacter);
         } catch (error) {
+            if (error instanceof Error && error.message.includes('Character not found')) {
+                res.status(404).json({ message: 'Character not found' });
+                return;
+            }
+
             res.status(500).json({ message: 'Error saving character choices', error });
         }
     }
 
     public async addItem(req: Request, res: Response): Promise<void> {
         try {
+            const telegramUserId = getTelegramUserId(res);
+            if (!telegramUserId) {
+                res.status(401).json({ message: 'Unauthorized: Telegram user context is missing' });
+                return;
+            }
+
             const { id: characterId } = req.params;
             const { itemId } = req.body;
 
             if (!itemId) {
                 res.status(400).json({ message: 'itemId is required' });
+                return;
+            }
+
+            const character = await this.characterService.fetchCharacter(characterId, telegramUserId);
+            if (!character) {
+                res.status(404).json({ message: 'Character not found' });
                 return;
             }
 
@@ -122,7 +211,20 @@ export class CharacterController {
 
     public async equipItem(req: Request, res: Response): Promise<void> {
         try {
+            const telegramUserId = getTelegramUserId(res);
+            if (!telegramUserId) {
+                res.status(401).json({ message: 'Unauthorized: Telegram user context is missing' });
+                return;
+            }
+
             const { id: characterId, itemId } = req.params;
+
+            const character = await this.characterService.fetchCharacter(characterId, telegramUserId);
+            if (!character) {
+                res.status(404).json({ message: 'Character not found' });
+                return;
+            }
+
             const entry = await this.inventoryService.equipItem(characterId, itemId);
             res.status(200).json(entry);
         } catch (error) {
@@ -136,7 +238,20 @@ export class CharacterController {
 
     public async unequipItem(req: Request, res: Response): Promise<void> {
         try {
+            const telegramUserId = getTelegramUserId(res);
+            if (!telegramUserId) {
+                res.status(401).json({ message: 'Unauthorized: Telegram user context is missing' });
+                return;
+            }
+
             const { id: characterId, itemId } = req.params;
+
+            const character = await this.characterService.fetchCharacter(characterId, telegramUserId);
+            if (!character) {
+                res.status(404).json({ message: 'Character not found' });
+                return;
+            }
+
             const entry = await this.inventoryService.unequipItem(characterId, itemId);
             res.status(200).json(entry);
         } catch (error) {

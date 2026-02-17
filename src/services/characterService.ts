@@ -7,6 +7,14 @@ export class CharacterService {
         this.prisma = prisma;
     }
 
+    private async resolveUserByTelegramId(telegramUserId: string) {
+        return this.prisma.user.upsert({
+            where: { telegramId: telegramUserId },
+            update: {},
+            create: { telegramId: telegramUserId },
+        });
+    }
+
     async fetchClasses() {
         return await this.prisma.class.findMany({
             include: {
@@ -15,8 +23,13 @@ export class CharacterService {
         });
     }
 
-    async fetchCharacters() {
+    async fetchCharacters(telegramUserId: string) {
+        const user = await this.resolveUserByTelegramId(telegramUserId);
+
         return await this.prisma.character.findMany({
+            where: {
+                ownerUserId: user.id,
+            },
             include: {
                 class: true,
                 race: true,
@@ -50,18 +63,30 @@ export class CharacterService {
         });
     }
 
-    async addCharacter(characterData: any) {
+    async addCharacter(characterData: any, telegramUserId: string) {
+        const user = await this.resolveUserByTelegramId(telegramUserId);
+
+        const { ownerUserId: _ignoredOwnerUserId, ...safeCharacterData } = characterData;
+
         return await this.prisma.character.create({
-            data: characterData,
+            data: {
+                ...safeCharacterData,
+                ownerUserId: user.id,
+            },
             include: {
                 class: true,
             },
         });
     }
 
-    async fetchCharacter(characterId: string) {
-        return await this.prisma.character.findUnique({
-            where: { id: characterId },
+    async fetchCharacter(characterId: string, telegramUserId: string) {
+        const user = await this.resolveUserByTelegramId(telegramUserId);
+
+        return await this.prisma.character.findFirst({
+            where: {
+                id: characterId,
+                ownerUserId: user.id,
+            },
             include: {
                 class: true,
                 characterChoices: {
@@ -73,8 +98,14 @@ export class CharacterService {
         });
     }
 
-    async saveCharacterChoices(characterId: string, choices: any[]) {
-        const createdChoices = await this.prisma.characterChoice.createMany({
+    async saveCharacterChoices(characterId: string, choices: any[], telegramUserId: string) {
+        const character = await this.fetchCharacter(characterId, telegramUserId);
+
+        if (!character) {
+            throw new Error('Character not found');
+        }
+
+        await this.prisma.characterChoice.createMany({
             data: choices.map(choice => ({
                 characterId: characterId,
                 choiceId: choice.choiceId,
@@ -82,6 +113,26 @@ export class CharacterService {
             })),
         });
 
-        return await this.fetchCharacter(characterId);
+        return await this.fetchCharacter(characterId, telegramUserId);
+    }
+
+    async deleteCharacter(characterId: string, telegramUserId: string) {
+        const user = await this.resolveUserByTelegramId(telegramUserId);
+
+        const ownedCharacter = await this.prisma.character.findFirst({
+            where: {
+                id: characterId,
+                ownerUserId: user.id,
+            },
+            select: { id: true },
+        });
+
+        if (!ownedCharacter) {
+            throw new Error('Character not found');
+        }
+
+        return await this.prisma.character.delete({
+            where: { id: ownedCharacter.id },
+        });
     }
 }

@@ -9,6 +9,7 @@ export function CharactersPage() {
   const navigate = useNavigate();
   const [characters, setCharacters] = useState<CharacterSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const { isTelegram, userId, testUserId, saveTestUserId } = useTelegram();
 
@@ -28,6 +29,24 @@ export function CharactersPage() {
 
     load();
   }, []);
+
+  const handleDelete = async (characterId: string) => {
+    const confirmed = window.confirm('Удалить персонажа? Это действие нельзя отменить.');
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeletingId(characterId);
+      setError('');
+      await characterApi.deleteCharacter(characterId);
+      setCharacters((prev) => prev.filter((character) => character.id !== characterId));
+    } catch {
+      setError('Не удалось удалить персонажа. Попробуйте снова.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className="page-stack">
@@ -65,7 +84,12 @@ export function CharactersPage() {
                 <div>Class: {character.class?.name || '—'}</div>
                 <div>Level: {character.level}</div>
               </div>
-              <button onClick={() => navigate(`/character/${character.id}`)}>Open Sheet</button>
+              <div className="inline-row">
+                <button onClick={() => navigate(`/character/${character.id}`)}>Open Sheet</button>
+                <button disabled={deletingId === character.id} onClick={() => handleDelete(character.id)}>
+                  {deletingId === character.id ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
             </div>
           ))}
         </div>

@@ -26,4 +26,8 @@ export const characterApi = {
     const { data } = await http.get<CharacterSheet>(`/characters/${characterId}/sheet`);
     return data;
   },
+
+  async deleteCharacter(characterId: string): Promise<void> {
+    await http.delete(`/characters/${characterId}`);
+  },
 };

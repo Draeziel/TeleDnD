@@ -75,6 +75,13 @@ export function telegramAuthMiddleware() {
     const requireAuth = process.env.REQUIRE_TELEGRAM_AUTH === 'true';
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const initDataHeader = req.header('x-telegram-init-data');
+    const fallbackTelegramUserId = req.header('x-telegram-user-id');
+
+    const applyFallbackUser = () => {
+      if (!requireAuth && fallbackTelegramUserId && /^\d+$/.test(fallbackTelegramUserId)) {
+        res.locals.telegramUserId = fallbackTelegramUserId;
+      }
+    };
 
     if (!botToken) {
       if (requireAuth) {
@@ -82,6 +89,7 @@ export function telegramAuthMiddleware() {
         return;
       }
 
+      applyFallbackUser();
       next();
       return;
     }
@@ -92,6 +100,7 @@ export function telegramAuthMiddleware() {
         return;
       }
 
+      applyFallbackUser();
       next();
       return;
     }

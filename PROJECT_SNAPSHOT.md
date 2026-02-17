@@ -1,6 +1,6 @@
 # RPG Character Service - Project Snapshot
 
-**Last Updated**: 2026-02-17 20:35 UTC  
+**Last Updated**: 2026-02-17 20:50 UTC  
 **Status**: Beta - Sessions + ownership + no-GM policy + initiative automation/lock + persistent events deployed  
 **Tech Stack**: Node.js + TypeScript, Express, PostgreSQL, Prisma ORM, React + Vite + TypeScript, Cloudflare Pages, Render
 
@@ -339,6 +339,29 @@ The project is functionally complete for MVP usage with:
 - Character progression/leveling flow
 - Expand inventory/equipment constraints and loadout rules
 - Extend modifier pipeline for more source types/effects
+
+### Companion-Grade Milestones (P0/P1/P2)
+
+#### P0 — Production reliability baseline
+- Enforce strict Telegram auth behavior in production (no fallback outside dev/test).
+- Add structured request logging with correlation/request IDs.
+- Add backend alerting for error rate and latency.
+- Define and track basic SLOs (availability, p95 latency, 5xx budget).
+- Add CI gate: backend build + miniapp build + smoke checks.
+
+#### P1 — Gameplay and UX robustness
+- Add encounter flow primitives: start, active turn marker, next turn, finish.
+- Add safe “undo last combat action” for GM (HP/initiative/effect).
+- Improve miniapp network resilience UX (retry/backoff + reconnect messaging).
+- Improve small-screen combat ergonomics (tap targets, compact layout).
+- Add retention policy for `session_events` (TTL/archive + cleanup task).
+
+#### P2 — Companion product depth
+- Add session-level resource tracking (consumables/charges/conditions).
+- Add product analytics baseline (DAU, encounter completion, retention).
+- Add optional explicit GM handover workflow.
+- Expand content-source tooling for scalable rule packs.
+- Add in-app onboarding checklist for first session run.
 
 ---
 

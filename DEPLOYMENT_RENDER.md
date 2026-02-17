@@ -55,3 +55,31 @@ In Cloudflare Pages project:
 
 - Keep backend URL HTTPS only.
 - If Render free tier sleeps, first request may take longer.
+
+## Auto-deploy and manual trigger
+
+Render Web Service auto-deploy is **event-based** (new commit/push), not cron-based.
+
+- There is usually no schedule setting for this mode.
+- Deploy starts when you push to the tracked branch (for example, `main`).
+
+To trigger deploy manually from this repo, run:
+
+```powershell
+./trigger-deploy.ps1
+```
+
+What it does:
+- updates `deploy-trigger.txt` timestamp,
+- creates a git commit,
+- pushes to `origin/main` (or another branch via `-Branch`).
+
+Useful options:
+
+```powershell
+# Commit locally, do not push
+./trigger-deploy.ps1 -NoPush
+
+# Push to another branch
+./trigger-deploy.ps1 -Branch develop
+```

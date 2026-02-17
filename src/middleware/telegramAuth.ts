@@ -72,13 +72,20 @@ function verifyTelegramInitData(initData: string, botToken: string): TelegramUse
 
 export function telegramAuthMiddleware() {
   return (req: Request, res: Response, next: NextFunction) => {
-    const requireAuth = process.env.REQUIRE_TELEGRAM_AUTH === 'true';
+    const nodeEnv = (process.env.NODE_ENV || 'development').toLowerCase();
+    const isProduction = nodeEnv === 'production';
+    const requireAuthEnv = process.env.REQUIRE_TELEGRAM_AUTH;
+    const requireAuth = requireAuthEnv ? requireAuthEnv === 'true' : isProduction;
+
+    const fallbackEnv = process.env.ALLOW_TELEGRAM_USER_ID_FALLBACK;
+    const allowFallback = !isProduction && (fallbackEnv ? fallbackEnv === 'true' : true);
+
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const initDataHeader = req.header('x-telegram-init-data');
     const fallbackTelegramUserId = req.header('x-telegram-user-id');
 
     const applyFallbackUser = () => {
-      if (!requireAuth && fallbackTelegramUserId && /^\d+$/.test(fallbackTelegramUserId)) {
+      if (!requireAuth && allowFallback && fallbackTelegramUserId && /^\d+$/.test(fallbackTelegramUserId)) {
         res.locals.telegramUserId = fallbackTelegramUserId;
       }
     };

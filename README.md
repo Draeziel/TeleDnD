@@ -90,13 +90,15 @@ Configure environment variables:
 ```env
 TELEGRAM_BOT_TOKEN=<your_bot_token>
 REQUIRE_TELEGRAM_AUTH=true
+ALLOW_TELEGRAM_USER_ID_FALLBACK=false
 TELEGRAM_INITDATA_MAX_AGE_SEC=86400
 API_RATE_LIMIT_WINDOW_MS=60000
 API_RATE_LIMIT_MAX=120
 ```
 
 - `TELEGRAM_BOT_TOKEN` – Telegram bot token used for signature verification.
-- `REQUIRE_TELEGRAM_AUTH` – when `true`, protected endpoints reject requests without valid `x-telegram-init-data`.
+- `REQUIRE_TELEGRAM_AUTH` – when `true`, protected endpoints reject requests without valid `x-telegram-init-data`. If omitted, defaults to `true` in production.
+- `ALLOW_TELEGRAM_USER_ID_FALLBACK` – allows `x-telegram-user-id` fallback only in non-production mode (for dev/test).
 - `TELEGRAM_INITDATA_MAX_AGE_SEC` – maximum allowed age of `auth_date` in seconds.
 - `API_RATE_LIMIT_WINDOW_MS` – rate-limit window for all `/api/*` routes in milliseconds (default: `60000`).
 - `API_RATE_LIMIT_MAX` – max requests per IP in one window for `/api/*` routes (default: `120`).
@@ -109,7 +111,7 @@ Protected groups:
   - `GET /api/characters/races`
   - `GET /api/characters/backgrounds`
 
-In local/dev mode, set `REQUIRE_TELEGRAM_AUTH=false` and pass `x-telegram-user-id` to emulate Telegram user context.
+In local/dev mode, set `REQUIRE_TELEGRAM_AUTH=false` and `ALLOW_TELEGRAM_USER_ID_FALLBACK=true` to emulate Telegram user context via `x-telegram-user-id`.
 
 ### Health Check
 

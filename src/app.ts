@@ -8,6 +8,7 @@ import sessionRoutes from './routes/sessionRoutes';
 import errorHandler from './middleware/errorHandler';
 import { telegramAuthMiddleware } from './middleware/telegramAuth';
 import { requestLoggingMiddleware } from './middleware/requestLogging';
+import logger from './utils/logger';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -44,9 +45,29 @@ app.use(errorHandler);
 const startServer = async () => {
     try {
         await prisma.$connect();
-        console.log('Connected to the database');
+
+        const nodeEnv = (process.env.NODE_ENV || 'development').toLowerCase();
+        const isProduction = nodeEnv === 'production';
+        const requireAuthEnv = process.env.REQUIRE_TELEGRAM_AUTH;
+        const requireAuth = requireAuthEnv ? requireAuthEnv === 'true' : isProduction;
+        const fallbackEnv = process.env.ALLOW_TELEGRAM_USER_ID_FALLBACK;
+        const allowFallback = !isProduction && (fallbackEnv ? fallbackEnv === 'true' : true);
+
+        logger.info('startup_ready', {
+            env: nodeEnv,
+            requireTelegramAuth: requireAuth,
+            allowTelegramUserIdFallback: allowFallback,
+        });
+
+        if (!isProduction && allowFallback) {
+            logger.warn('startup_security_notice', {
+                message: 'x-telegram-user-id fallback is enabled; use only in dev/test',
+            });
+        }
     } catch (error) {
-        console.error('Database connection error:', error);
+        logger.error('database_connection_error', {
+            error: error instanceof Error ? error.message : String(error),
+        });
         process.exit(1);
     }
 };

@@ -1,7 +1,7 @@
 # RPG Character Service - Project Snapshot
 
-**Last Updated**: 2026-02-17 23:40 UTC  
-**Status**: Beta - End-to-end Telegram Mini App flow deployed  
+**Last Updated**: 2026-02-17 20:30 UTC  
+**Status**: Beta - Sessions + ownership enforcement deployed  
 **Tech Stack**: Node.js + TypeScript, Express, PostgreSQL, Prisma ORM, React + Vite + TypeScript, Cloudflare Pages, Render
 
 ---
@@ -142,15 +142,30 @@ CharacterDraft
 ### ✅ Telegram Mini App Frontend
 - React + Vite + TypeScript miniapp in `miniapp/`
 - Wizard pages for character creation, character list, and character sheet views
+- Session pages: list/create/join and session view with party state
 - API layer with `/api` relative base URL and Vite dev proxy
 - Telegram WebApp integration (init + user context + initData forwarding)
 
 ### ✅ Security & Runtime Hardening
 - Telegram `initData` signature verification middleware on `/api/drafts/*`
+- Telegram auth context for session and private character operations
 - Configurable strict mode via `REQUIRE_TELEGRAM_AUTH`
 - Configurable `auth_date` max age (`TELEGRAM_INITDATA_MAX_AGE_SEC`)
 - API rate limiting on `/api/*` (`API_RATE_LIMIT_WINDOW_MS`, `API_RATE_LIMIT_MAX`)
 - Health endpoint `GET /healthz` for deploy/uptime probes
+
+### ✅ Session / Party System (Phase 1 core)
+- Session lifecycle: create/list/join/leave/get by `joinCode`
+- Session party model: attach/remove character with session-scoped state
+- GM gameplay actions: set HP, set initiative, apply effects
+- Session view polling in miniapp (7s interval)
+
+### ✅ Ownership & Access Control
+- `Character.ownerUserId` used for per-user visibility and access checks
+- Character list filtered to current Telegram user
+- Character read/sheet/delete restricted to owner
+- Draft finalize now sets `ownerUserId` to prevent post-create access regressions
+- Character delete available in miniapp list (`Delete` action)
 
 ### ✅ Deployment
 - Frontend deployed on Cloudflare Pages
@@ -217,8 +232,25 @@ CharacterDraft
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | `POST` | `/api/characters` | Create character directly (legacy) |
+| `GET` | `/api/characters` | List current user's characters |
 | `GET` | `/api/characters/:id` | Get character basic info |
+| `DELETE` | `/api/characters/:id` | Delete owned character |
 | `GET` | `/api/characters/:id/sheet` | Get complete character sheet with features, derived stats, and skills |
+
+### Session Operations
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `POST` | `/api/sessions` | Create session (creator becomes GM) |
+| `GET` | `/api/sessions` | List sessions for current user |
+| `POST` | `/api/sessions/join` | Join session by code |
+| `POST` | `/api/sessions/:id/leave` | Leave session |
+| `GET` | `/api/sessions/:id` | Get session details (players/characters/state/effects) |
+| `POST` | `/api/sessions/:id/characters` | Attach owned character to session |
+| `DELETE` | `/api/sessions/:id/characters/:characterId` | Detach character from session |
+| `POST` | `/api/sessions/:sessionId/characters/:characterId/set-hp` | GM: set HP |
+| `POST` | `/api/sessions/:sessionId/characters/:characterId/set-initiative` | GM: set initiative |
+| `POST` | `/api/sessions/:sessionId/characters/:characterId/apply-effect` | GM: apply effect |
 
 ### Query Endpoints
 
@@ -241,7 +273,9 @@ The project is functionally complete for MVP usage with:
 - Ability score assignment system with validation
 - Character sheet computation service
 - Telegram Mini App frontend connected to public backend
-- Telegram request authentication for draft endpoints
+- Sessions/party flow available in miniapp
+- Telegram request authentication on draft/session/private character operations
+- Ownership enforcement for character visibility and CRUD access
 - Basic operational hardening (health-check + rate-limit)
 - Type-safe TypeScript codebase
 - Zero compilation errors
@@ -257,6 +291,8 @@ The project is functionally complete for MVP usage with:
 - Initiative and passive checks derived from computed skills/stats
 - Public deployment on Cloudflare + Render
 - Error handling and validation
+- Session create/join and live party view with polling
+- Owned-character deletion from miniapp list
 
 **What's not yet implemented**:
 - Role/user management auth beyond Telegram initData checks
@@ -268,20 +304,21 @@ The project is functionally complete for MVP usage with:
 
 ## 7. Next Planned Steps
 
-### Phase 1: Operational Hardening
-- Add structured request logging and correlation IDs
-- Add Render/Cloudflare uptime monitor and alerting
-- Add lightweight post-deploy smoke checks in CI
+### Immediate Next Sprint
+- Add attach/detach character UX in Session View (owner action)
+- Add session endpoint smoke checks to `run-smoke.ps1` and `run-tests.ps1`
+- Update README with session + ownership endpoint/auth docs
+- Add initiative order list (sorted by initiative) for faster combat flow
 
-### Phase 2: Gameplay Depth
+### Near-term Improvements
+- Structured request logging and correlation IDs
+- Render/Cloudflare uptime monitor and alerting
+- Character roster enhancements (sorting/searching)
+
+### Mid-term Gameplay Depth
 - Character progression/leveling flow
 - Expand inventory/equipment constraints and loadout rules
 - Extend modifier pipeline for more source types/effects
-
-### Phase 3: Product UX
-- Character roster enhancements (sorting/searching)
-- Better wizard resume/recovery UX
-- Improved error surfaces and diagnostics for Telegram users
 
 ---
 

@@ -1,7 +1,7 @@
 # Session / Party System Roadmap
 
 **Last Updated**: 2026-02-17  
-**Status**: Planning approved, implementation not started
+**Status**: Phase 1 mostly implemented; docs/ops alignment in progress
 
 ---
 
@@ -100,19 +100,26 @@ Build a multiplayer session (party) system where:
 
 ### F) Frontend (miniapp)
 
-- [ ] Add `SessionsPage` (list, create, join by code)
-- [ ] Add `SessionViewPage` (party list, HP, initiative, effects)
-- [ ] Add GM-only controls in session view
-- [ ] Add polling refresh every 5–10 seconds
+- [x] Add `SessionsPage` (list, create, join by code)
+- [x] Add `SessionViewPage` (party list, HP, initiative, effects)
+- [x] Add GM-only controls in session view
+- [x] Add polling refresh every 5–10 seconds
 - [ ] Add attach-character action from Character Sheet and/or Session View
-- [ ] Add API client methods for new session endpoints
+- [~] Add API client methods for new session endpoints
 
 ### G) Docs & ops
 
-- [ ] Update `README.md` with session model and endpoint docs
-- [ ] Update `PROJECT_SNAPSHOT.md` with phase progress
+- [~] Update `README.md` with session model and endpoint docs
+- [x] Update `PROJECT_SNAPSHOT.md` with phase progress
 - [ ] Add smoke checks for session endpoints
-- [ ] Verify `npm run build` (backend + miniapp)
+- [x] Verify `npm run build` (backend + miniapp)
+
+### H) Ownership hardening (post-Phase1 refinement)
+
+- [x] Filter character list by current Telegram user ownership
+- [x] Restrict character read/delete/sheet access to owner
+- [x] Ensure draft finalize assigns `ownerUserId`
+- [x] Add miniapp character delete action in list view
 
 ---
 
@@ -137,6 +144,18 @@ Build a multiplayer session (party) system where:
 - 2026-02-17: `prisma migrate dev` blocked by local migration drift in previously applied migration; migration apply remains pending on clean/production migration flow.
 - 2026-02-17: Implemented first Session API slice (`POST /api/sessions`, `GET /api/sessions`, `POST /api/sessions/join`, `POST /api/sessions/:id/leave`, `GET /api/sessions/:id`) and wired routes under Telegram auth middleware.
 - 2026-02-17: Implemented session character assignment and GM gameplay actions with permission checks and validation (`attach/remove`, `set-hp`, `set-initiative`, `apply-effect`).
+- 2026-02-17: Implemented miniapp sessions frontend (`SessionsPage`, `SessionViewPage`, polling, session API client) and wired routes/navigation.
+- 2026-02-17: Implemented character delete API + miniapp delete button in character list.
+- 2026-02-17: Implemented ownership hardening for character endpoints and fixed draft finalize ownership regression (`ownerUserId` is now set on created characters).
+
+---
+
+## Next Sprint (proposed)
+
+1. Add attach/detach character UX in session view (owner action + GM visibility).
+2. Add session smoke checks to `run-smoke.ps1` / `run-tests.ps1`.
+3. Update README session docs (auth expectations + endpoint matrix + ownership rules).
+4. Add compact initiative order view (sorted list) for faster combat flow.
 
 ---
 

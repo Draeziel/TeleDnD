@@ -34,6 +34,19 @@ model Class {
   @@map("classes")
 }
 
+model User {
+  id                 String          @id @default(uuid())
+  telegramId         String          @unique
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  ownedCharacters    Character[]
+  createdSessions    Session[]       @relation("SessionCreator")
+  gmSessions         Session[]       @relation("SessionGM")
+  sessionPlayers     SessionPlayer[]
+
+  @@map("users")
+}
+
 model Feature {
   id                 String             @id @default(uuid())
   name               String             @unique
@@ -207,10 +220,12 @@ model Character {
   id               String             @id @default(uuid())
   name             String
   level            Int                @default(1)
+  ownerUserId      String?
   classId          String
   raceId           String?
   backgroundId     String?
   abilityScoreSetId String?
+  owner            User?              @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
   class            Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
   race             Race?              @relation(fields: [raceId], references: [id], onDelete: SetNull)
   background       Background?        @relation(fields: [backgroundId], references: [id], onDelete: SetNull)
@@ -218,8 +233,88 @@ model Character {
   characterChoices CharacterChoice[]
   inventory        CharacterItem[]
   skillProficiencies CharacterSkillProficiency[]
+  sessionCharacters SessionCharacter[]
 
+  @@index([ownerUserId])
   @@map("characters")
+}
+
+model Session {
+  id              String              @id @default(uuid())
+  name            String
+  gmUserId        String
+  createdByUserId String
+  joinCode        String              @unique
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  gmUser          User                @relation("SessionGM", fields: [gmUserId], references: [id], onDelete: Cascade)
+  createdByUser   User                @relation("SessionCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  players         SessionPlayer[]
+  characters      SessionCharacter[]
+
+  @@index([gmUserId])
+  @@index([createdByUserId])
+  @@map("sessions")
+}
+
+model SessionPlayer {
+  id        String      @id @default(uuid())
+  sessionId String
+  userId    String
+  role      String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  session   Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([userId])
+  @@map("session_players")
+}
+
+model SessionCharacter {
+  id        String                 @id @default(uuid())
+  sessionId String
+  characterId String
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  session   Session                @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  character Character              @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  state     SessionCharacterState?
+  effects   SessionEffect[]
+
+  @@unique([sessionId, characterId])
+  @@index([characterId])
+  @@map("session_characters")
+}
+
+model SessionCharacterState {
+  id                 String           @id @default(uuid())
+  sessionCharacterId String           @unique
+  currentHp          Int              @default(0)
+  maxHpSnapshot      Int              @default(0)
+  tempHp             Int?
+  initiative         Int?
+  notes              String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  sessionCharacter   SessionCharacter @relation(fields: [sessionCharacterId], references: [id], onDelete: Cascade)
+
+  @@map("session_character_states")
+}
+
+model SessionEffect {
+  id                 String           @id @default(uuid())
+  sessionCharacterId String
+  effectType         String
+  duration           String
+  payload            Json
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  sessionCharacter   SessionCharacter @relation(fields: [sessionCharacterId], references: [id], onDelete: Cascade)
+
+  @@index([sessionCharacterId])
+  @@map("session_effects")
 }
 
 model CharacterChoice {

@@ -4,6 +4,7 @@ import rateLimit from 'express-rate-limit';
 import { PrismaClient } from '@prisma/client';
 import characterRoutes from './routes/characterRoutes';
 import draftRoutes from './routes/draftRoutes';
+import sessionRoutes from './routes/sessionRoutes';
 import errorHandler from './middleware/errorHandler';
 import { telegramAuthMiddleware } from './middleware/telegramAuth';
 
@@ -34,6 +35,8 @@ app.use('/api', apiLimiter);
 app.use('/api/characters', characterRoutes(prisma));
 app.use('/api/drafts', telegramAuthMiddleware());
 app.use('/api/drafts', draftRoutes(prisma));
+app.use('/api/sessions', telegramAuthMiddleware());
+app.use('/api/sessions', sessionRoutes(prisma));
 app.use(errorHandler);
 
 const startServer = async () => {

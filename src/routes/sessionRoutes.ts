@@ -1,0 +1,21 @@
+import { Router } from 'express';
+import { PrismaClient } from '@prisma/client';
+import { SessionController } from '../controllers/sessionController';
+
+export default function sessionRoutes(prisma: PrismaClient) {
+  const router = Router();
+  const sessionController = new SessionController(prisma);
+
+  router.post('/', sessionController.createSession.bind(sessionController));
+  router.get('/', sessionController.listSessions.bind(sessionController));
+  router.post('/join', sessionController.joinSession.bind(sessionController));
+  router.post('/:id/leave', sessionController.leaveSession.bind(sessionController));
+  router.get('/:id', sessionController.getSession.bind(sessionController));
+  router.post('/:id/characters', sessionController.attachCharacter.bind(sessionController));
+  router.delete('/:id/characters/:characterId', sessionController.removeCharacter.bind(sessionController));
+  router.post('/:sessionId/characters/:characterId/set-hp', sessionController.setHp.bind(sessionController));
+  router.post('/:sessionId/characters/:characterId/set-initiative', sessionController.setInitiative.bind(sessionController));
+  router.post('/:sessionId/characters/:characterId/apply-effect', sessionController.applyEffect.bind(sessionController));
+
+  return router;
+}

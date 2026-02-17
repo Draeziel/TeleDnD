@@ -178,6 +178,7 @@ Build a multiplayer session (party) system where:
 - 2026-02-17: Implemented initiative lock/unlock/reset flow (backend endpoints + miniapp controls).
 - 2026-02-17: Smoke scripts now support real Telegram `initData` via `-TelegramInitData`.
 - 2026-02-17: Local migration state recovered via `prisma migrate resolve --rolled-back` and successfully applied with `prisma migrate deploy`.
+- 2026-02-17: Added GitHub Actions CI gate (`.github/workflows/ci.yml`) with Postgres service, backend+miniapp build, and smoke suite run.
 
 ---
 

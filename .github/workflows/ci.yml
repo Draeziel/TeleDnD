@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: rpg_character_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rpg_character_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rpg_character_db?schema=public
+      PORT: 4000
+      NODE_ENV: test
+      REQUIRE_TELEGRAM_AUTH: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Install miniapp dependencies
+        run: npm ci
+        working-directory: miniapp
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Prisma migrate deploy
+        run: npx prisma migrate deploy
+
+      - name: Seed database
+        run: npm run seed
+
+      - name: Build backend
+        run: npm run build
+
+      - name: Build miniapp
+        run: npm run build
+        working-directory: miniapp
+
+      - name: Start backend
+        run: npm start > server.log 2>&1 &
+
+      - name: Wait for backend health
+        shell: bash
+        run: |
+          for i in {1..30}; do
+            if curl -sf http://127.0.0.1:4000/healthz > /dev/null; then
+              echo "Backend is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend failed to start"
+          cat server.log || true
+          exit 1
+
+      - name: Run smoke suite
+        shell: pwsh
+        run: ./run-tests.ps1 -Smoke -BaseUrl http://127.0.0.1:4000 -TestTelegramUserId 123456789
+
+      - name: Print backend log on failure
+        if: failure()
+        run: cat server.log || true

@@ -1,7 +1,129 @@
 # === COMPREHENSIVE TEST SUITE FOR RPG CHARACTER SERVICE ===
 # Tests: Finalize Flow, Validation, Idempotency
 
-$baseUrl = "http://localhost:4000"
+param(
+    [string]$BaseUrl = "http://localhost:4000",
+    [switch]$Smoke,
+    [string]$CharacterName = "SmokeTestHero"
+)
+
+if ($Smoke) {
+    $smokeResults = @()
+
+    function Add-SmokeResult {
+        param(
+            [string]$Test,
+            [bool]$Pass,
+            [string]$Details
+        )
+
+        $status = if ($Pass) { "PASS" } else { "FAIL" }
+        $color = if ($Pass) { "Green" } else { "Red" }
+
+        Write-Host "[$status] $Test" -ForegroundColor $color
+        Write-Host "      $Details" -ForegroundColor Gray
+
+        $script:smokeResults += @{
+            Test = $Test
+            Pass = $Pass
+            Details = $Details
+        }
+    }
+
+    Write-Host "`n======================================================" -ForegroundColor Cyan
+    Write-Host "POST-DEPLOY SMOKE TEST" -ForegroundColor Cyan
+    Write-Host "======================================================`n" -ForegroundColor Cyan
+    Write-Host "Base URL: $BaseUrl`n" -ForegroundColor Yellow
+
+    # 1) Health check
+    try {
+        $healthResponse = Invoke-WebRequest -Uri "$BaseUrl/healthz" -Method Get -UseBasicParsing -ErrorAction Stop
+        $health = $healthResponse.Content | ConvertFrom-Json
+        $healthy = $health.status -eq "ok"
+        Add-SmokeResult "Health endpoint" $healthy "GET /healthz status=$($health.status)"
+    } catch {
+        Add-SmokeResult "Health endpoint" $false "GET /healthz failed: $($_.Exception.Message)"
+    }
+
+    # 2) Classes endpoint
+    $classId = $null
+    try {
+        $classesResponse = Invoke-WebRequest -Uri "$BaseUrl/api/characters/classes" -Method Get -UseBasicParsing -ErrorAction Stop
+        $classes = $classesResponse.Content | ConvertFrom-Json
+        if ($classes -and $classes.Count -gt 0) {
+            $classId = $classes[0].id
+            Add-SmokeResult "Classes endpoint" $true "Found $($classes.Count) classes; using classId=$classId"
+        } else {
+            Add-SmokeResult "Classes endpoint" $false "GET /api/characters/classes returned empty list"
+        }
+    } catch {
+        Add-SmokeResult "Classes endpoint" $false "Request failed: $($_.Exception.Message)"
+    }
+
+    # 3) Create character (legacy non-draft route)
+    $characterId = $null
+    if ($classId) {
+        try {
+            $createPayload = ConvertTo-Json @{
+                name = $CharacterName
+                classId = $classId
+                level = 1
+            }
+
+            $createResponse = Invoke-WebRequest -Uri "$BaseUrl/api/characters" `
+                -Method Post `
+                -Headers @{"Content-Type"="application/json"} `
+                -Body $createPayload `
+                -UseBasicParsing -ErrorAction Stop
+
+            $created = $createResponse.Content | ConvertFrom-Json
+            $characterId = $created.id
+            Add-SmokeResult "Create character" (-not [string]::IsNullOrWhiteSpace($characterId)) "Character ID: $characterId"
+        } catch {
+            Add-SmokeResult "Create character" $false "POST /api/characters failed: $($_.Exception.Message)"
+        }
+    } else {
+        Add-SmokeResult "Create character" $false "Skipped: no classId available"
+    }
+
+    # 4) Fetch character sheet
+    if ($characterId) {
+        try {
+            $sheetResponse = Invoke-WebRequest -Uri "$BaseUrl/api/characters/$characterId/sheet" -Method Get -UseBasicParsing -ErrorAction Stop
+            $sheet = $sheetResponse.Content | ConvertFrom-Json
+
+            $hasCharacter = $sheet.character -and $sheet.character.id -eq $characterId
+            $hasDerived = $sheet.derivedStats -and $sheet.derivedStats.proficiencyBonus -ge 2
+            $hasSavingThrows = $sheet.savingThrows -and $sheet.savingThrows.Count -eq 6
+
+            $sheetOk = $hasCharacter -and $hasDerived -and $hasSavingThrows
+            Add-SmokeResult "Character sheet" $sheetOk "character=$hasCharacter, derived=$hasDerived, savingThrows=$hasSavingThrows"
+        } catch {
+            Add-SmokeResult "Character sheet" $false "GET /api/characters/:id/sheet failed: $($_.Exception.Message)"
+        }
+    } else {
+        Add-SmokeResult "Character sheet" $false "Skipped: no characterId available"
+    }
+
+    $smokePassed = ($smokeResults | Where-Object { $_.Pass -eq $true }).Count
+    $smokeFailed = ($smokeResults | Where-Object { $_.Pass -eq $false }).Count
+    $smokeTotal = $smokeResults.Count
+
+    Write-Host "`n======================================================" -ForegroundColor Cyan
+    Write-Host "SMOKE SUMMARY" -ForegroundColor Cyan
+    Write-Host "======================================================" -ForegroundColor Cyan
+    Write-Host "Total: $smokeTotal | Passed: $smokePassed | Failed: $smokeFailed"
+
+    if ($smokeFailed -eq 0) {
+        Write-Host "`nSTATUS: SMOKE PASSED" -ForegroundColor Green
+        exit 0
+    }
+
+    Write-Host "`nSTATUS: SMOKE FAILED" -ForegroundColor Red
+    exit 1
+}
+
+$baseUrl = $BaseUrl
 $testResults = @()
 
 function Test-Result {

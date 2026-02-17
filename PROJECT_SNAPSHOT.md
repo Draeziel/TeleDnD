@@ -1,8 +1,8 @@
 # RPG Character Service - Project Snapshot
 
-**Last Updated**: 2026-02-16 22:00 UTC  
-**Status**: Alpha - Core character builder engine complete  
-**Tech Stack**: Node.js + TypeScript, Express, PostgreSQL, Prisma ORM, Docker
+**Last Updated**: 2026-02-17 23:40 UTC  
+**Status**: Beta - End-to-end Telegram Mini App flow deployed  
+**Tech Stack**: Node.js + TypeScript, Express, PostgreSQL, Prisma ORM, React + Vite + TypeScript, Cloudflare Pages, Render
 
 ---
 
@@ -15,7 +15,7 @@ Build a comprehensive backend service for managing characters in tabletop RPG sy
 - Character attributes are computed dynamically from database definitions
 - The system is extensible for future game mechanics (modifiers, equipment, progression)
 
-**Target**: Telegram Mini App UI integration for step-by-step character creation wizard
+**Target**: Stable production baseline for Telegram Mini App character creation flow
 
 ---
 
@@ -135,8 +135,27 @@ CharacterDraft
 - Track selected vs. missing choices
 - Include ability scores in sheet response
 - Derived statistics (ability modifiers, armor class, attack bonus, proficiency bonus)
+- Initiative and passive checks (Perception/Investigation/Insight)
 - Skill bonuses computed from ability scores and proficiency data
 - Saving throw bonuses computed from ability modifiers and class proficiencies
+
+### ✅ Telegram Mini App Frontend
+- React + Vite + TypeScript miniapp in `miniapp/`
+- Wizard pages for character creation, character list, and character sheet views
+- API layer with `/api` relative base URL and Vite dev proxy
+- Telegram WebApp integration (init + user context + initData forwarding)
+
+### ✅ Security & Runtime Hardening
+- Telegram `initData` signature verification middleware on `/api/drafts/*`
+- Configurable strict mode via `REQUIRE_TELEGRAM_AUTH`
+- Configurable `auth_date` max age (`TELEGRAM_INITDATA_MAX_AGE_SEC`)
+- API rate limiting on `/api/*` (`API_RATE_LIMIT_WINDOW_MS`, `API_RATE_LIMIT_MAX`)
+- Health endpoint `GET /healthz` for deploy/uptime probes
+
+### ✅ Deployment
+- Frontend deployed on Cloudflare Pages
+- Backend + PostgreSQL deployed on Render
+- Render Blueprint/config documented in `render.yaml` and `DEPLOYMENT_RENDER.md`
 
 ### ✅ Derived Statistics Layer
 - Computes base vs. effective ability score blocks and per-ability modifiers
@@ -206,18 +225,24 @@ CharacterDraft
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | `GET` | `/api/characters/classes` | Get available classes (for reference) |
+| `GET` | `/api/characters/races` | Get available races (for wizard) |
+| `GET` | `/api/characters/backgrounds` | Get available backgrounds (for wizard) |
+| `GET` | `/healthz` | Health probe endpoint |
 
 ---
 
 ## 6. Current Development Stage
 
-**Status**: ✅ Core backend engine complete
+**Status**: ✅ Backend + Mini App integrated and deployed
 
-The character builder backend is functionally complete with:
+The project is functionally complete for MVP usage with:
 - Database schema supporting all core concepts
 - Draft workflow fully implemented and tested
 - Ability score assignment system with validation
 - Character sheet computation service
+- Telegram Mini App frontend connected to public backend
+- Telegram request authentication for draft endpoints
+- Basic operational hardening (health-check + rate-limit)
 - Type-safe TypeScript codebase
 - Zero compilation errors
 
@@ -229,56 +254,34 @@ The character builder backend is functionally complete with:
 - Ability score assignment (4 methods)
 - Derived statistics and skill bonuses on character sheet
 - Saving throw bonuses derived from class proficiencies
+- Initiative and passive checks derived from computed skills/stats
+- Public deployment on Cloudflare + Render
 - Error handling and validation
 
 **What's not yet implemented**:
-- Equipment system
-- Modifier system (racial bonuses auto-applied)
+- Role/user management auth beyond Telegram initData checks
+- Advanced anti-abuse controls (global quotas, per-user throttling, WAF rules)
 - Character progression/leveling
-- Telegram Mini App UI
-- API authentication/authorization
-- Character roster/management
+- Deep observability (metrics dashboard, alerting)
 
 ---
 
 ## 7. Next Planned Steps
 
-### Phase 1: Equipment System (Ready to implement)
-```
-Equipment Packages
-├── Equipment Set (e.g., "Martial Weapons")
-├── Equipment (sword, armor, etc.)
-└── Character Equipment selection
-```
+### Phase 1: Operational Hardening
+- Add structured request logging and correlation IDs
+- Add Render/Cloudflare uptime monitor and alerting
+- Add lightweight post-deploy smoke checks in CI
 
-### Phase 2: Modifier System (Architecture planned)
-```
-Ability Score Modifiers
-├── Racial bonuses (e.g., Human +1/+1)
-├── Item bonuses (e.g., Ring +2 to DEX)
-├── Temporary effects (buffs/debuffs)
-└── Derived calculations (attack bonus from STR, etc.)
-```
+### Phase 2: Gameplay Depth
+- Character progression/leveling flow
+- Expand inventory/equipment constraints and loadout rules
+- Extend modifier pipeline for more source types/effects
 
-### Phase 3: Telegram Mini App UI (Design phase)
-```
-Step-by-step wizard UI
-├── Welcome screen
-├── Class selection
-├── Race selection
-├── Background selection
-├── Ability scores wizard
-├── Choices wizard
-├── Review/confirm
-└── Character created!
-```
-
-### Phase 4: Extended Features
-- Character progression/leveling
-- Character roster (save/load)
-- Spellcasting system
-- Inventory management
-- Party formation
+### Phase 3: Product UX
+- Character roster enhancements (sorting/searching)
+- Better wizard resume/recovery UX
+- Improved error surfaces and diagnostics for Telegram users
 
 ---
 
@@ -297,6 +300,7 @@ node dist/server.js          # Start server (port 4000)
 - Use `test.rest` file with REST Client extension
 - All endpoints documented with examples
 - POST `/api/drafts` to create draft and test workflow
+- Run post-deploy smoke suite: `./run-tests.ps1 -Smoke -BaseUrl https://telednd-backend.onrender.com`
 
 ### Adding New Content
 ```typescript
@@ -356,9 +360,17 @@ rpg-character-service/
 │   ├── types/
 │   │   └── index.ts         (TypeScript interfaces)
 │   ├── middleware/
-│   │   └── errorHandler.ts
+│   │   ├── errorHandler.ts
+│   │   └── telegramAuth.ts
 │   └── utils/
 │       └── logger.ts
+├── miniapp/                 (Telegram Mini App frontend: React + Vite + TS)
+│   ├── src/
+│   │   ├── pages/           (Characters, Sheet, Wizard)
+│   │   ├── api/             (HTTP client + endpoints)
+│   │   ├── components/      (Layout + shared UI)
+│   │   └── telegram/        (WebApp bootstrap helpers)
+│   └── vite.config.ts
 ├── scripts/
 │   └── seed.ts              (Database population)
 ├── dist/                    (Compiled JavaScript output)
@@ -427,12 +439,11 @@ curl http://localhost:4000/api/characters/CHARACTER_ID/sheet
 
 ## Known Limitations
 
-1. No authentication/authorization (add as needed)
-2. Ability scores are base values only (modifier system pending)
-3. No item system yet (planned)
-4. Single-database deployment (no horizontal scaling)
-5. No caching layer (add Redis if needed)
-6. Character deletion not yet implemented
+1. Telegram auth currently enforced only on draft endpoints (`/api/drafts/*`)
+2. Single-database deployment (no horizontal scaling yet)
+3. No caching layer (Redis/CDN strategy not introduced)
+4. Character deletion and advanced account-scoped ownership are not implemented
+5. No centralized metrics/alerting stack yet
 
 ---
 
@@ -460,7 +471,7 @@ When adding new features:
 
 ---
 
-**Last verified**: 2026-02-16  
-**Migration status**: ✅ mig4 applied (Ability scores)  
-**Build status**: ✅ 0 TypeScript errors  
-**Server ready**: ✅ Compiled and ready for deployment
+**Last verified**: 2026-02-17  
+**Migration status**: ✅ includes `add_class_saving_throw_proficiencies` and prior content migrations  
+**Build status**: ✅ backend and miniapp compile successfully  
+**Deployment status**: ✅ frontend (Cloudflare Pages) + backend/db (Render) live

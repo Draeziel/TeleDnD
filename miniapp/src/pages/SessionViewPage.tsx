@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { sessionApi } from '../api/sessionApi';
+import { characterApi } from '../api/characterApi';
 import { StatusBox } from '../components/StatusBox';
-import type { SessionDetails } from '../types/models';
+import type { CharacterSummary, SessionDetails } from '../types/models';
 
 export function SessionViewPage() {
   const { id = '' } = useParams();
   const [session, setSession] = useState<SessionDetails | null>(null);
+  const [myCharacters, setMyCharacters] = useState<CharacterSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [attachingId, setAttachingId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   const load = async () => {
@@ -24,11 +28,47 @@ export function SessionViewPage() {
     }
   };
 
+  const loadMyCharacters = async () => {
+    try {
+      const data = await characterApi.getCharacters();
+      setMyCharacters(data);
+    } catch {
+      setError('Не удалось загрузить список ваших персонажей');
+    }
+  };
+
   useEffect(() => {
     load();
+    loadMyCharacters();
     const timer = setInterval(load, 7000);
     return () => clearInterval(timer);
   }, [id]);
+
+  const onAttachCharacter = async (characterId: string) => {
+    try {
+      setAttachingId(characterId);
+      setError('');
+      await sessionApi.attachCharacter(id, characterId);
+      await load();
+    } catch {
+      setError('Не удалось добавить персонажа в сессию');
+    } finally {
+      setAttachingId(null);
+    }
+  };
+
+  const onRemoveCharacter = async (characterId: string) => {
+    try {
+      setRemovingId(characterId);
+      setError('');
+      await sessionApi.removeCharacter(id, characterId);
+      await load();
+    } catch {
+      setError('Не удалось убрать персонажа из сессии');
+    } finally {
+      setRemovingId(null);
+    }
+  };
 
   const onSetHp = async (characterId: string, hp: number) => {
     try {
@@ -51,6 +91,9 @@ export function SessionViewPage() {
   if (loading) return <StatusBox type="info" message="Загрузка сессии..." />;
   if (error) return <StatusBox type="error" message={error} />;
   if (!session) return <StatusBox type="info" message="Сессия не найдена" />;
+
+  const attachedCharacterIds = new Set(session.characters.map((entry) => entry.character.id));
+  const availableCharacters = myCharacters.filter((character) => !attachedCharacterIds.has(character.id));
 
   return (
     <div className="page-stack">
@@ -79,6 +122,12 @@ export function SessionViewPage() {
                   <div>Effects: {entry.effects.length}</div>
                 </div>
                 <div className="inline-row">
+                  <button
+                    disabled={removingId === entry.character.id}
+                    onClick={() => onRemoveCharacter(entry.character.id)}
+                  >
+                    {removingId === entry.character.id ? 'Detaching...' : 'Detach'}
+                  </button>
                   <button onClick={() => onSetHp(entry.character.id, Math.max(currentHp - 1, 0))}>HP -1</button>
                   <button onClick={() => onSetHp(entry.character.id, currentHp + 1)}>HP +1</button>
                   <button onClick={() => onSetInitiative(entry.character.id, initiative + 1)}>Init +1</button>
@@ -86,6 +135,27 @@ export function SessionViewPage() {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      <div className="section-card">
+        <h2>Attach Your Character</h2>
+        <div className="list-grid">
+          {availableCharacters.length === 0 && (
+            <StatusBox type="info" message="Нет свободных персонажей для добавления" />
+          )}
+          {availableCharacters.map((character) => (
+            <div className="list-item" key={character.id}>
+              <div>
+                <strong>{character.name}</strong>
+                <div>Class: {character.class?.name || '—'}</div>
+                <div>Level: {character.level}</div>
+              </div>
+              <button disabled={attachingId === character.id} onClick={() => onAttachCharacter(character.id)}>
+                {attachingId === character.id ? 'Attaching...' : 'Attach'}
+              </button>
+            </div>
+          ))}
         </div>
       </div>
     </div>

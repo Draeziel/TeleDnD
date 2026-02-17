@@ -22,6 +22,29 @@ export const sessionApi = {
     return data;
   },
 
+  async attachCharacter(
+    sessionId: string,
+    characterId: string,
+    state?: { currentHp?: number; maxHpSnapshot?: number; tempHp?: number }
+  ): Promise<{ sessionCharacterId: string; sessionId: string; characterId: string; state: SessionCharacterState }> {
+    const { data } = await http.post(`/sessions/${sessionId}/characters`, {
+      characterId,
+      ...(state || {}),
+    });
+
+    return data as {
+      sessionCharacterId: string;
+      sessionId: string;
+      characterId: string;
+      state: SessionCharacterState;
+    };
+  },
+
+  async removeCharacter(sessionId: string, characterId: string): Promise<{ message: string }> {
+    const { data } = await http.delete(`/sessions/${sessionId}/characters/${characterId}`);
+    return data as { message: string };
+  },
+
   async setHp(sessionId: string, characterId: string, currentHp: number, tempHp?: number): Promise<SessionCharacterState> {
     const { data } = await http.post<SessionCharacterState>(`/sessions/${sessionId}/characters/${characterId}/set-hp`, {
       currentHp,

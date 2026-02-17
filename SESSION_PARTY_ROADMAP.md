@@ -104,15 +104,22 @@ Build a multiplayer session (party) system where:
 - [x] Add `SessionViewPage` (party list, HP, initiative, effects)
 - [x] Add GM-only controls in session view
 - [x] Add polling refresh every 5–10 seconds
-- [ ] Add attach-character action from Character Sheet and/or Session View
-- [~] Add API client methods for new session endpoints
+- [x] Add attach-character action from Character Sheet and/or Session View
+- [x] Add API client methods for new session endpoints
 
 ### G) Docs & ops
 
 - [~] Update `README.md` with session model and endpoint docs
 - [x] Update `PROJECT_SNAPSHOT.md` with phase progress
-- [ ] Add smoke checks for session endpoints
+- [~] Add smoke checks for session endpoints
 - [x] Verify `npm run build` (backend + miniapp)
+
+### I) Combat initiative automation (deferred)
+
+- [ ] GM button: roll initiative for all session characters (server-side d20 + DEX mod)
+- [ ] Player button: roll own initiative for owned attached character
+- [ ] Initiative roll audit log (who rolled, when, value)
+- [ ] Optional lock/reset policy for re-rolls per encounter
 
 ### H) Ownership hardening (post-Phase1 refinement)
 
@@ -147,15 +154,18 @@ Build a multiplayer session (party) system where:
 - 2026-02-17: Implemented miniapp sessions frontend (`SessionsPage`, `SessionViewPage`, polling, session API client) and wired routes/navigation.
 - 2026-02-17: Implemented character delete API + miniapp delete button in character list.
 - 2026-02-17: Implemented ownership hardening for character endpoints and fixed draft finalize ownership regression (`ownerUserId` is now set on created characters).
+- 2026-02-17: Added session deletion flow (GM-only) and reduced session view flicker with silent polling refresh.
+- 2026-02-17: Added initiative order block in session view (sorted descending by initiative).
+- 2026-02-17: Initiative dice automation explicitly deferred and tracked in roadmap for a later phase.
 
 ---
 
 ## Next Sprint (proposed)
 
-1. Add attach/detach character UX in session view (owner action + GM visibility).
-2. Add session smoke checks to `run-smoke.ps1` / `run-tests.ps1`.
-3. Update README session docs (auth expectations + endpoint matrix + ownership rules).
-4. Add compact initiative order view (sorted list) for faster combat flow.
+1. Complete session smoke checks to include create/get/delete session flow.
+2. Update README session docs (auth expectations + endpoint matrix + ownership rules).
+3. Add manual refresh action in session view header.
+4. Prepare Phase 2 spec for initiative dice automation (GM-all + player-self modes).
 
 ---
 

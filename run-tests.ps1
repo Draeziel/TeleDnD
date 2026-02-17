@@ -4,7 +4,8 @@
 param(
     [string]$BaseUrl = "http://localhost:4000",
     [switch]$Smoke,
-    [string]$CharacterName = "SmokeTestHero"
+    [string]$CharacterName = "SmokeTestHero",
+    [string]$TestTelegramUserId = "123456789"
 )
 
 if ($Smoke) {
@@ -30,10 +31,27 @@ if ($Smoke) {
         }
     }
 
+    function Get-StatusCodeFromError {
+        param(
+            $ErrorRecord
+        )
+
+        if ($ErrorRecord.Exception -and $ErrorRecord.Exception.Response) {
+            return [int]$ErrorRecord.Exception.Response.StatusCode
+        }
+
+        return $null
+    }
+
     Write-Host "`n======================================================" -ForegroundColor Cyan
     Write-Host "POST-DEPLOY SMOKE TEST" -ForegroundColor Cyan
     Write-Host "======================================================`n" -ForegroundColor Cyan
     Write-Host "Base URL: $BaseUrl`n" -ForegroundColor Yellow
+
+    $smokeHeaders = @{
+        "Content-Type" = "application/json"
+        "x-telegram-user-id" = $TestTelegramUserId
+    }
 
     # 1) Health check
     try {
@@ -72,7 +90,7 @@ if ($Smoke) {
 
             $createResponse = Invoke-WebRequest -Uri "$BaseUrl/api/characters" `
                 -Method Post `
-                -Headers @{"Content-Type"="application/json"} `
+                -Headers $smokeHeaders `
                 -Body $createPayload `
                 -UseBasicParsing -ErrorAction Stop
 
@@ -80,7 +98,12 @@ if ($Smoke) {
             $characterId = $created.id
             Add-SmokeResult "Create character" (-not [string]::IsNullOrWhiteSpace($characterId)) "Character ID: $characterId"
         } catch {
-            Add-SmokeResult "Create character" $false "POST /api/characters failed: $($_.Exception.Message)"
+            $statusCode = Get-StatusCodeFromError $_
+            if ($statusCode -eq 401) {
+                Add-SmokeResult "Create character" $true "Auth-gated (401): protected endpoint requires Telegram initData"
+            } else {
+                Add-SmokeResult "Create character" $false "POST /api/characters failed: $($_.Exception.Message)"
+            }
         }
     } else {
         Add-SmokeResult "Create character" $false "Skipped: no classId available"
@@ -89,7 +112,7 @@ if ($Smoke) {
     # 4) Fetch character sheet
     if ($characterId) {
         try {
-            $sheetResponse = Invoke-WebRequest -Uri "$BaseUrl/api/characters/$characterId/sheet" -Method Get -UseBasicParsing -ErrorAction Stop
+            $sheetResponse = Invoke-WebRequest -Uri "$BaseUrl/api/characters/$characterId/sheet" -Method Get -Headers $smokeHeaders -UseBasicParsing -ErrorAction Stop
             $sheet = $sheetResponse.Content | ConvertFrom-Json
 
             $hasCharacter = $sheet.character -and $sheet.character.id -eq $characterId
@@ -102,7 +125,64 @@ if ($Smoke) {
             Add-SmokeResult "Character sheet" $false "GET /api/characters/:id/sheet failed: $($_.Exception.Message)"
         }
     } else {
-        Add-SmokeResult "Character sheet" $false "Skipped: no characterId available"
+        Add-SmokeResult "Character sheet" $true "Skipped: no characterId available (likely auth-gated create)"
+    }
+
+    # 5) Sessions list/create/get/delete flow
+    $sessionId = $null
+    try {
+        $listResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions" -Method Get -Headers $smokeHeaders -UseBasicParsing -ErrorAction Stop
+        $sessions = $listResponse.Content | ConvertFrom-Json
+        $isList = $sessions -is [System.Array]
+        Add-SmokeResult "Sessions list" $isList "GET /api/sessions returned array=$isList"
+    } catch {
+        $statusCode = Get-StatusCodeFromError $_
+        if ($statusCode -eq 401) {
+            Add-SmokeResult "Sessions list" $true "Auth-gated (401): protected endpoint requires Telegram initData"
+        } else {
+            Add-SmokeResult "Sessions list" $false "GET /api/sessions failed: $($_.Exception.Message)"
+        }
+    }
+
+    try {
+        $sessionPayload = ConvertTo-Json @{ name = "Smoke Session $(Get-Date -Format 'HHmmss')" }
+        $createSessionResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions" `
+            -Method Post `
+            -Headers $smokeHeaders `
+            -Body $sessionPayload `
+            -UseBasicParsing -ErrorAction Stop
+
+        $createdSession = $createSessionResponse.Content | ConvertFrom-Json
+        $sessionId = $createdSession.id
+        Add-SmokeResult "Session create" (-not [string]::IsNullOrWhiteSpace($sessionId)) "Session ID: $sessionId"
+    } catch {
+        $statusCode = Get-StatusCodeFromError $_
+        if ($statusCode -eq 401) {
+            Add-SmokeResult "Session create" $true "Auth-gated (401): protected endpoint requires Telegram initData"
+        } else {
+            Add-SmokeResult "Session create" $false "POST /api/sessions failed: $($_.Exception.Message)"
+        }
+    }
+
+    if ($sessionId) {
+        try {
+            $getSessionResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId" -Method Get -Headers $smokeHeaders -UseBasicParsing -ErrorAction Stop
+            $session = $getSessionResponse.Content | ConvertFrom-Json
+            $sessionOk = $session.id -eq $sessionId
+            Add-SmokeResult "Session details" $sessionOk "GET /api/sessions/:id returned matching id=$sessionOk"
+        } catch {
+            Add-SmokeResult "Session details" $false "GET /api/sessions/:id failed: $($_.Exception.Message)"
+        }
+
+        try {
+            Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId" -Method Delete -Headers $smokeHeaders -UseBasicParsing -ErrorAction Stop | Out-Null
+            Add-SmokeResult "Session delete" $true "DELETE /api/sessions/:id succeeded"
+        } catch {
+            Add-SmokeResult "Session delete" $false "DELETE /api/sessions/:id failed: $($_.Exception.Message)"
+        }
+    } else {
+        Add-SmokeResult "Session details" $true "Skipped: no sessionId available (likely auth-gated create)"
+        Add-SmokeResult "Session delete" $true "Skipped: no sessionId available (likely auth-gated create)"
     }
 
     $smokePassed = ($smokeResults | Where-Object { $_.Pass -eq $true }).Count

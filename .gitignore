@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+miniapp/node_modules/
+
+# Build output
+dist/
+miniapp/dist/
+
+# Env files
+.env
+miniapp/.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.log

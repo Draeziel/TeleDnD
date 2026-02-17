@@ -1,0 +1,524 @@
+### Get all character classes
+GET http://localhost:4000/api/characters/classes
+
+###
+
+### Create Barbarian character
+POST http://localhost:4000/api/characters
+Content-Type: application/json
+
+{
+  "name": "Grok the Barbarian",
+  "classId": "cb34f7f0-e019-44df-98f6-9fcca08f399b",
+  "level": 1
+}
+
+###
+
+### Create Bard character
+POST http://localhost:4000/api/characters
+Content-Type: application/json
+
+{
+  "name": "Aria the Bard",
+  "classId": "45c39f7c-ff6a-43c2-9751-65dacf86e907",
+  "level": 1
+}
+
+###
+
+### Get character sheet (replace e0af9ef8-e633-4379-87a4-d20cb367c31a)
+GET http://localhost:4000/api/characters/e0af9ef8-e633-4379-87a4-d20cb367c31a/sheet
+
+###
+
+### Get simple character info
+GET http://localhost:4000/api/characters/e0af9ef8-e633-4379-87a4-d20cb367c31a
+
+###
+
+### Save character choices
+POST http://localhost:4000/api/characters/e0af9ef8-e633-4379-87a4-d20cb367c31a/choices
+Content-Type: application/json
+
+{
+  "characterId": "e0af9ef8-e633-4379-87a4-d20cb367c31a",
+  "choices": [
+    {
+      "choiceId": "CHOICE_ID",
+      "selectedOption": "acrobatics"
+    }
+  ]
+}
+
+###
+
+### ===== DRAFT WORKFLOW ENDPOINTS =====
+
+### 1. Create empty draft
+POST http://localhost:4000/api/drafts
+Content-Type: application/json
+
+{
+  "name": "Thrall the Barbarian"
+}
+
+###
+
+### 2. Get draft status (before class selection)
+GET http://localhost:4000/api/drafts/DRAFT_ID
+
+###
+
+### 3. Set class for draft (use Barbarian ID)
+POST http://localhost:4000/api/drafts/DRAFT_ID/class
+Content-Type: application/json
+
+{
+  "classId": "cb34f7f0-e019-44df-98f6-9fcca08f399b"
+}
+
+###
+
+### 4. Get draft status (after class selection - should show required choices)
+GET http://localhost:4000/api/drafts/DRAFT_ID
+
+###
+
+### 5. Save first choice for draft
+POST http://localhost:4000/api/drafts/DRAFT_ID/choices
+Content-Type: application/json
+
+{
+  "choiceId": "CHOICE_ID",
+  "selectedOption": "acrobatics"
+}
+
+###
+
+### 6. Save second choice for draft
+POST http://localhost:4000/api/drafts/DRAFT_ID/choices
+Content-Type: application/json
+
+{
+  "choiceId": "CHOICE_ID",
+  "selectedOption": "athletics"
+}
+
+###
+
+### 7. Get draft status (should show completed state)
+GET http://localhost:4000/api/drafts/DRAFT_ID
+
+###
+
+### 8. Finalize draft (creates character and deletes draft)
+POST http://localhost:4000/api/drafts/DRAFT_ID/finalize
+Content-Type: application/json
+
+###
+
+### ===== RACE AND BACKGROUND ENDPOINTS =====
+
+### 1. Get available races
+GET http://localhost:4000/api/characters/classes
+# (Get race IDs from database or use hardcoded ones from seed)
+
+###
+
+### 2. Set race for draft
+POST http://localhost:4000/api/drafts/DRAFT_ID/race
+Content-Type: application/json
+
+{
+  "raceId": "HUMAN_RACE_ID"
+}
+
+###
+
+### 3. Get draft status (after race selection - updated required choices)
+GET http://localhost:4000/api/drafts/DRAFT_ID
+
+###
+
+### 4. Set background for draft
+POST http://localhost:4000/api/drafts/DRAFT_ID/background
+Content-Type: application/json
+
+{
+  "backgroundId": "SOLDIER_BACKGROUND_ID"
+}
+
+###
+
+### 5. Get draft status (after background selection - all choices included)
+GET http://localhost:4000/api/drafts/DRAFT_ID
+
+###
+
+### NOTES:
+# - Race Human ID: Will be provided after running seed
+# - Background Soldier ID: Will be provided after running seed
+# - Race features: Ability Score Improvement
+# - Background features: Military Rank
+# - Background choices: Equipment selection (longsword/battleaxe/crossbow)
+
+###
+
+### ===== ABILITY SCORES ENDPOINTS =====
+
+### 1. Set ability scores with standard array
+POST http://localhost:4000/api/drafts/DRAFT_ID/ability-scores
+Content-Type: application/json
+
+{
+  "method": "standard_array",
+  "str": 15,
+  "dex": 14,
+  "con": 13,
+  "int": 12,
+  "wis": 10,
+  "cha": 8
+}
+
+###
+
+### 2. Set ability scores with point buy
+POST http://localhost:4000/api/drafts/DRAFT_ID/ability-scores
+Content-Type: application/json
+
+{
+  "method": "point_buy",
+  "str": 14,
+  "dex": 12,
+  "con": 13,
+  "int": 10,
+  "wis": 12,
+  "cha": 11
+}
+
+###
+
+### 3. Set ability scores with manual assignment
+POST http://localhost:4000/api/drafts/DRAFT_ID/ability-scores
+Content-Type: application/json
+
+{
+  "method": "manual",
+  "str": 16,
+  "dex": 12,
+  "con": 14,
+  "int": 11,
+  "wis": 13,
+  "cha": 10
+}
+
+###
+
+### 4. Set ability scores with roll method
+POST http://localhost:4000/api/drafts/DRAFT_ID/ability-scores
+Content-Type: application/json
+
+{
+  "method": "roll",
+  "str": 16,
+  "dex": 14,
+  "con": 15,
+  "int": 12,
+  "wis": 13,
+  "cha": 11
+}
+
+###
+
+### 5. Test invalid standard array (should fail)
+POST http://localhost:4000/api/drafts/DRAFT_ID/ability-scores
+Content-Type: application/json
+
+{
+  "method": "standard_array",
+  "str": 16,
+  "dex": 14,
+  "con": 13,
+  "int": 12,
+  "wis": 10,
+  "cha": 8
+}
+
+###
+
+### COMPREHENSIVE INTEGRATION TEST
+### This test verifies the complete finalize workflow with all features
+
+### STEP 1: Create a new draft
+POST http://localhost:4000/api/drafts
+Content-Type: application/json
+
+{
+  "name": "Integration Test Character"
+}
+
+###
+
+### STEP 2: GET DRAFT ID FROM STEP 1 RESPONSE, THEN SET CLASS
+### Replace DRAFT_ID with actual ID from Step 1
+POST http://localhost:4000/api/drafts/DRAFT_ID/class
+Content-Type: application/json
+
+{
+  "classId": "CLASS_ID"
+}
+
+###
+
+### STEP 3: SET RACE
+POST http://localhost:4000/api/drafts/DRAFT_ID/race
+Content-Type: application/json
+
+{
+  "raceId": "RACE_ID"
+}
+
+###
+
+### STEP 4: SET BACKGROUND
+POST http://localhost:4000/api/drafts/DRAFT_ID/background
+Content-Type: application/json
+
+{
+  "backgroundId": "BACKGROUND_ID"
+}
+
+###
+
+### STEP 5: SET ABILITY SCORES (Standard Array - Valid)
+POST http://localhost:4000/api/drafts/DRAFT_ID/ability-scores
+Content-Type: application/json
+
+{
+  "method": "standard_array",
+  "str": 15,
+  "dex": 14,
+  "con": 13,
+  "int": 12,
+  "wis": 10,
+  "cha": 8
+}
+
+###
+
+### STEP 6: Get draft status to see required choices
+GET http://localhost:4000/api/drafts/DRAFT_ID
+
+###
+
+### STEP 7: Save a choice (replace with actual choice ID from step 6)
+POST http://localhost:4000/api/drafts/DRAFT_ID/choices
+Content-Type: application/json
+
+{
+  "choiceId": "CHOICE_ID",
+  "selectedOption": "acrobatics"
+}
+
+###
+
+### STEP 8: FINALIZE DRAFT AND CREATE CHARACTER
+POST http://localhost:4000/api/drafts/DRAFT_ID/finalize
+Content-Type: application/json
+
+###
+
+### STEP 9: GET CHARACTER SHEET (use CHARACTER_ID from finalize response)
+### Verify that:
+### - abilityScores are present
+### - abilityScores.method = "standard_array"
+### - abilityScores.str = 15, etc.
+GET http://localhost:4000/api/characters/CHARACTER_ID/sheet
+
+###
+
+### ================================================================
+### VALIDATION TESTS - These should all return 400 Bad Request
+### ================================================================
+
+### TEST: Invalid standard_array (two 15s)
+### Expected: 400 - "Invalid standard array scores"
+POST http://localhost:4000/api/drafts/DRAFT_ID/ability-scores
+Content-Type: application/json
+
+{
+  "method": "standard_array",
+  "str": 15,
+  "dex": 15,
+  "con": 13,
+  "int": 12,
+  "wis": 10,
+  "cha": 8
+}
+
+###
+
+### TEST: Invalid standard_array (wrong values)
+### Expected: 400
+POST http://localhost:4000/api/drafts/DRAFT_ID/ability-scores
+Content-Type: application/json
+
+{
+  "method": "standard_array",
+  "str": 16,
+  "dex": 14,
+  "con": 13,
+  "int": 12,
+  "wis": 10,
+  "cha": 8
+}
+
+###
+
+### TEST: Point buy with too high score (>15)
+### Expected: 400
+POST http://localhost:4000/api/drafts/DRAFT_ID/ability-scores
+Content-Type: application/json
+
+{
+  "method": "point_buy",
+  "str": 16,
+  "dex": 14,
+  "con": 13,
+  "int": 12,
+  "wis": 10,
+  "cha": 11
+}
+
+###
+
+### TEST: Point buy exceeding 27 point limit
+### Expected: 400 - "exceeds limit of 27"
+### (Cost: (14-8) + (15-8)+2 + (15-8)+2 + (12-8) + (12-8) + (11-8) = 6+9+9+4+4+3 = 35)
+POST http://localhost:4000/api/drafts/DRAFT_ID/ability-scores
+Content-Type: application/json
+
+{
+  "method": "point_buy",
+  "str": 14,
+  "dex": 15,
+  "con": 15,
+  "int": 12,
+  "wis": 12,
+  "cha": 11
+}
+
+###
+
+### TEST: Manual with score too low (2)
+### Expected: 400 - "must be between 3 and 20"
+POST http://localhost:4000/api/drafts/DRAFT_ID/ability-scores
+Content-Type: application/json
+
+{
+  "method": "manual",
+  "str": 2,
+  "dex": 14,
+  "con": 13,
+  "int": 12,
+  "wis": 10,
+  "cha": 8
+}
+
+###
+
+### TEST: Manual with score too high (25)
+### Expected: 400 - "must be between 3 and 20"
+POST http://localhost:4000/api/drafts/DRAFT_ID/ability-scores
+Content-Type: application/json
+
+{
+  "method": "manual",
+  "str": 25,
+  "dex": 14,
+  "con": 13,
+  "int": 12,
+  "wis": 10,
+  "cha": 8
+}
+
+###
+
+### TEST: Roll method with out-of-range score (2)
+### Expected: 400
+POST http://localhost:4000/api/drafts/DRAFT_ID/ability-scores
+Content-Type: application/json
+
+{
+  "method": "roll",
+  "str": 2,
+  "dex": 14,
+  "con": 13,
+  "int": 12,
+  "wis": 10,
+  "cha": 8
+}
+
+###
+
+### ================================================================
+### IDEMPOTENCY TESTS - Set ability scores twice and verify update
+### ================================================================
+
+### IDEMPOTENCY TEST 1: Set standard array
+POST http://localhost:4000/api/drafts/DRAFT_ID_NEW/ability-scores
+Content-Type: application/json
+
+{
+  "method": "standard_array",
+  "str": 15,
+  "dex": 14,
+  "con": 13,
+  "int": 12,
+  "wis": 10,
+  "cha": 8
+}
+
+###
+
+### IDEMPOTENCY TEST 2: Update with manual (should update, not create duplicate)
+POST http://localhost:4000/api/drafts/DRAFT_ID_NEW/ability-scores
+Content-Type: application/json
+
+{
+  "method": "manual",
+  "str": 16,
+  "dex": 14,
+  "con": 15,
+  "int": 12,
+  "wis": 13,
+  "cha": 11
+}
+
+###
+
+### IDEMPOTENCY TEST 3: Verify draft has single ability score (not duplicate)
+### Check response has abilityScores with method="manual" and str=16
+GET http://localhost:4000/api/drafts/DRAFT_ID_NEW
+
+###
+
+### ================================================================
+### DATABASE VERIFICATION (Run via psql or similar)
+### ================================================================
+
+### To manually verify database state after tests:
+### 
+### Check that character has abilityScoreSetId:
+### SELECT id, name, classId, "abilityScoreSetId" FROM characters ORDER BY created_at DESC LIMIT 1;
+###
+### Check that no duplicate ability score sets were created:
+### SELECT COUNT(*) FROM ability_score_sets WHERE method='manual' AND str=16;
+### (Should be exactly 1)
+###
+### Check ability score values:
+### SELECT * FROM ability_score_sets WHERE id = '<id_from_character>';
+### (Should show: method=manual, str=16, dex=14, con=15, int=12, wis=13, cha=11)
+
+

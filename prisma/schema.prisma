@@ -1,0 +1,265 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ContentSource {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  classes  Class[]
+  features Feature[]
+  choices  Choice[]
+  races    Race[]
+  backgrounds Background[]
+  items    Item[]
+  skills   Skill[]
+
+  @@map("content_sources")
+}
+
+model Class {
+  id              String              @id @default(uuid())
+  name            String              @unique
+  contentSourceId String
+  contentSource   ContentSource       @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  classFeatures   ClassFeature[]
+  savingThrowProficiencies ClassSavingThrowProficiency[]
+  characters      Character[]
+  drafts          CharacterDraft[]
+
+  @@map("classes")
+}
+
+model Feature {
+  id                 String             @id @default(uuid())
+  name               String             @unique
+  description        String?
+  contentSourceId    String
+  contentSource      ContentSource      @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  classFeatures      ClassFeature[]
+  raceFeatures       RaceFeature[]
+  backgroundFeatures BackgroundFeature[]
+
+  @@map("features")
+}
+
+model ClassFeature {
+  id            String  @id @default(uuid())
+  classId       String
+  featureId     String
+  levelRequired Int     @default(1)
+  class         Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  feature       Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, featureId])
+  @@map("class_features")
+}
+
+model Choice {
+  id                    String                @id @default(uuid())
+  contentSourceId       String
+  contentSource         ContentSource         @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  sourceType            String
+  sourceId              String
+  chooseCount           Int                   @default(1)
+  optionsJson           Json
+  characterChoices      CharacterChoice[]
+  characterDraftChoices CharacterDraftChoice[]
+
+  @@map("choices")
+}
+
+model Race {
+  id              String         @id @default(uuid())
+  name            String         @unique
+  contentSourceId String
+  contentSource   ContentSource  @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  raceFeatures    RaceFeature[]
+  characters      Character[]
+  drafts          CharacterDraft[]
+
+  @@map("races")
+}
+
+model Item {
+  id              String         @id @default(uuid())
+  name            String         @unique
+  description     String?
+  slot            String?
+  contentSourceId String
+  contentSource   ContentSource  @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  characterItems  CharacterItem[]
+
+  @@map("items")
+}
+
+model CharacterItem {
+  id          String    @id @default(uuid())
+  characterId String
+  itemId      String
+  equipped    Boolean   @default(false)
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  item        Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, itemId])
+  @@map("character_items")
+}
+
+model Skill {
+  id              String                        @id @default(uuid())
+  name            String                        @unique
+  ability         String
+  contentSourceId String?
+  contentSource   ContentSource?                @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  proficiencies   CharacterSkillProficiency[]
+
+  @@map("skills")
+}
+
+model ClassSavingThrowProficiency {
+  id        String @id @default(uuid())
+  classId   String
+  ability   String
+  class     Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, ability])
+  @@map("class_saving_throw_proficiencies")
+}
+
+model CharacterSkillProficiency {
+  id          String     @id @default(uuid())
+  characterId String
+  skillId     String
+  character   Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  skill        Skill      @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, skillId])
+  @@map("character_skill_proficiencies")
+}
+
+model RaceFeature {
+  id        String  @id @default(uuid())
+  raceId    String
+  featureId String
+  race      Race    @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  feature   Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([raceId, featureId])
+  @@map("race_features")
+}
+
+model Background {
+  id              String         @id @default(uuid())
+  name            String         @unique
+  contentSourceId String
+  contentSource   ContentSource  @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  backgroundFeatures BackgroundFeature[]
+  characters      Character[]
+  drafts          CharacterDraft[]
+  @@map("backgrounds")
+}
+
+model Modifier {
+  id         String   @id @default(uuid())
+  sourceType String
+  sourceId   String
+  target     String
+  targetKey  String?
+  operation  String
+  value      Int?
+  createdAt  DateTime @default(now())
+
+  @@index([sourceType, sourceId], name: "modifiers_source_idx")
+  @@map("modifiers")
+}
+
+model BackgroundFeature {
+  id           String     @id @default(uuid())
+  backgroundId String
+  featureId    String
+  background   Background @relation(fields: [backgroundId], references: [id], onDelete: Cascade)
+  feature      Feature    @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([backgroundId, featureId])
+  @@map("background_features")
+}
+
+model AbilityScoreSet {
+  id        String      @id @default(uuid())
+  method    String      // "standard_array", "point_buy", "manual", "roll"
+  str       Int
+  dex       Int
+  con       Int
+  int       Int
+  wis       Int
+  cha       Int
+  characters Character[]
+  drafts    CharacterDraft[]
+
+  @@map("ability_score_sets")
+}
+
+model Character {
+  id               String             @id @default(uuid())
+  name             String
+  level            Int                @default(1)
+  classId          String
+  raceId           String?
+  backgroundId     String?
+  abilityScoreSetId String?
+  class            Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
+  race             Race?              @relation(fields: [raceId], references: [id], onDelete: SetNull)
+  background       Background?        @relation(fields: [backgroundId], references: [id], onDelete: SetNull)
+  abilityScores    AbilityScoreSet?   @relation(fields: [abilityScoreSetId], references: [id], onDelete: SetNull)
+  characterChoices CharacterChoice[]
+  inventory        CharacterItem[]
+  skillProficiencies CharacterSkillProficiency[]
+
+  @@map("characters")
+}
+
+model CharacterChoice {
+  id             String    @id @default(uuid())
+  characterId    String
+  choiceId       String
+  selectedOption String
+  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  choice         Choice    @relation(fields: [choiceId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, choiceId])
+  @@map("character_choices")
+}
+
+model CharacterDraft {
+  id                    String                @id @default(uuid())
+  name                  String
+  level                 Int                   @default(1)
+  classId               String?
+  raceId                String?
+  backgroundId          String?
+  abilityScoreSetId     String?
+  class                 Class?                @relation(fields: [classId], references: [id], onDelete: SetNull)
+  race                  Race?                 @relation(fields: [raceId], references: [id], onDelete: SetNull)
+  background            Background?           @relation(fields: [backgroundId], references: [id], onDelete: SetNull)
+  abilityScores         AbilityScoreSet?      @relation(fields: [abilityScoreSetId], references: [id], onDelete: SetNull)
+  createdAt             DateTime              @default(now())
+  characterDraftChoices CharacterDraftChoice[]
+
+  @@map("character_drafts")
+}
+
+model CharacterDraftChoice {
+  id             String         @id @default(uuid())
+  draftId        String
+  choiceId       String
+  selectedOption String?
+  draft          CharacterDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  choice         Choice         @relation(fields: [choiceId], references: [id], onDelete: Cascade)
+
+  @@unique([draftId, choiceId])
+  @@map("character_draft_choices")
+}

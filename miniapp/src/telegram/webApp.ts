@@ -1,0 +1,37 @@
+import type { TelegramWebApp } from '../types/telegram';
+
+const TEST_TELEGRAM_USER_ID_KEY = 'miniapp_test_telegram_user_id';
+
+export function getTelegramWebApp(): TelegramWebApp | undefined {
+  return window.Telegram?.WebApp;
+}
+
+export function initTelegramWebApp(): { isTelegram: boolean } {
+  const webApp = getTelegramWebApp();
+
+  if (!webApp) {
+    return { isTelegram: false };
+  }
+
+  webApp.ready();
+  webApp.expand();
+  return { isTelegram: true };
+}
+
+export function getTelegramUserId(): string | null {
+  const fromTelegram = getTelegramWebApp()?.initDataUnsafe?.user?.id;
+
+  if (fromTelegram) {
+    return String(fromTelegram);
+  }
+
+  return localStorage.getItem(TEST_TELEGRAM_USER_ID_KEY);
+}
+
+export function setTestTelegramUserId(userId: string): void {
+  localStorage.setItem(TEST_TELEGRAM_USER_ID_KEY, userId);
+}
+
+export function getTestTelegramUserId(): string {
+  return localStorage.getItem(TEST_TELEGRAM_USER_ID_KEY) || '';
+}

@@ -1,0 +1,1 @@
+DATABASE_URL=postgresql://postgres:Fat3Br1nger@localhost:5432/rpg_character_db?schema=public

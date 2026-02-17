@@ -7,6 +7,7 @@ import draftRoutes from './routes/draftRoutes';
 import sessionRoutes from './routes/sessionRoutes';
 import errorHandler from './middleware/errorHandler';
 import { telegramAuthMiddleware } from './middleware/telegramAuth';
+import { requestLoggingMiddleware } from './middleware/requestLogging';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -27,6 +28,7 @@ const apiLimiter = rateLimit({
 app.set('trust proxy', 1);
 app.use(express.json());
 app.use(cors());
+app.use(requestLoggingMiddleware());
 app.get('/healthz', (_req, res) => {
     res.status(200).json({ status: 'ok' });
 });

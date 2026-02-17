@@ -1,16 +1,41 @@
+type LogMeta = Record<string, unknown>;
+
+function write(level: 'INFO' | 'ERROR' | 'WARN' | 'DEBUG', message: string, meta?: LogMeta) {
+    const payload = {
+        ts: new Date().toISOString(),
+        level,
+        message,
+        ...(meta || {}),
+    };
+
+    const line = JSON.stringify(payload);
+
+    if (level === 'ERROR') {
+        console.error(line);
+        return;
+    }
+
+    if (level === 'WARN') {
+        console.warn(line);
+        return;
+    }
+
+    console.log(line);
+}
+
 const logger = {
-    info: (message: string) => {
-        console.log(`[INFO] ${new Date().toISOString()}: ${message}`);
+    info: (message: string, meta?: LogMeta) => {
+        write('INFO', message, meta);
     },
-    error: (message: string, error?: any) => {
-        console.error(`[ERROR] ${new Date().toISOString()}: ${message}`, error);
+    error: (message: string, meta?: LogMeta) => {
+        write('ERROR', message, meta);
     },
-    warn: (message: string) => {
-        console.warn(`[WARN] ${new Date().toISOString()}: ${message}`);
+    warn: (message: string, meta?: LogMeta) => {
+        write('WARN', message, meta);
     },
-    debug: (message: string) => {
+    debug: (message: string, meta?: LogMeta) => {
         if (process.env.NODE_ENV === 'development') {
-            console.log(`[DEBUG] ${new Date().toISOString()}: ${message}`);
+            write('DEBUG', message, meta);
         }
     },
 };

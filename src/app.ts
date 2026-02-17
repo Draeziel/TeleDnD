@@ -42,6 +42,68 @@ app.use('/api/sessions', telegramAuthMiddleware());
 app.use('/api/sessions', sessionRoutes(prisma));
 app.use(errorHandler);
 
+function parsePositiveInt(value: string | undefined, fallback: number) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+        return fallback;
+    }
+
+    return Math.floor(parsed);
+}
+
+function startSessionEventsCleanupTask(prismaClient: PrismaClient) {
+    const nodeEnv = (process.env.NODE_ENV || 'development').toLowerCase();
+    const enabledEnv = process.env.SESSION_EVENTS_CLEANUP_ENABLED;
+    const enabled = enabledEnv ? enabledEnv === 'true' : nodeEnv !== 'test';
+
+    if (!enabled) {
+        logger.info('session_events_cleanup_disabled');
+        return;
+    }
+
+    const retentionDays = parsePositiveInt(process.env.SESSION_EVENTS_RETENTION_DAYS, 30);
+    const intervalMinutes = parsePositiveInt(process.env.SESSION_EVENTS_CLEANUP_INTERVAL_MIN, 60);
+    const intervalMs = intervalMinutes * 60 * 1000;
+
+    const runCleanup = async () => {
+        const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+
+        try {
+            const result = await prismaClient.sessionEvent.deleteMany({
+                where: {
+                    createdAt: {
+                        lt: cutoff,
+                    },
+                },
+            });
+
+            logger.info('session_events_cleanup_run', {
+                retentionDays,
+                deletedCount: result.count,
+                cutoff: cutoff.toISOString(),
+            });
+        } catch (error) {
+            logger.error('session_events_cleanup_error', {
+                retentionDays,
+                error: error instanceof Error ? error.message : String(error),
+            });
+        }
+    };
+
+    const timer = setInterval(() => {
+        void runCleanup();
+    }, intervalMs);
+
+    timer.unref?.();
+
+    logger.info('session_events_cleanup_started', {
+        retentionDays,
+        intervalMinutes,
+    });
+
+    void runCleanup();
+}
+
 const startServer = async () => {
     try {
         await prisma.$connect();
@@ -64,6 +126,8 @@ const startServer = async () => {
                 message: 'x-telegram-user-id fallback is enabled; use only in dev/test',
             });
         }
+
+        startSessionEventsCleanupTask(prisma);
     } catch (error) {
         logger.error('database_connection_error', {
             error: error instanceof Error ? error.message : String(error),

@@ -94,6 +94,9 @@ ALLOW_TELEGRAM_USER_ID_FALLBACK=false
 TELEGRAM_INITDATA_MAX_AGE_SEC=86400
 API_RATE_LIMIT_WINDOW_MS=60000
 API_RATE_LIMIT_MAX=120
+SESSION_EVENTS_CLEANUP_ENABLED=true
+SESSION_EVENTS_RETENTION_DAYS=30
+SESSION_EVENTS_CLEANUP_INTERVAL_MIN=60
 ```
 
 - `TELEGRAM_BOT_TOKEN` – Telegram bot token used for signature verification.
@@ -102,6 +105,9 @@ API_RATE_LIMIT_MAX=120
 - `TELEGRAM_INITDATA_MAX_AGE_SEC` – maximum allowed age of `auth_date` in seconds.
 - `API_RATE_LIMIT_WINDOW_MS` – rate-limit window for all `/api/*` routes in milliseconds (default: `60000`).
 - `API_RATE_LIMIT_MAX` – max requests per IP in one window for `/api/*` routes (default: `120`).
+- `SESSION_EVENTS_CLEANUP_ENABLED` – enables scheduled cleanup of old session events (defaults to `true`, except `test`).
+- `SESSION_EVENTS_RETENTION_DAYS` – keep session events for this many days before deletion (default: `30`).
+- `SESSION_EVENTS_CLEANUP_INTERVAL_MIN` – cleanup task interval in minutes (default: `60`).
 
 Protected groups:
 - `/api/drafts/*`

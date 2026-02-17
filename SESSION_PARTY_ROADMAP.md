@@ -1,7 +1,7 @@
 # Session / Party System Roadmap
 
 **Last Updated**: 2026-02-17  
-**Status**: Phase 1 implemented and stabilized for production MVP; initiative automation deferred
+**Status**: Phase 1 implemented and stabilized for production MVP; initiative automation in progress
 
 ---
 
@@ -84,6 +84,7 @@ Build a multiplayer session (party) system where:
 - [x] `POST /api/sessions/:id/leave`
 - [x] `GET /api/sessions/:id` (players + characters + states + effects summary)
 - [x] `GET /api/sessions/:id/summary` for lightweight polling
+- [x] `GET /api/sessions/:id/events` for lightweight event feed
 
 ### D) Character assignment endpoints
 
@@ -121,11 +122,11 @@ Build a multiplayer session (party) system where:
 - [x] Show actor-aware removal messages in UI
 - [x] Add lightweight session event journal (join/leave/remove/HP/init/effects)
 
-### I) Combat initiative automation (deferred)
+### I) Combat initiative automation
 
-- [ ] GM button: roll initiative for all session characters (server-side d20 + DEX mod)
-- [ ] Player button: roll own initiative for owned attached character
-- [ ] Initiative roll audit log (who rolled, when, value)
+- [x] GM button: roll initiative for all session characters (server-side d20 + DEX mod)
+- [x] Player button: roll own initiative for owned attached character
+- [x] Initiative roll audit log (who rolled, when, value)
 - [ ] Optional lock/reset policy for re-rolls per encounter
 
 ### H) Ownership hardening (post-Phase1 refinement)
@@ -169,15 +170,18 @@ Build a multiplayer session (party) system where:
 - 2026-02-17: Added lightweight session event journal and no-GM UX handling (banner + GM control lock).
 - 2026-02-17: Added GM activity status to session list UI (`active / no active GM`) using `hasActiveGm` in `GET /api/sessions`.
 - 2026-02-17: Changes pushed and deployment triggered (`3e4dbcc`, `dac563b`).
+- 2026-02-17: Added `GET /api/sessions/:id/events` endpoint and API client method for standalone event feed.
+- 2026-02-17: Expanded smoke tests with session summary/events checks and initiative roll checks (`roll-self`, `roll-all`).
+- 2026-02-17: Implemented initiative roll automation endpoints and miniapp controls (GM all + player self).
 
 ---
 
 ## Next Sprint (proposed)
 
 1. Stabilize production behavior with quick smoke checks after deploy (health + auth-gated session endpoints).
-2. Optionally add `/api/sessions/:id/events` endpoint if event volume outgrows summary payload.
-3. Prepare Phase 2 spec for initiative dice automation (GM-all + player-self modes).
-4. Implement initiative automation only after prior UX/ops tasks are closed.
+2. Add optional lock/reset policy for initiative re-rolls per encounter.
+3. Evaluate event journal persistence strategy (in-memory vs durable store).
+4. Decide whether to keep events in summary payload or switch UI polling fully to `/events` endpoint.
 
 ---
 

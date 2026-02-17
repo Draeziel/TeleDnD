@@ -1,7 +1,7 @@
 # RPG Character Service - Project Snapshot
 
-**Last Updated**: 2026-02-17 19:40 UTC  
-**Status**: Beta - Sessions + ownership + no-GM policy UX deployed  
+**Last Updated**: 2026-02-17 20:05 UTC  
+**Status**: Beta - Sessions + ownership + no-GM policy + initiative roll automation deployed  
 **Tech Stack**: Node.js + TypeScript, Express, PostgreSQL, Prisma ORM, React + Vite + TypeScript, Cloudflare Pages, Render
 
 ---
@@ -163,6 +163,8 @@ CharacterDraft
 - No-GM UX safeguards: banner + GM action lock
 - Actor-aware remove messages and lightweight session event journal
 - Session list shows GM activity status (`active` / `no active GM`)
+- Dedicated events feed endpoint for session journal polling
+- Initiative automation endpoints: GM roll-all and player self-roll
 
 ### ✅ Ownership & Access Control
 - `Character.ownerUserId` used for per-user visibility and access checks
@@ -251,8 +253,11 @@ CharacterDraft
 | `POST` | `/api/sessions/:id/leave` | Leave session |
 | `GET` | `/api/sessions/:id` | Get session details (players/characters/state/effects) |
 | `GET` | `/api/sessions/:id/summary` | Get lightweight session state for polling |
+| `GET` | `/api/sessions/:id/events` | Get lightweight event feed |
 | `POST` | `/api/sessions/:id/characters` | Attach owned character to session |
 | `DELETE` | `/api/sessions/:id/characters/:characterId` | Detach character from session |
+| `POST` | `/api/sessions/:id/initiative/roll-all` | GM: roll initiative for all attached characters |
+| `POST` | `/api/sessions/:id/initiative/roll-self` | Player: roll initiative for owned attached character |
 | `POST` | `/api/sessions/:sessionId/characters/:characterId/set-hp` | GM: set HP |
 | `POST` | `/api/sessions/:sessionId/characters/:characterId/set-initiative` | GM: set initiative |
 | `POST` | `/api/sessions/:sessionId/characters/:characterId/apply-effect` | GM: apply effect |
@@ -299,6 +304,7 @@ The project is functionally complete for MVP usage with:
 - Session create/join and live party view with polling
 - Summary-based polling with no-GM state handling
 - Session event journal and actor-aware remove notifications
+- Initiative roll automation (`roll-self`, `roll-all`) and session timeline logging
 - Owned-character deletion from miniapp list
 
 **What's not yet implemented**:
@@ -312,10 +318,10 @@ The project is functionally complete for MVP usage with:
 ## 7. Next Planned Steps
 
 ### Immediate Next Sprint
-- Add attach/detach character UX in Session View (owner action)
-- Add session endpoint smoke checks to `run-smoke.ps1` and `run-tests.ps1`
-- Update README with session + ownership endpoint/auth docs
-- Add initiative order list (sorted by initiative) for faster combat flow
+- Add initiative lock/reset policy for encounter re-roll control
+- Decide whether to consume `/api/sessions/:id/events` directly in miniapp polling path
+- Evaluate event journal persistence (in-memory vs persistent audit trail)
+- Add compact smoke helper for authenticated session flow with real Telegram initData
 
 ### Near-term Improvements
 - Structured request logging and correlation IDs

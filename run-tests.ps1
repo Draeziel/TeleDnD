@@ -175,6 +175,71 @@ if ($Smoke) {
         }
 
         try {
+            $summaryResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/summary" -Method Get -Headers $smokeHeaders -UseBasicParsing -ErrorAction Stop
+            $summary = $summaryResponse.Content | ConvertFrom-Json
+            $summaryOk = $summary.id -eq $sessionId
+            Add-SmokeResult "Session summary" $summaryOk "GET /api/sessions/:id/summary returned matching id=$summaryOk"
+        } catch {
+            Add-SmokeResult "Session summary" $false "GET /api/sessions/:id/summary failed: $($_.Exception.Message)"
+        }
+
+        try {
+            $eventsResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/events?limit=10" -Method Get -Headers $smokeHeaders -UseBasicParsing -ErrorAction Stop
+            $events = $eventsResponse.Content | ConvertFrom-Json
+            $eventsIsArray = $events -is [System.Array]
+            Add-SmokeResult "Session events" $eventsIsArray "GET /api/sessions/:id/events returned array=$eventsIsArray"
+        } catch {
+            Add-SmokeResult "Session events" $false "GET /api/sessions/:id/events failed: $($_.Exception.Message)"
+        }
+
+        if ($characterId) {
+            try {
+                $attachPayload = ConvertTo-Json @{ characterId = $characterId }
+                Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/characters" `
+                    -Method Post `
+                    -Headers $smokeHeaders `
+                    -Body $attachPayload `
+                    -UseBasicParsing -ErrorAction Stop | Out-Null
+
+                Add-SmokeResult "Session attach character" $true "POST /api/sessions/:id/characters succeeded"
+            } catch {
+                Add-SmokeResult "Session attach character" $false "POST /api/sessions/:id/characters failed: $($_.Exception.Message)"
+            }
+
+            try {
+                $rollSelfPayload = ConvertTo-Json @{ characterId = $characterId }
+                $rollSelfResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/initiative/roll-self" `
+                    -Method Post `
+                    -Headers $smokeHeaders `
+                    -Body $rollSelfPayload `
+                    -UseBasicParsing -ErrorAction Stop
+
+                $rollSelf = $rollSelfResponse.Content | ConvertFrom-Json
+                $rollSelfOk = $rollSelf.characterId -eq $characterId -and $null -ne $rollSelf.initiative
+                Add-SmokeResult "Initiative roll self" $rollSelfOk "POST /api/sessions/:id/initiative/roll-self returned expected payload=$rollSelfOk"
+            } catch {
+                Add-SmokeResult "Initiative roll self" $false "POST /api/sessions/:id/initiative/roll-self failed: $($_.Exception.Message)"
+            }
+
+            try {
+                $rollAllResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/initiative/roll-all" `
+                    -Method Post `
+                    -Headers $smokeHeaders `
+                    -UseBasicParsing -ErrorAction Stop
+
+                $rollAll = $rollAllResponse.Content | ConvertFrom-Json
+                $rollAllOk = $null -ne $rollAll.rolledCount
+                Add-SmokeResult "Initiative roll all" $rollAllOk "POST /api/sessions/:id/initiative/roll-all rolledCount=$($rollAll.rolledCount)"
+            } catch {
+                Add-SmokeResult "Initiative roll all" $false "POST /api/sessions/:id/initiative/roll-all failed: $($_.Exception.Message)"
+            }
+        } else {
+            Add-SmokeResult "Session attach character" $true "Skipped: no characterId available (likely auth-gated create)"
+            Add-SmokeResult "Initiative roll self" $true "Skipped: no characterId available (likely auth-gated create)"
+            Add-SmokeResult "Initiative roll all" $true "Skipped: no characterId available (likely auth-gated create)"
+        }
+
+        try {
             Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId" -Method Delete -Headers $smokeHeaders -UseBasicParsing -ErrorAction Stop | Out-Null
             Add-SmokeResult "Session delete" $true "DELETE /api/sessions/:id succeeded"
         } catch {
@@ -182,6 +247,11 @@ if ($Smoke) {
         }
     } else {
         Add-SmokeResult "Session details" $true "Skipped: no sessionId available (likely auth-gated create)"
+        Add-SmokeResult "Session summary" $true "Skipped: no sessionId available (likely auth-gated create)"
+        Add-SmokeResult "Session events" $true "Skipped: no sessionId available (likely auth-gated create)"
+        Add-SmokeResult "Session attach character" $true "Skipped: no sessionId available (likely auth-gated create)"
+        Add-SmokeResult "Initiative roll self" $true "Skipped: no sessionId available (likely auth-gated create)"
+        Add-SmokeResult "Initiative roll all" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Session delete" $true "Skipped: no sessionId available (likely auth-gated create)"
     }
 

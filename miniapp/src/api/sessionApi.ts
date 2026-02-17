@@ -1,5 +1,12 @@
 import { http } from './http';
-import type { SessionDetails, SessionListItem, SessionCharacterState, SessionEffect, SessionSummary } from '../types/models';
+import type {
+  SessionDetails,
+  SessionListItem,
+  SessionCharacterState,
+  SessionEffect,
+  SessionSummary,
+  SessionEvent,
+} from '../types/models';
 
 export const sessionApi = {
   async listSessions(): Promise<SessionListItem[]> {
@@ -30,6 +37,13 @@ export const sessionApi = {
   async getSessionSummary(sessionId: string): Promise<SessionSummary> {
     const { data } = await http.get<SessionSummary>(`/sessions/${sessionId}/summary`);
     return data;
+  },
+
+  async getSessionEvents(sessionId: string, limit = 30): Promise<SessionEvent[]> {
+    const { data } = await http.get<SessionEvent[]>(`/sessions/${sessionId}/events`, {
+      params: { limit },
+    });
+    return Array.isArray(data) ? data : [];
   },
 
   async attachCharacter(
@@ -68,6 +82,50 @@ export const sessionApi = {
       initiative,
     });
     return data;
+  },
+
+  async rollInitiativeAll(sessionId: string): Promise<{
+    updates: Array<{
+      sessionCharacterId: string;
+      characterId: string;
+      characterName: string;
+      roll: number;
+      dexModifier: number;
+      initiative: number;
+    }>;
+    rolledCount: number;
+  }> {
+    const { data } = await http.post(`/sessions/${sessionId}/initiative/roll-all`);
+    return data as {
+      updates: Array<{
+        sessionCharacterId: string;
+        characterId: string;
+        characterName: string;
+        roll: number;
+        dexModifier: number;
+        initiative: number;
+      }>;
+      rolledCount: number;
+    };
+  },
+
+  async rollInitiativeSelf(sessionId: string, characterId: string): Promise<{
+    sessionCharacterId: string;
+    characterId: string;
+    characterName: string;
+    roll: number;
+    dexModifier: number;
+    initiative: number;
+  }> {
+    const { data } = await http.post(`/sessions/${sessionId}/initiative/roll-self`, { characterId });
+    return data as {
+      sessionCharacterId: string;
+      characterId: string;
+      characterName: string;
+      roll: number;
+      dexModifier: number;
+      initiative: number;
+    };
   },
 
   async applyEffect(

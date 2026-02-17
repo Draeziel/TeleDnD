@@ -147,13 +147,17 @@ In local/dev mode, set `REQUIRE_TELEGRAM_AUTH=false` and pass `x-telegram-user-i
 - `POST /api/sessions`: Create session (creator becomes GM).
 - `GET /api/sessions`: List sessions for current user.
 - `POST /api/sessions/join`: Join by `joinCode`.
-- `POST /api/sessions/:id/leave`: Leave session (GM leave is restricted).
+- `POST /api/sessions/:id/leave`: Leave session (session may continue without active GM).
 - `DELETE /api/sessions/:id`: Delete session (GM only).
 - `GET /api/sessions/:id`: Full session details (members/party/state/effects).
+- `GET /api/sessions/:id/summary`: Lightweight polling payload.
+- `GET /api/sessions/:id/events`: Lightweight event feed (supports `?limit=`).
 - `POST /api/sessions/:id/characters`: Attach owned character to session.
 - `DELETE /api/sessions/:id/characters/:characterId`: Remove character from session (owner or GM).
 - `POST /api/sessions/:sessionId/characters/:characterId/set-hp`: GM only.
 - `POST /api/sessions/:sessionId/characters/:characterId/set-initiative`: GM only.
+- `POST /api/sessions/:id/initiative/roll-all`: GM rolls initiative for all attached characters.
+- `POST /api/sessions/:id/initiative/roll-self`: Player rolls initiative for owned attached character.
 - `POST /api/sessions/:sessionId/characters/:characterId/apply-effect`: GM only.
 
 ### Smoke Testing

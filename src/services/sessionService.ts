@@ -101,6 +101,18 @@ export class SessionService {
     }
   }
 
+  private dexScoreToModifier(dexScore: number | null | undefined): number {
+    if (dexScore === null || dexScore === undefined) {
+      return 0;
+    }
+
+    return Math.floor((dexScore - 10) / 2);
+  }
+
+  private rollD20(): number {
+    return crypto.randomInt(1, 21);
+  }
+
   private async getSessionCharacterOrThrow(sessionId: string, characterId: string) {
     const sessionCharacter = await this.prisma.sessionCharacter.findUnique({
       where: {
@@ -641,6 +653,151 @@ export class SessionService {
         state: entry.state,
         effectsCount: entry._count.effects,
       })),
+    };
+  }
+
+  async getSessionEventsFeed(sessionId: string, telegramUserId: string, limit = 30) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionMember(sessionId, user.id);
+
+    const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 100) : 30;
+    return this.getSessionEvents(sessionId).slice(0, safeLimit);
+  }
+
+  async rollInitiativeForAll(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+
+    const sessionCharacters = await this.prisma.sessionCharacter.findMany({
+      where: { sessionId },
+      include: {
+        character: {
+          select: {
+            id: true,
+            name: true,
+            abilityScores: {
+              select: {
+                dex: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    const updates = await Promise.all(
+      sessionCharacters.map(async (sessionCharacter) => {
+        const roll = this.rollD20();
+        const dexModifier = this.dexScoreToModifier(sessionCharacter.character.abilityScores?.dex);
+        const initiative = roll + dexModifier;
+        this.validateInitiative(initiative);
+
+        await this.prisma.sessionCharacterState.upsert({
+          where: {
+            sessionCharacterId: sessionCharacter.id,
+          },
+          update: {
+            initiative,
+          },
+          create: {
+            sessionCharacterId: sessionCharacter.id,
+            currentHp: 1,
+            maxHpSnapshot: 1,
+            initiative,
+          },
+        });
+
+        return {
+          sessionCharacterId: sessionCharacter.id,
+          characterId: sessionCharacter.character.id,
+          characterName: sessionCharacter.character.name,
+          roll,
+          dexModifier,
+          initiative,
+        };
+      })
+    );
+
+    this.addSessionEvent(sessionId, 'initiative_rolled_all', 'ГМ выполнил бросок инициативы для всей группы', telegramUserId);
+
+    return {
+      updates,
+      rolledCount: updates.length,
+    };
+  }
+
+  async rollInitiativeForOwnedCharacter(sessionId: string, characterId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionMember(sessionId, user.id);
+
+    const sessionCharacter = await this.prisma.sessionCharacter.findUnique({
+      where: {
+        sessionId_characterId: {
+          sessionId,
+          characterId,
+        },
+      },
+      include: {
+        character: {
+          select: {
+            id: true,
+            name: true,
+            ownerUserId: true,
+            abilityScores: {
+              select: {
+                dex: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!sessionCharacter) {
+      throw new Error('Session character not found');
+    }
+
+    if (sessionCharacter.character.ownerUserId !== user.id) {
+      throw new Error('Forbidden: can roll initiative only for owned character');
+    }
+
+    const roll = this.rollD20();
+    const dexModifier = this.dexScoreToModifier(sessionCharacter.character.abilityScores?.dex);
+    const initiative = roll + dexModifier;
+    this.validateInitiative(initiative);
+
+    await this.prisma.sessionCharacterState.upsert({
+      where: {
+        sessionCharacterId: sessionCharacter.id,
+      },
+      update: {
+        initiative,
+      },
+      create: {
+        sessionCharacterId: sessionCharacter.id,
+        currentHp: 1,
+        maxHpSnapshot: 1,
+        initiative,
+      },
+    });
+
+    this.addSessionEvent(
+      sessionId,
+      'initiative_rolled_self',
+      `${sessionCharacter.character.name} выполнил бросок инициативы (${roll}${dexModifier >= 0 ? '+' : ''}${dexModifier})`,
+      telegramUserId
+    );
+
+    return {
+      sessionCharacterId: sessionCharacter.id,
+      characterId: sessionCharacter.character.id,
+      characterName: sessionCharacter.character.name,
+      roll,
+      dexModifier,
+      initiative,
     };
   }
 

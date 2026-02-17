@@ -18,6 +18,8 @@ export function SessionViewPage() {
   const [loading, setLoading] = useState(true);
   const [attachingId, setAttachingId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [rollingAll, setRollingAll] = useState(false);
+  const [rollingSelfId, setRollingSelfId] = useState<string | null>(null);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
 
@@ -153,6 +155,36 @@ export function SessionViewPage() {
     }
   };
 
+  const onRollInitiativeAll = async () => {
+    try {
+      setRollingAll(true);
+      setError('');
+      setStatus('');
+      const result = await sessionApi.rollInitiativeAll(id);
+      await load();
+      setStatus(`Инициатива брошена для ${result.rolledCount} персонажей`);
+    } catch {
+      setError('Не удалось выполнить массовый бросок инициативы (нужна роль GM)');
+    } finally {
+      setRollingAll(false);
+    }
+  };
+
+  const onRollInitiativeSelf = async (characterId: string) => {
+    try {
+      setRollingSelfId(characterId);
+      setError('');
+      setStatus('');
+      const result = await sessionApi.rollInitiativeSelf(id, characterId);
+      await load();
+      setStatus(`${result.characterName}: бросок ${result.roll}${result.dexModifier >= 0 ? '+' : ''}${result.dexModifier} = ${result.initiative}`);
+    } catch {
+      setError('Не удалось выполнить личный бросок инициативы (доступно только владельцу персонажа)');
+    } finally {
+      setRollingSelfId(null);
+    }
+  };
+
   if (loading) return <StatusBox type="info" message="Загрузка сессии..." />;
   if (error) return <StatusBox type="error" message={error} />;
   if (!session) return <StatusBox type="info" message="Сессия не найдена" />;
@@ -178,6 +210,9 @@ export function SessionViewPage() {
         <div className="toolbar">
           <button disabled={loading} onClick={() => load()}>
             {loading ? 'Обновление...' : 'Обновить'}
+          </button>
+          <button disabled={rollingAll || !session.hasActiveGm} onClick={onRollInitiativeAll}>
+            {rollingAll ? 'Бросаем...' : 'Бросок инициативы (всем)'}
           </button>
         </div>
         <h2>{session.name}</h2>
@@ -218,6 +253,12 @@ export function SessionViewPage() {
                     onClick={() => onRemoveCharacter(entry.character.id)}
                   >
                     {removingId === entry.character.id ? 'Открепление...' : 'Открепить'}
+                  </button>
+                  <button
+                    disabled={rollingSelfId === entry.character.id}
+                    onClick={() => onRollInitiativeSelf(entry.character.id)}
+                  >
+                    {rollingSelfId === entry.character.id ? 'Бросок...' : 'Бросок себе'}
                   </button>
                   <button disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, Math.max(currentHp - 1, 0))}>HP -1</button>
                   <button disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, currentHp + 1)}>HP +1</button>

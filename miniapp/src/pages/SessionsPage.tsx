@@ -6,6 +6,9 @@ import type { SessionListItem } from '../types/models';
 import { showConfirm } from '../telegram/webApp';
 
 export function SessionsPage() {
+  const MIN_SESSION_NAME_LENGTH = 2;
+  const MAX_SESSION_NAME_LENGTH = 80;
+
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<SessionListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -13,18 +16,35 @@ export function SessionsPage() {
   const [createName, setCreateName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const roleLabel = (role: SessionListItem['role']) => (role === 'GM' ? 'Мастер' : 'Игрок');
 
+  const formatErrorMessage = (fallback: string, unknownError: unknown) => {
+    const errorResponse = (unknownError as any)?.response?.data;
+    const requestId = errorResponse?.requestId;
+
+    if (requestId) {
+      return `${fallback} (requestId: ${requestId})`;
+    }
+
+    return fallback;
+  };
+
   const load = async () => {
     try {
+      if (refreshing) {
+        return;
+      }
+      setRefreshing(true);
       setLoading(true);
       setError('');
       const data = await sessionApi.listSessions();
       setSessions(data);
-    } catch {
-      setError('Не удалось загрузить сессии. Проверьте авторизацию и доступность backend.');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось загрузить сессии. Проверьте авторизацию и доступность backend.', unknownError));
     } finally {
+      setRefreshing(false);
       setLoading(false);
     }
   };
@@ -34,14 +54,18 @@ export function SessionsPage() {
   }, []);
 
   const onCreate = async () => {
-    if (!createName.trim()) return;
+    const trimmedName = createName.trim();
+    if (trimmedName.length < MIN_SESSION_NAME_LENGTH || trimmedName.length > MAX_SESSION_NAME_LENGTH) {
+      setError(`Название сессии должно быть от ${MIN_SESSION_NAME_LENGTH} до ${MAX_SESSION_NAME_LENGTH} символов`);
+      return;
+    }
 
     try {
-      const created = await sessionApi.createSession(createName.trim());
+      const created = await sessionApi.createSession(trimmedName);
       setCreateName('');
       navigate(`/sessions/${created.id}`);
-    } catch {
-      setError('Не удалось создать сессию');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось создать сессию', unknownError));
     }
   };
 
@@ -52,8 +76,8 @@ export function SessionsPage() {
       const joined = await sessionApi.joinSession(joinCode.trim().toUpperCase());
       setJoinCode('');
       navigate(`/sessions/${joined.sessionId}`);
-    } catch {
-      setError('Не удалось присоединиться к сессии (проверьте код)');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось присоединиться к сессии (проверьте код)', unknownError));
     }
   };
 
@@ -68,8 +92,8 @@ export function SessionsPage() {
       setError('');
       await sessionApi.deleteSession(sessionId);
       setSessions((prev) => prev.filter((session) => session.id !== sessionId));
-    } catch {
-      setError('Не удалось удалить сессию. Удаление доступно только для ГМа.');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось удалить сессию. Удаление доступно только для ГМа.', unknownError));
     } finally {
       setDeletingId(null);
     }
@@ -81,9 +105,13 @@ export function SessionsPage() {
         <input
           value={createName}
           onChange={(e) => setCreateName(e.target.value)}
+          maxLength={MAX_SESSION_NAME_LENGTH}
           placeholder="Название сессии"
         />
-        <button onClick={onCreate} disabled={!createName.trim()}>
+        <button
+          onClick={onCreate}
+          disabled={createName.trim().length < MIN_SESSION_NAME_LENGTH || createName.trim().length > MAX_SESSION_NAME_LENGTH}
+        >
           Создать сессию
         </button>
       </div>
@@ -97,7 +125,7 @@ export function SessionsPage() {
         <button onClick={onJoin} disabled={!joinCode.trim()}>
           Войти в сессию
         </button>
-        <button onClick={load}>Обновить</button>
+        <button disabled={refreshing} onClick={load}>{refreshing ? 'Обновление...' : 'Обновить'}</button>
       </div>
 
       {loading && <StatusBox type="info" message="Загрузка сессий..." />}

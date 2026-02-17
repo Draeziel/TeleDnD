@@ -32,10 +32,23 @@ app.use(express.json());
 app.use(cors());
 app.use(requestLoggingMiddleware());
 app.use(responseMetaMiddleware());
+
+const appVersion = process.env.npm_package_version || process.env.APP_VERSION || 'unknown';
+
+app.get('/livez', (_req, res) => {
+    res.status(200).json({
+        status: 'alive',
+        service: 'rpg-character-service',
+        appVersion,
+        now: new Date().toISOString(),
+    });
+});
+
 app.get('/healthz', (_req, res) => {
     res.status(200).json({
         status: 'ok',
         service: 'rpg-character-service',
+        appVersion,
         env: process.env.NODE_ENV || 'development',
         uptimeSec: Math.floor(process.uptime()),
         now: new Date().toISOString(),
@@ -47,6 +60,8 @@ app.get('/readyz', async (_req, res) => {
         await prisma.$queryRaw`SELECT 1`;
         res.status(200).json({
             status: 'ready',
+            service: 'rpg-character-service',
+            appVersion,
             checks: {
                 database: 'ok',
             },
@@ -55,6 +70,8 @@ app.get('/readyz', async (_req, res) => {
     } catch {
         res.status(503).json({
             status: 'not_ready',
+            service: 'rpg-character-service',
+            appVersion,
             checks: {
                 database: 'error',
             },

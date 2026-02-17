@@ -69,6 +69,26 @@ if ($Smoke) {
         Add-SmokeResult "Health endpoint" $false "GET /healthz failed: $($_.Exception.Message)"
     }
 
+    # 1.1) Liveness check
+    try {
+        $liveResponse = Invoke-WebRequest -Uri "$BaseUrl/livez" -Method Get -UseBasicParsing -ErrorAction Stop
+        $live = $liveResponse.Content | ConvertFrom-Json
+        $liveOk = $live.status -eq "alive"
+        Add-SmokeResult "Liveness endpoint" $liveOk "GET /livez status=$($live.status)"
+    } catch {
+        Add-SmokeResult "Liveness endpoint" $false "GET /livez failed: $($_.Exception.Message)"
+    }
+
+    # 1.2) Readiness check
+    try {
+        $readyResponse = Invoke-WebRequest -Uri "$BaseUrl/readyz" -Method Get -UseBasicParsing -ErrorAction Stop
+        $ready = $readyResponse.Content | ConvertFrom-Json
+        $readyOk = $ready.status -eq "ready"
+        Add-SmokeResult "Readiness endpoint" $readyOk "GET /readyz status=$($ready.status)"
+    } catch {
+        Add-SmokeResult "Readiness endpoint" $false "GET /readyz failed: $($_.Exception.Message)"
+    }
+
     # 2) Classes endpoint
     $classId = $null
     try {

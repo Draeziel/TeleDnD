@@ -26,3 +26,15 @@ http.interceptors.request.use((config) => {
 
   return config;
 });
+
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const requestId = error?.response?.data?.requestId || error?.response?.headers?.['x-request-id'];
+    if (requestId) {
+      (error as any).requestId = requestId;
+    }
+
+    return Promise.reject(error);
+  }
+);

@@ -12,6 +12,7 @@ const errorHandler = (err: Error, req: Request, res: Response, next: NextFunctio
     });
 
     res.status((err as any).status || 500).json({
+        code: (err as any).code || 'INTERNAL_ERROR',
         message: err.message || 'Internal Server Error',
         requestId,
         error: process.env.NODE_ENV === 'development' ? err : {},

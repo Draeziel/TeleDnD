@@ -88,3 +88,10 @@ jobs:
       - name: Print backend log on failure
         if: failure()
         run: cat server.log || true
+
+      - name: Upload backend log artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-server-log
+          path: server.log

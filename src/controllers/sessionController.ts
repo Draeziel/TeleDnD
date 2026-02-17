@@ -32,7 +32,13 @@ export class SessionController {
         return;
       }
 
-      const session = await this.sessionService.createSession(name.trim(), telegramUserId);
+      const trimmedName = name.trim();
+      if (trimmedName.length < 2 || trimmedName.length > 80) {
+        res.status(400).json({ message: 'name length must be between 2 and 80 characters' });
+        return;
+      }
+
+      const session = await this.sessionService.createSession(trimmedName, telegramUserId);
       res.status(201).json(session);
     } catch (error) {
       res.status(500).json({ message: 'Error creating session', error });

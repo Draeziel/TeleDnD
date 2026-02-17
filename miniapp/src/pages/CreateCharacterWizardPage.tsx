@@ -12,9 +12,9 @@ const STEPS = [
   'Имя персонажа',
   'Класс',
   'Раса',
-  'Background',
-  'Ability Scores',
-  'Choices + Finalize',
+  'Предыстория',
+  'Характеристики',
+  'Выборы + завершение',
 ];
 
 const INITIAL_SCORES: AbilityScorePayload = {
@@ -82,7 +82,7 @@ export function CreateCharacterWizardPage() {
       setDraft(freshDraft);
       setStep(1);
     } catch {
-      setError('Не удалось создать draft.');
+      setError('Не удалось создать черновик.');
     } finally {
       setLoading(false);
     }
@@ -139,7 +139,7 @@ export function CreateCharacterWizardPage() {
       }
       setStep(4);
     } catch {
-      setError('Не удалось установить background.');
+      setError('Не удалось установить предысторию.');
     } finally {
       setLoading(false);
     }
@@ -165,7 +165,7 @@ export function CreateCharacterWizardPage() {
       await refreshDraft(draft.id);
       setStep(5);
     } catch {
-      setError('Не удалось сохранить ability scores.');
+      setError('Не удалось сохранить характеристики.');
     } finally {
       setLoading(false);
     }
@@ -176,7 +176,7 @@ export function CreateCharacterWizardPage() {
     const selectedOption = choiceSelections[choiceId];
 
     if (!selectedOption) {
-      setError('Выберите option перед сохранением choice.');
+      setError('Выберите вариант перед сохранением выбора.');
       return;
     }
 
@@ -187,7 +187,7 @@ export function CreateCharacterWizardPage() {
       setDraft(updated);
       await refreshDraft(draft.id);
     } catch {
-      setError('Не удалось сохранить choice.');
+      setError('Не удалось сохранить выбор.');
     } finally {
       setLoading(false);
     }
@@ -197,7 +197,7 @@ export function CreateCharacterWizardPage() {
     if (!draft) return;
 
     if (draft.missingChoices.length > 0) {
-      setError('Finalize недоступен: остались missingChoices.');
+      setError('Завершение недоступно: остались незаполненные выборы.');
       return;
     }
 
@@ -205,10 +205,10 @@ export function CreateCharacterWizardPage() {
       setLoading(true);
       setError('');
       const result = await draftApi.finalizeDraft(draft.id);
-      setSuccess(`Character created: ${result.character.name}`);
+      setSuccess(`Персонаж создан: ${result.character.name}`);
       navigate(`/character/${result.characterId}`);
     } catch {
-      setError('Не удалось finalize draft.');
+      setError('Не удалось завершить черновик.');
     } finally {
       setLoading(false);
     }
@@ -217,10 +217,10 @@ export function CreateCharacterWizardPage() {
   return (
     <div className="page-stack">
       <div className="toolbar">
-        <button onClick={() => navigate('/')}>← Back to characters</button>
+        <button onClick={() => navigate('/')}>← Назад к персонажам</button>
       </div>
 
-      <SectionCard title="Create Character Wizard">
+      <SectionCard title="Мастер создания персонажа">
         <div className="steps">{STEPS.map((s, idx) => <span key={s} className={idx === step ? 'step active' : 'step'}>{idx + 1}. {s}</span>)}</div>
       </SectionCard>
 
@@ -229,21 +229,21 @@ export function CreateCharacterWizardPage() {
       {success && <StatusBox type="success" message={success} />}
 
       {step === 0 && (
-        <SectionCard title="Step 1: Имя и создание draft">
+        <SectionCard title="Шаг 1: Имя и создание черновика">
           <form onSubmit={createDraft} className="form-stack">
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Имя персонажа" />
-            <button type="submit">Create Draft</button>
+            <button type="submit">Создать черновик</button>
           </form>
         </SectionCard>
       )}
 
       {step === 1 && draft && (
-        <SectionCard title="Step 2: Выбор класса">
+        <SectionCard title="Шаг 2: Выбор класса">
           <div className="list-grid">
             {classes.map((item) => (
               <div key={item.id} className="list-item">
                 <div>{item.name}</div>
-                <button onClick={() => assignClass(item.id)}>Select</button>
+                <button onClick={() => assignClass(item.id)}>Выбрать</button>
               </div>
             ))}
           </div>
@@ -251,15 +251,15 @@ export function CreateCharacterWizardPage() {
       )}
 
       {step === 2 && draft && (
-        <SectionCard title="Step 3: Выбор расы">
+        <SectionCard title="Шаг 3: Выбор расы">
           <div className="toolbar">
-            <button onClick={() => assignRace(null)}>Skip Race</button>
+            <button onClick={() => assignRace(null)}>Пропустить расу</button>
           </div>
           <div className="list-grid">
             {races.map((item) => (
               <div key={item.id} className="list-item">
                 <div>{item.name}</div>
-                <button onClick={() => assignRace(item.id)}>Select</button>
+                <button onClick={() => assignRace(item.id)}>Выбрать</button>
               </div>
             ))}
           </div>
@@ -267,15 +267,15 @@ export function CreateCharacterWizardPage() {
       )}
 
       {step === 3 && draft && (
-        <SectionCard title="Step 4: Выбор background">
+        <SectionCard title="Шаг 4: Выбор предыстории">
           <div className="toolbar">
-            <button onClick={() => assignBackground(null)}>Skip Background</button>
+            <button onClick={() => assignBackground(null)}>Пропустить предысторию</button>
           </div>
           <div className="list-grid">
             {backgrounds.map((item) => (
               <div key={item.id} className="list-item">
                 <div>{item.name}</div>
-                <button onClick={() => assignBackground(item.id)}>Select</button>
+                <button onClick={() => assignBackground(item.id)}>Выбрать</button>
               </div>
             ))}
           </div>
@@ -283,18 +283,18 @@ export function CreateCharacterWizardPage() {
       )}
 
       {step === 4 && draft && (
-        <SectionCard title="Step 5: Ability score assignment">
+        <SectionCard title="Шаг 5: Распределение характеристик">
           <form onSubmit={submitScores} className="form-stack">
             <label>
-              Method
+              Метод
               <select
                 value={scores.method}
                 onChange={(e) => setScores((prev) => ({ ...prev, method: e.target.value as AbilityScorePayload['method'] }))}
               >
-                <option value="standard_array">standard_array</option>
-                <option value="point_buy">point_buy</option>
-                <option value="manual">manual</option>
-                <option value="roll">roll</option>
+                <option value="standard_array">Стандартный массив</option>
+                <option value="point_buy">Покупка очков</option>
+                <option value="manual">Ручной ввод</option>
+                <option value="roll">Броски</option>
               </select>
             </label>
             <div className="grid-3">
@@ -314,14 +314,14 @@ export function CreateCharacterWizardPage() {
                 </label>
               ))}
             </div>
-            <button type="submit">Save Ability Scores</button>
+            <button type="submit">Сохранить характеристики</button>
           </form>
         </SectionCard>
       )}
 
       {step === 5 && draft && (
-        <SectionCard title="Step 6: Choices + Finalize">
-          {(Array.isArray(draft.requiredChoices) ? draft.requiredChoices : []).length === 0 && <div>Required choices отсутствуют.</div>}
+        <SectionCard title="Шаг 6: Выборы и завершение">
+          {(Array.isArray(draft.requiredChoices) ? draft.requiredChoices : []).length === 0 && <div>Обязательные выборы отсутствуют.</div>}
 
           {(Array.isArray(draft.requiredChoices) ? draft.requiredChoices : []).map((choice) => {
             const selectedValue = choiceSelections[choice.id] || '';
@@ -331,7 +331,7 @@ export function CreateCharacterWizardPage() {
             return (
               <div key={choice.id} className="choice-block">
                 <div className="choice-title">
-                  Choice {choice.id} · source: {choice.sourceType} · chooseCount: {choice.chooseCount}
+                  Выбор {choice.id} · источник: {choice.sourceType} · нужно выбрать: {choice.chooseCount}
                 </div>
                 <div className="choice-options">
                   {options.map((option) => (
@@ -353,17 +353,17 @@ export function CreateCharacterWizardPage() {
                   ))}
                 </div>
                 <div className="inline-row">
-                  <button onClick={() => saveChoice(choice.id)}>Save choice</button>
-                  <span>{alreadySaved ? 'Saved' : 'Not saved'}</span>
+                  <button onClick={() => saveChoice(choice.id)}>Сохранить выбор</button>
+                  <span>{alreadySaved ? 'Сохранено' : 'Не сохранено'}</span>
                 </div>
               </div>
             );
           })}
 
           <div className="finalize-box">
-            <div>Missing choices: {draft.missingChoices.length}</div>
+            <div>Осталось выборов: {draft.missingChoices.length}</div>
             <button onClick={finalize} disabled={draft.missingChoices.length > 0 || loading}>
-              Finalize Draft
+              Завершить черновик
             </button>
           </div>
         </SectionCard>

@@ -4,11 +4,11 @@ export function Layout() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <h1>RPG Character Mini App</h1>
+        <h1>Мини-приложение RPG-персонажей</h1>
         <nav>
-          <Link to="/">Characters</Link>
-          <Link to="/create">Create</Link>
-          <Link to="/sessions">Sessions</Link>
+          <Link to="/">Персонажи</Link>
+          <Link to="/create">Создать</Link>
+          <Link to="/sessions">Сессии</Link>
         </nav>
       </header>
       <main className="content">

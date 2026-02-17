@@ -34,9 +34,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     if (this.state.hasError) {
       return (
         <div style={{ padding: 16 }}>
-          <h2>Ошибка инициализации Mini App</h2>
-          <p>{this.state.message || 'Unknown error'}</p>
-          <p>Обновите страницу или откройте DevTools Console для деталей.</p>
+          <h2>Ошибка инициализации мини-приложения</h2>
+          <p>{this.state.message || 'Неизвестная ошибка'}</p>
+          <p>Обновите страницу или откройте консоль разработчика для деталей.</p>
         </div>
       );
     }

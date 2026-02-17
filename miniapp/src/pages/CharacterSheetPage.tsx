@@ -13,7 +13,7 @@ export function CharacterSheetPage() {
 
   useEffect(() => {
     if (!id) {
-      setError('Character id is missing');
+      setError('Отсутствует ID персонажа');
       setLoading(false);
       return;
     }
@@ -35,14 +35,14 @@ export function CharacterSheetPage() {
   }, [id]);
 
   if (loading) {
-    return <StatusBox type="info" message="Загрузка character sheet..." />;
+    return <StatusBox type="info" message="Загрузка листа персонажа..." />;
   }
 
   if (error || !sheet) {
     return (
       <div className="page-stack">
-        <StatusBox type="error" message={error || 'Sheet not found'} />
-        <Link to="/">Back to characters</Link>
+        <StatusBox type="error" message={error || 'Лист персонажа не найден'} />
+        <Link to="/">Назад к персонажам</Link>
       </div>
     );
   }
@@ -57,24 +57,24 @@ export function CharacterSheetPage() {
   return (
     <div className="page-stack">
       <div className="toolbar">
-        <Link to="/">← Back</Link>
+        <Link to="/">← Назад</Link>
       </div>
 
       <SectionCard title={`${sheet.character.name} · ${sheet.character.class.name} · Lv.${sheet.character.level}`}>
         <div className="grid-2">
-          <div>Race: {sheet.character.race?.name || '—'}</div>
-          <div>Background: {sheet.character.background?.name || '—'}</div>
+          <div>Раса: {sheet.character.race?.name || '—'}</div>
+          <div>Предыстория: {sheet.character.background?.name || '—'}</div>
         </div>
       </SectionCard>
 
-      <SectionCard title="Ability Scores (Base / Effective)">
+      <SectionCard title="Характеристики (базовые / итоговые)">
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Ability</th>
-                <th>Base</th>
-                <th>Effective</th>
+                <th>Характеристика</th>
+                <th>Базовая</th>
+                <th>Итоговая</th>
               </tr>
             </thead>
             <tbody>
@@ -90,33 +90,33 @@ export function CharacterSheetPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Derived Stats">
+      <SectionCard title="Производные параметры">
         <div className="grid-3">
-          <div>AC: {sheet.derivedStats.armorClass}</div>
-          <div>Attack Bonus: {sheet.derivedStats.attackBonus}</div>
-          <div>Proficiency Bonus: {sheet.derivedStats.proficiencyBonus}</div>
-          <div>Initiative: {sheet.derivedStats.initiative}</div>
-          <div>Passive Perception: {sheet.derivedStats.passive.perception}</div>
-          <div>Passive Investigation: {sheet.derivedStats.passive.investigation}</div>
-          <div>Passive Insight: {sheet.derivedStats.passive.insight}</div>
+          <div>КД: {sheet.derivedStats.armorClass}</div>
+          <div>Бонус атаки: {sheet.derivedStats.attackBonus}</div>
+          <div>Бонус мастерства: {sheet.derivedStats.proficiencyBonus}</div>
+          <div>Инициатива: {sheet.derivedStats.initiative}</div>
+          <div>Пассивное внимание: {sheet.derivedStats.passive.perception}</div>
+          <div>Пассивное расследование: {sheet.derivedStats.passive.investigation}</div>
+          <div>Пассивная проницательность: {sheet.derivedStats.passive.insight}</div>
         </div>
       </SectionCard>
 
-      <SectionCard title="Saving Throws">
+      <SectionCard title="Спасброски">
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Ability</th>
-                <th>Proficient</th>
-                <th>Bonus</th>
+                <th>Характеристика</th>
+                <th>Владение</th>
+                <th>Бонус</th>
               </tr>
             </thead>
             <tbody>
               {savingThrows.map((save) => (
                 <tr key={save.ability}>
                   <td>{save.ability.toUpperCase()}</td>
-                  <td>{save.proficient ? 'Yes' : 'No'}</td>
+                  <td>{save.proficient ? 'Да' : 'Нет'}</td>
                   <td>{save.bonus >= 0 ? `+${save.bonus}` : save.bonus}</td>
                 </tr>
               ))}
@@ -125,15 +125,15 @@ export function CharacterSheetPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Skills">
+      <SectionCard title="Навыки">
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Skill</th>
-                <th>Ability</th>
-                <th>Proficient</th>
-                <th>Bonus</th>
+                <th>Навык</th>
+                <th>Характеристика</th>
+                <th>Владение</th>
+                <th>Бонус</th>
               </tr>
             </thead>
             <tbody>
@@ -141,7 +141,7 @@ export function CharacterSheetPage() {
                 <tr key={skill.id}>
                   <td>{skill.name}</td>
                   <td>{String(skill.ability).toUpperCase()}</td>
-                  <td>{skill.proficient ? 'Yes' : 'No'}</td>
+                  <td>{skill.proficient ? 'Да' : 'Нет'}</td>
                   <td>{skill.bonus >= 0 ? `+${skill.bonus}` : skill.bonus}</td>
                 </tr>
               ))}
@@ -150,9 +150,9 @@ export function CharacterSheetPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Inventory">
+      <SectionCard title="Инвентарь">
         {inventory.length === 0 ? (
-          <div>Inventory empty.</div>
+          <div>Инвентарь пуст.</div>
         ) : (
           <div className="list-grid">
             {inventory.map((entry) => (
@@ -161,7 +161,7 @@ export function CharacterSheetPage() {
                   <strong>{entry.item.name}</strong>
                   <div>{entry.item.slot || '—'}</div>
                 </div>
-                <span>{entry.equipped ? 'Equipped' : 'Unequipped'}</span>
+                <span>{entry.equipped ? 'Экипировано' : 'Не экипировано'}</span>
               </div>
             ))}
           </div>

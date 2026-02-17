@@ -99,13 +99,13 @@ export function SessionViewPage() {
     <div className="page-stack">
       <div className="section-card">
         <h2>{session.name}</h2>
-        <div>Join code: {session.joinCode}</div>
-        <div>Players: {session.players.length}</div>
-        <div>Characters: {session.characters.length}</div>
+        <div>Код входа: {session.joinCode}</div>
+        <div>Игроки: {session.players.length}</div>
+        <div>Персонажи: {session.characters.length}</div>
       </div>
 
       <div className="section-card">
-        <h2>Party</h2>
+        <h2>Группа</h2>
         <div className="list-grid">
           {session.characters.length === 0 && <StatusBox type="info" message="Персонажи пока не добавлены" />}
           {session.characters.map((entry) => {
@@ -116,21 +116,21 @@ export function SessionViewPage() {
               <div className="list-item" key={entry.id}>
                 <div>
                   <strong>{entry.character.name}</strong>
-                  <div>Class: {entry.character.class?.name || '—'}</div>
+                  <div>Класс: {entry.character.class?.name || '—'}</div>
                   <div>HP: {currentHp} / {entry.state?.maxHpSnapshot ?? '—'}</div>
-                  <div>Initiative: {entry.state?.initiative ?? '—'}</div>
-                  <div>Effects: {entry.effects.length}</div>
+                  <div>Инициатива: {entry.state?.initiative ?? '—'}</div>
+                  <div>Эффекты: {entry.effects.length}</div>
                 </div>
                 <div className="inline-row">
                   <button
                     disabled={removingId === entry.character.id}
                     onClick={() => onRemoveCharacter(entry.character.id)}
                   >
-                    {removingId === entry.character.id ? 'Detaching...' : 'Detach'}
+                    {removingId === entry.character.id ? 'Открепление...' : 'Открепить'}
                   </button>
                   <button onClick={() => onSetHp(entry.character.id, Math.max(currentHp - 1, 0))}>HP -1</button>
                   <button onClick={() => onSetHp(entry.character.id, currentHp + 1)}>HP +1</button>
-                  <button onClick={() => onSetInitiative(entry.character.id, initiative + 1)}>Init +1</button>
+                  <button onClick={() => onSetInitiative(entry.character.id, initiative + 1)}>Иниц. +1</button>
                 </div>
               </div>
             );
@@ -139,7 +139,7 @@ export function SessionViewPage() {
       </div>
 
       <div className="section-card">
-        <h2>Attach Your Character</h2>
+        <h2>Добавить своего персонажа</h2>
         <div className="list-grid">
           {availableCharacters.length === 0 && (
             <StatusBox type="info" message="Нет свободных персонажей для добавления" />
@@ -148,11 +148,11 @@ export function SessionViewPage() {
             <div className="list-item" key={character.id}>
               <div>
                 <strong>{character.name}</strong>
-                <div>Class: {character.class?.name || '—'}</div>
-                <div>Level: {character.level}</div>
+                <div>Класс: {character.class?.name || '—'}</div>
+                <div>Уровень: {character.level}</div>
               </div>
               <button disabled={attachingId === character.id} onClick={() => onAttachCharacter(character.id)}>
-                {attachingId === character.id ? 'Attaching...' : 'Attach'}
+                {attachingId === character.id ? 'Добавление...' : 'Добавить'}
               </button>
             </div>
           ))}

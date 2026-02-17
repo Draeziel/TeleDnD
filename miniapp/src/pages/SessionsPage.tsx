@@ -12,6 +12,8 @@ export function SessionsPage() {
   const [createName, setCreateName] = useState('');
   const [joinCode, setJoinCode] = useState('');
 
+  const roleLabel = (role: SessionListItem['role']) => (role === 'GM' ? 'Мастер' : 'Игрок');
+
   const load = async () => {
     try {
       setLoading(true);
@@ -19,7 +21,7 @@ export function SessionsPage() {
       const data = await sessionApi.listSessions();
       setSessions(data);
     } catch {
-      setError('Не удалось загрузить сессии. Проверьте auth/token и доступность backend.');
+      setError('Не удалось загрузить сессии. Проверьте авторизацию и доступность backend.');
     } finally {
       setLoading(false);
     }
@@ -59,10 +61,10 @@ export function SessionsPage() {
         <input
           value={createName}
           onChange={(e) => setCreateName(e.target.value)}
-          placeholder="Session name"
+          placeholder="Название сессии"
         />
         <button onClick={onCreate} disabled={!createName.trim()}>
-          Create Session
+          Создать сессию
         </button>
       </div>
 
@@ -70,12 +72,12 @@ export function SessionsPage() {
         <input
           value={joinCode}
           onChange={(e) => setJoinCode(e.target.value)}
-          placeholder="Join code"
+          placeholder="Код входа"
         />
         <button onClick={onJoin} disabled={!joinCode.trim()}>
-          Join Session
+          Войти в сессию
         </button>
-        <button onClick={load}>Refresh</button>
+        <button onClick={load}>Обновить</button>
       </div>
 
       {loading && <StatusBox type="info" message="Загрузка сессий..." />}
@@ -88,11 +90,11 @@ export function SessionsPage() {
             <div className="list-item" key={session.id}>
               <div>
                 <strong>{session.name}</strong>
-                <div>Role: {session.role}</div>
-                <div>Join code: {session.joinCode}</div>
-                <div>Players: {session.playersCount} · Characters: {session.charactersCount}</div>
+                <div>Роль: {roleLabel(session.role)}</div>
+                <div>Код входа: {session.joinCode}</div>
+                <div>Игроки: {session.playersCount} · Персонажи: {session.charactersCount}</div>
               </div>
-              <button onClick={() => navigate(`/sessions/${session.id}`)}>Open</button>
+              <button onClick={() => navigate(`/sessions/${session.id}`)}>Открыть</button>
             </div>
           ))}
         </div>

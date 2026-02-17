@@ -51,14 +51,14 @@ export function CharactersPage() {
   return (
     <div className="page-stack">
       <div className="toolbar">
-        <button onClick={() => navigate('/create')}>Create Character</button>
-        <button onClick={() => navigate('/sessions')}>Sessions</button>
+        <button onClick={() => navigate('/create')}>Создать персонажа</button>
+        <button onClick={() => navigate('/sessions')}>Сессии</button>
       </div>
 
       {!isTelegram && (
         <div className="telegram-dev-box">
           <h3>Режим разработки Telegram</h3>
-          <p>В Telegram не запущено. Укажите тестовый Telegram user id.</p>
+          <p>В Telegram не запущено. Укажите тестовый ID пользователя Telegram.</p>
           <div className="inline-row">
             <input
               value={testUserId}
@@ -69,7 +69,7 @@ export function CharactersPage() {
         </div>
       )}
 
-      <div className="meta-row">Текущий Telegram user id: {userId || 'не задан'}</div>
+      <div className="meta-row">Текущий ID пользователя Telegram: {userId || 'не задан'}</div>
 
       {loading && <StatusBox type="info" message="Загрузка списка персонажей..." />}
       {error && <StatusBox type="error" message={error} />}
@@ -81,13 +81,13 @@ export function CharactersPage() {
             <div className="list-item" key={character.id}>
               <div>
                 <strong>{character.name}</strong>
-                <div>Class: {character.class?.name || '—'}</div>
-                <div>Level: {character.level}</div>
+                <div>Класс: {character.class?.name || '—'}</div>
+                <div>Уровень: {character.level}</div>
               </div>
               <div className="inline-row">
-                <button onClick={() => navigate(`/character/${character.id}`)}>Open Sheet</button>
+                <button onClick={() => navigate(`/character/${character.id}`)}>Открыть лист</button>
                 <button disabled={deletingId === character.id} onClick={() => handleDelete(character.id)}>
-                  {deletingId === character.id ? 'Deleting...' : 'Delete'}
+                  {deletingId === character.id ? 'Удаление...' : 'Удалить'}
                 </button>
               </div>
             </div>

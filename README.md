@@ -81,6 +81,24 @@ You can run the application using Docker Compose:
 docker-compose up
 ```
 
+### Telegram WebApp initData Validation
+
+The backend can validate Telegram Mini App `initData` signatures for draft endpoints.
+
+Configure environment variables:
+
+```env
+TELEGRAM_BOT_TOKEN=<your_bot_token>
+REQUIRE_TELEGRAM_AUTH=true
+TELEGRAM_INITDATA_MAX_AGE_SEC=86400
+```
+
+- `TELEGRAM_BOT_TOKEN` – Telegram bot token used for signature verification.
+- `REQUIRE_TELEGRAM_AUTH` – when `true`, `/api/drafts/*` rejects requests without valid `x-telegram-init-data`.
+- `TELEGRAM_INITDATA_MAX_AGE_SEC` – maximum allowed age of `auth_date` in seconds.
+
+In local/dev mode, set `REQUIRE_TELEGRAM_AUTH=false` to allow testing without Telegram client headers.
+
 ### API Endpoints
 - `GET /api/classes`: Retrieve all character classes.
 - `POST /api/characters`: Create a new character.

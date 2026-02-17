@@ -84,6 +84,7 @@ npm run dev
 ```
 
 - При запуске в Telegram app автоматически берётся `user.id` из `initDataUnsafe`.
+- Все API-запросы автоматически отправляют `x-telegram-init-data` (из `Telegram.WebApp.initData`), чтобы backend мог валидировать подпись.
 - При локальной разработке можно ввести test user id на странице персонажей; значение хранится в `localStorage`.
 
 ## Wizard flow

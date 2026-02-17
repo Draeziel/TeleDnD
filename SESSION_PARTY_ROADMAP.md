@@ -190,6 +190,34 @@ Build a multiplayer session (party) system where:
 
 ---
 
+## Companion-grade milestones (P0/P1/P2)
+
+### P0 — Production reliability baseline
+
+- [ ] Enforce strict Telegram auth in production paths (remove fallback behavior outside dev/test).
+- [ ] Add structured request logging with correlation/request IDs.
+- [ ] Add error-rate and latency alerting for backend (Render + external monitor integration).
+- [ ] Define and track basic SLOs (availability, p95 latency, 5xx budget).
+- [ ] Add CI gate for backend build + miniapp build + smoke checks.
+
+### P1 — Gameplay and UX robustness
+
+- [ ] Add encounter flow primitives: start encounter, active turn marker, next turn, finish encounter.
+- [ ] Add safe “undo last combat action” for GM (HP/initiative/effect mutations).
+- [ ] Add network resilience UX in miniapp (retry/backoff and clearer offline recovery).
+- [ ] Improve small-screen ergonomics (tap targets, dense combat layout, minimal scroll friction).
+- [ ] Define and implement retention policy for `session_events` (TTL/archive + cleanup task).
+
+### P2 — Companion product depth
+
+- [ ] Add session-level resource tracking (consumables/charges/conditions).
+- [ ] Introduce gameplay analytics baseline (DAU, session duration, encounter completion, retention).
+- [ ] Add optional GM handover workflow while preserving no-transfer leave default.
+- [ ] Expand content-source tooling for scalable rule/content packs.
+- [ ] Add in-app onboarding checklist for first session run.
+
+---
+
 ## Open Questions
 
 - Should we allow explicit “assign new GM” action in Phase 2 while keeping current leave policy?

@@ -211,6 +211,11 @@ export class SessionService {
       include: {
         session: {
           include: {
+            players: {
+              where: { role: 'GM' },
+              select: { id: true },
+              take: 1,
+            },
             _count: {
               select: {
                 players: true,
@@ -238,6 +243,7 @@ export class SessionService {
       updatedAt: membership.session.updatedAt,
       playersCount: membership.session._count.players,
       charactersCount: membership.session._count.characters,
+      hasActiveGm: membership.session.players.length > 0,
     }));
   }
 

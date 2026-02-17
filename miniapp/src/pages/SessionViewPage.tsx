@@ -353,31 +353,32 @@ export function SessionViewPage() {
           </button>
         </div>
         <h2
-          className="clickable-label"
-          role="button"
-          aria-label="Обновить сессию"
-          onClick={() => load()}
+          className="session-title"
         >
-          {loading ? `${session.name} (обновление...)` : session.name}
+          <button
+            className="btn btn-inline"
+            aria-label="Обновить сессию"
+            onClick={() => load()}
+          >
+            {loading ? `${session.name} (обновление...)` : session.name}
+          </button>
         </h2>
         <div>
           Код входа:{' '}
-          <span
-            className="clickable-label"
-            role="button"
+          <button
+            className="btn btn-inline"
             aria-label="Скопировать код входа"
             onClick={onCopyJoinCode}
           >
             {copyingCode ? 'копируем...' : session.joinCode}
-          </span>
+          </button>
         </div>
         <div>Игроки: {session.playersCount ?? session.players.length}</div>
         <div>Персонажи: {session.characters.length}</div>
         <div>
           Инициатива:{' '}
-          <span
-            className="clickable-label"
-            role="button"
+          <button
+            className="btn btn-inline"
             aria-label="Переключить lock инициативы"
             onClick={() => {
               if (!session.hasActiveGm || initiativeActionLoading) {
@@ -393,7 +394,7 @@ export function SessionViewPage() {
             }}
           >
             {session.initiativeLocked ? 'зафиксирована' : 'открыта'}
-          </span>
+          </button>
         </div>
         <div>Encounter: {session.encounterActive ? `активен (раунд ${session.combatRound})` : 'не активен'}</div>
         <div className="list-item">
@@ -401,9 +402,8 @@ export function SessionViewPage() {
             <strong>Combat</strong>
             <div>
               Раунд: {session.encounterActive ? session.combatRound : '—'}{' '}
-              <span
-                className="clickable-label"
-                role="button"
+              <button
+                className="btn btn-inline"
                 aria-label={session.encounterActive ? 'Завершить раунд' : 'Начать раунд'}
                 onClick={() => {
                   if (!session.hasActiveGm || encounterActionLoading) {
@@ -418,8 +418,8 @@ export function SessionViewPage() {
                   void onStartEncounter();
                 }}
               >
-                {session.encounterActive ? '⏹' : '▶'}
-              </span>
+                {session.encounterActive ? '■ Стоп' : '▶ Старт'}
+              </button>
             </div>
             <div>Текущий: {activeTurnCharacter?.character.name ?? '—'}</div>
             <div>Следующий: {nextTurnCharacter?.character.name ?? '—'}</div>

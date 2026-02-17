@@ -181,15 +181,18 @@ td {
   color: #4b5563;
 }
 
-.clickable-label {
-  color: #1d4ed8;
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-style: dashed;
+.session-title {
+  margin: 0 0 8px;
 }
 
-.clickable-label:hover {
+.btn-inline {
+  padding: 2px 8px;
+  border-radius: 6px;
+  border-color: #bfdbfe;
+  background: #eff6ff;
   color: #1e3a8a;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .telegram-dev-box {

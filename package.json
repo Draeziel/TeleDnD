@@ -17,6 +17,7 @@
     "@types/node": "^16.18.126",
     "cors": "^2.8.6",
     "express": "^4.17.1",
+    "express-rate-limit": "^8.2.1",
     "pg": "^8.7.1",
     "prisma": "^5.0.0",
     "typescript": "^4.4.3"

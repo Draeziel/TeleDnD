@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import { PrismaClient } from '@prisma/client';
 import characterRoutes from './routes/characterRoutes';
 import draftRoutes from './routes/draftRoutes';
@@ -9,8 +10,27 @@ import { telegramAuthMiddleware } from './middleware/telegramAuth';
 const app = express();
 const prisma = new PrismaClient();
 
+const apiRateLimitWindowMs = Number(process.env.API_RATE_LIMIT_WINDOW_MS || 60_000);
+const apiRateLimitMax = Number(process.env.API_RATE_LIMIT_MAX || 120);
+
+const apiLimiter = rateLimit({
+    windowMs: apiRateLimitWindowMs,
+    max: apiRateLimitMax,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        error: 'Too many requests. Please try again later.',
+    },
+});
+
+app.set('trust proxy', 1);
 app.use(express.json());
 app.use(cors());
+app.get('/healthz', (_req, res) => {
+    res.status(200).json({ status: 'ok' });
+});
+
+app.use('/api', apiLimiter);
 app.use('/api/characters', characterRoutes(prisma));
 app.use('/api/drafts', telegramAuthMiddleware());
 app.use('/api/drafts', draftRoutes(prisma));

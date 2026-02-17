@@ -91,13 +91,21 @@ Configure environment variables:
 TELEGRAM_BOT_TOKEN=<your_bot_token>
 REQUIRE_TELEGRAM_AUTH=true
 TELEGRAM_INITDATA_MAX_AGE_SEC=86400
+API_RATE_LIMIT_WINDOW_MS=60000
+API_RATE_LIMIT_MAX=120
 ```
 
 - `TELEGRAM_BOT_TOKEN` – Telegram bot token used for signature verification.
 - `REQUIRE_TELEGRAM_AUTH` – when `true`, `/api/drafts/*` rejects requests without valid `x-telegram-init-data`.
 - `TELEGRAM_INITDATA_MAX_AGE_SEC` – maximum allowed age of `auth_date` in seconds.
+- `API_RATE_LIMIT_WINDOW_MS` – rate-limit window for all `/api/*` routes in milliseconds (default: `60000`).
+- `API_RATE_LIMIT_MAX` – max requests per IP in one window for `/api/*` routes (default: `120`).
 
 In local/dev mode, set `REQUIRE_TELEGRAM_AUTH=false` to allow testing without Telegram client headers.
+
+### Health Check
+
+- `GET /healthz` returns `{ "status": "ok" }` and can be used by uptime probes.
 
 ### API Endpoints
 - `GET /api/classes`: Retrieve all character classes.

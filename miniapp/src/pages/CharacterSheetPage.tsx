@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { characterApi } from '../api/characterApi';
-import type { AbilityKey, CharacterSheet } from '../types/models';
+import { sessionApi } from '../api/sessionApi';
+import type { AbilityKey, CharacterSheet, SessionListItem } from '../types/models';
 import { StatusBox } from '../components/StatusBox';
 import { SectionCard } from '../components/SectionCard';
 
 export function CharacterSheetPage() {
+  const navigate = useNavigate();
   const { id } = useParams();
   const [sheet, setSheet] = useState<CharacterSheet | null>(null);
+  const [sessions, setSessions] = useState<SessionListItem[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState('');
+  const [attaching, setAttaching] = useState(false);
+  const [attachStatus, setAttachStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -33,6 +39,39 @@ export function CharacterSheetPage() {
 
     load();
   }, [id]);
+
+  useEffect(() => {
+    const loadSessions = async () => {
+      try {
+        const data = await sessionApi.listSessions();
+        setSessions(data);
+        if (data.length > 0) {
+          setSelectedSessionId((prev) => prev || data[0].id);
+        }
+      } catch {
+        return;
+      }
+    };
+
+    loadSessions();
+  }, []);
+
+  const onAttachToSession = async () => {
+    if (!id || !selectedSessionId) {
+      return;
+    }
+
+    try {
+      setAttaching(true);
+      setAttachStatus(null);
+      await sessionApi.attachCharacter(selectedSessionId, id);
+      setAttachStatus({ type: 'success', message: 'Персонаж добавлен в сессию' });
+    } catch {
+      setAttachStatus({ type: 'error', message: 'Не удалось добавить персонажа в сессию' });
+    } finally {
+      setAttaching(false);
+    }
+  };
 
   if (loading) {
     return <StatusBox type="info" message="Загрузка листа персонажа..." />;
@@ -166,6 +205,32 @@ export function CharacterSheetPage() {
             ))}
           </div>
         )}
+      </SectionCard>
+
+      <SectionCard title="Добавить в сессию">
+        {sessions.length === 0 ? (
+          <StatusBox type="info" message="Сессии не найдены или недоступны" />
+        ) : (
+          <div className="form-stack">
+            <select value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)}>
+              {sessions.map((session) => (
+                <option key={session.id} value={session.id}>
+                  {session.name} ({session.role === 'GM' ? 'Мастер' : 'Игрок'})
+                </option>
+              ))}
+            </select>
+            <div className="inline-row">
+              <button disabled={attaching || !selectedSessionId} onClick={onAttachToSession}>
+                {attaching ? 'Добавление...' : 'Добавить в сессию'}
+              </button>
+              <button disabled={!selectedSessionId} onClick={() => navigate(`/sessions/${selectedSessionId}`)}>
+                Открыть сессию
+              </button>
+            </div>
+          </div>
+        )}
+
+        {attachStatus && <StatusBox type={attachStatus.type} message={attachStatus.message} />}
       </SectionCard>
     </div>
   );

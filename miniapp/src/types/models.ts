@@ -141,3 +141,72 @@ export interface FinalizeDraftResponse {
   characterId: string;
   character: CharacterSummary;
 }
+
+export interface SessionListItem {
+  id: string;
+  name: string;
+  joinCode: string;
+  gmUserId: string;
+  createdByUserId: string;
+  role: 'GM' | 'PLAYER';
+  createdAt: string;
+  updatedAt: string;
+  playersCount: number;
+  charactersCount: number;
+}
+
+export interface SessionPlayer {
+  id: string;
+  role: 'GM' | 'PLAYER';
+  user: {
+    id: string;
+    telegramId: string;
+  };
+}
+
+export interface SessionCharacterState {
+  id: string;
+  sessionCharacterId: string;
+  currentHp: number;
+  maxHpSnapshot: number;
+  tempHp: number | null;
+  initiative: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SessionEffect {
+  id: string;
+  sessionCharacterId: string;
+  effectType: string;
+  duration: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SessionDetails {
+  id: string;
+  name: string;
+  joinCode: string;
+  gmUserId: string;
+  createdByUserId: string;
+  createdAt: string;
+  updatedAt: string;
+  players: SessionPlayer[];
+  characters: Array<{
+    id: string;
+    character: {
+      id: string;
+      name: string;
+      level: number;
+      class: {
+        id: string;
+        name: string;
+      };
+    };
+    state: SessionCharacterState | null;
+    effects: SessionEffect[];
+  }>;
+}

@@ -1,0 +1,102 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { sessionApi } from '../api/sessionApi';
+import { StatusBox } from '../components/StatusBox';
+import type { SessionListItem } from '../types/models';
+
+export function SessionsPage() {
+  const navigate = useNavigate();
+  const [sessions, setSessions] = useState<SessionListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [createName, setCreateName] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await sessionApi.listSessions();
+      setSessions(data);
+    } catch {
+      setError('Не удалось загрузить сессии. Проверьте auth/token и доступность backend.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const onCreate = async () => {
+    if (!createName.trim()) return;
+
+    try {
+      const created = await sessionApi.createSession(createName.trim());
+      setCreateName('');
+      navigate(`/sessions/${created.id}`);
+    } catch {
+      setError('Не удалось создать сессию');
+    }
+  };
+
+  const onJoin = async () => {
+    if (!joinCode.trim()) return;
+
+    try {
+      const joined = await sessionApi.joinSession(joinCode.trim().toUpperCase());
+      setJoinCode('');
+      navigate(`/sessions/${joined.sessionId}`);
+    } catch {
+      setError('Не удалось присоединиться к сессии (проверьте код)');
+    }
+  };
+
+  return (
+    <div className="page-stack">
+      <div className="toolbar">
+        <input
+          value={createName}
+          onChange={(e) => setCreateName(e.target.value)}
+          placeholder="Session name"
+        />
+        <button onClick={onCreate} disabled={!createName.trim()}>
+          Create Session
+        </button>
+      </div>
+
+      <div className="toolbar">
+        <input
+          value={joinCode}
+          onChange={(e) => setJoinCode(e.target.value)}
+          placeholder="Join code"
+        />
+        <button onClick={onJoin} disabled={!joinCode.trim()}>
+          Join Session
+        </button>
+        <button onClick={load}>Refresh</button>
+      </div>
+
+      {loading && <StatusBox type="info" message="Загрузка сессий..." />}
+      {error && <StatusBox type="error" message={error} />}
+
+      {!loading && !error && (
+        <div className="list-grid">
+          {sessions.length === 0 && <StatusBox type="info" message="Сессий пока нет" />}
+          {sessions.map((session) => (
+            <div className="list-item" key={session.id}>
+              <div>
+                <strong>{session.name}</strong>
+                <div>Role: {session.role}</div>
+                <div>Join code: {session.joinCode}</div>
+                <div>Players: {session.playersCount} · Characters: {session.charactersCount}</div>
+              </div>
+              <button onClick={() => navigate(`/sessions/${session.id}`)}>Open</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

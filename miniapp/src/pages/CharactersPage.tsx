@@ -33,6 +33,7 @@ export function CharactersPage() {
     <div className="page-stack">
       <div className="toolbar">
         <button onClick={() => navigate('/create')}>Create Character</button>
+        <button onClick={() => navigate('/sessions')}>Sessions</button>
       </div>
 
       {!isTelegram && (

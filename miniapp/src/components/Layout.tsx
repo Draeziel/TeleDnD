@@ -8,6 +8,7 @@ export function Layout() {
         <nav>
           <Link to="/">Characters</Link>
           <Link to="/create">Create</Link>
+          <Link to="/sessions">Sessions</Link>
         </nav>
       </header>
       <main className="content">

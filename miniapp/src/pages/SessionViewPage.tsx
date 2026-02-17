@@ -102,6 +102,18 @@ export function SessionViewPage() {
 
   const attachedCharacterIds = new Set(session.characters.map((entry) => entry.character.id));
   const availableCharacters = myCharacters.filter((character) => !attachedCharacterIds.has(character.id));
+  const initiativeOrder = [...session.characters]
+    .filter((entry) => entry.state?.initiative !== null && entry.state?.initiative !== undefined)
+    .sort((left, right) => {
+      const leftInitiative = left.state?.initiative ?? -999;
+      const rightInitiative = right.state?.initiative ?? -999;
+
+      if (rightInitiative !== leftInitiative) {
+        return rightInitiative - leftInitiative;
+      }
+
+      return left.character.name.localeCompare(right.character.name);
+    });
 
   return (
     <div className="page-stack">
@@ -144,6 +156,25 @@ export function SessionViewPage() {
             );
           })}
         </div>
+      </div>
+
+      <div className="section-card">
+        <h2>Порядок ходов</h2>
+        {initiativeOrder.length === 0 ? (
+          <StatusBox type="info" message="Инициатива пока не выставлена" />
+        ) : (
+          <div className="list-grid">
+            {initiativeOrder.map((entry, index) => (
+              <div className="list-item" key={`initiative-${entry.id}`}>
+                <div>
+                  <strong>{index + 1}. {entry.character.name}</strong>
+                  <div>Класс: {entry.character.class?.name || '—'}</div>
+                </div>
+                <span>Инициатива: {entry.state?.initiative}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="section-card">

@@ -245,16 +245,31 @@ model Session {
   gmUserId        String
   createdByUserId String
   joinCode        String              @unique
+  initiativeLocked Boolean            @default(false) @map("initiative_locked")
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   gmUser          User                @relation("SessionGM", fields: [gmUserId], references: [id], onDelete: Cascade)
   createdByUser   User                @relation("SessionCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
   players         SessionPlayer[]
   characters      SessionCharacter[]
+  events          SessionEvent[]
 
   @@index([gmUserId])
   @@index([createdByUserId])
   @@map("sessions")
+}
+
+model SessionEvent {
+  id              String    @id @default(uuid())
+  sessionId       String
+  type            String
+  message         String
+  actorTelegramId String
+  createdAt       DateTime  @default(now())
+  session         Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("session_events")
 }
 
 model SessionPlayer {

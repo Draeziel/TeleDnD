@@ -5,7 +5,8 @@ param(
     [string]$BaseUrl = "http://localhost:4000",
     [switch]$Smoke,
     [string]$CharacterName = "SmokeTestHero",
-    [string]$TestTelegramUserId = "123456789"
+    [string]$TestTelegramUserId = "123456789",
+    [string]$TelegramInitData = ""
 )
 
 if ($Smoke) {
@@ -50,7 +51,12 @@ if ($Smoke) {
 
     $smokeHeaders = @{
         "Content-Type" = "application/json"
-        "x-telegram-user-id" = $TestTelegramUserId
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($TelegramInitData)) {
+        $smokeHeaders["x-telegram-init-data"] = $TelegramInitData
+    } else {
+        $smokeHeaders["x-telegram-user-id"] = $TestTelegramUserId
     }
 
     # 1) Health check
@@ -233,10 +239,61 @@ if ($Smoke) {
             } catch {
                 Add-SmokeResult "Initiative roll all" $false "POST /api/sessions/:id/initiative/roll-all failed: $($_.Exception.Message)"
             }
+
+            try {
+                Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/initiative/lock" `
+                    -Method Post `
+                    -Headers $smokeHeaders `
+                    -UseBasicParsing -ErrorAction Stop | Out-Null
+                Add-SmokeResult "Initiative lock" $true "POST /api/sessions/:id/initiative/lock succeeded"
+            } catch {
+                Add-SmokeResult "Initiative lock" $false "POST /api/sessions/:id/initiative/lock failed: $($_.Exception.Message)"
+            }
+
+            try {
+                $rollAfterLockPayload = ConvertTo-Json @{ characterId = $characterId }
+                Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/initiative/roll-self" `
+                    -Method Post `
+                    -Headers $smokeHeaders `
+                    -Body $rollAfterLockPayload `
+                    -UseBasicParsing -ErrorAction Stop | Out-Null
+
+                Add-SmokeResult "Initiative lock guard" $false "Expected roll-self to be blocked while locked"
+            } catch {
+                $statusCode = Get-StatusCodeFromError $_
+                Add-SmokeResult "Initiative lock guard" ($statusCode -eq 403) "roll-self while locked returned status=$statusCode"
+            }
+
+            try {
+                Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/initiative/unlock" `
+                    -Method Post `
+                    -Headers $smokeHeaders `
+                    -UseBasicParsing -ErrorAction Stop | Out-Null
+                Add-SmokeResult "Initiative unlock" $true "POST /api/sessions/:id/initiative/unlock succeeded"
+            } catch {
+                Add-SmokeResult "Initiative unlock" $false "POST /api/sessions/:id/initiative/unlock failed: $($_.Exception.Message)"
+            }
+
+            try {
+                $resetResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/initiative/reset" `
+                    -Method Post `
+                    -Headers $smokeHeaders `
+                    -UseBasicParsing -ErrorAction Stop
+
+                $resetPayload = $resetResponse.Content | ConvertFrom-Json
+                $resetOk = $null -ne $resetPayload.resetCount
+                Add-SmokeResult "Initiative reset" $resetOk "POST /api/sessions/:id/initiative/reset resetCount=$($resetPayload.resetCount)"
+            } catch {
+                Add-SmokeResult "Initiative reset" $false "POST /api/sessions/:id/initiative/reset failed: $($_.Exception.Message)"
+            }
         } else {
             Add-SmokeResult "Session attach character" $true "Skipped: no characterId available (likely auth-gated create)"
             Add-SmokeResult "Initiative roll self" $true "Skipped: no characterId available (likely auth-gated create)"
             Add-SmokeResult "Initiative roll all" $true "Skipped: no characterId available (likely auth-gated create)"
+            Add-SmokeResult "Initiative lock" $true "Skipped: no characterId available (likely auth-gated create)"
+            Add-SmokeResult "Initiative lock guard" $true "Skipped: no characterId available (likely auth-gated create)"
+            Add-SmokeResult "Initiative unlock" $true "Skipped: no characterId available (likely auth-gated create)"
+            Add-SmokeResult "Initiative reset" $true "Skipped: no characterId available (likely auth-gated create)"
         }
 
         try {
@@ -252,6 +309,10 @@ if ($Smoke) {
         Add-SmokeResult "Session attach character" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Initiative roll self" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Initiative roll all" $true "Skipped: no sessionId available (likely auth-gated create)"
+        Add-SmokeResult "Initiative lock" $true "Skipped: no sessionId available (likely auth-gated create)"
+        Add-SmokeResult "Initiative lock guard" $true "Skipped: no sessionId available (likely auth-gated create)"
+        Add-SmokeResult "Initiative unlock" $true "Skipped: no sessionId available (likely auth-gated create)"
+        Add-SmokeResult "Initiative reset" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Session delete" $true "Skipped: no sessionId available (likely auth-gated create)"
     }
 

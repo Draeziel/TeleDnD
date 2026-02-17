@@ -1,44 +1,57 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import crypto from 'crypto';
 
-interface SessionEventEntry {
-  id: string;
-  type: string;
-  message: string;
-  actorTelegramId: string;
-  createdAt: Date;
-}
-
 export class SessionService {
   private prisma: PrismaClient;
-  private sessionEvents = new Map<string, SessionEventEntry[]>();
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
   }
 
-  private addSessionEvent(sessionId: string, type: string, message: string, actorTelegramId: string) {
-    const current = this.sessionEvents.get(sessionId) ?? [];
-
-    current.unshift({
-      id: crypto.randomUUID(),
-      type,
-      message,
-      actorTelegramId,
-      createdAt: new Date(),
+  private async addSessionEvent(sessionId: string, type: string, message: string, actorTelegramId: string) {
+    await this.prisma.sessionEvent.create({
+      data: {
+        sessionId,
+        type,
+        message,
+        actorTelegramId,
+      },
     });
-
-    this.sessionEvents.set(sessionId, current.slice(0, 100));
   }
 
-  private getSessionEvents(sessionId: string) {
-    return (this.sessionEvents.get(sessionId) ?? []).map((event) => ({
+  private async getSessionEvents(sessionId: string, limit = 100) {
+    const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 100) : 100;
+
+    const events = await this.prisma.sessionEvent.findMany({
+      where: { sessionId },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: safeLimit,
+    });
+
+    return events.map((event) => ({
       id: event.id,
       type: event.type,
       message: event.message,
       actorTelegramId: event.actorTelegramId,
       createdAt: event.createdAt,
     }));
+  }
+
+  private async ensureInitiativeUnlocked(sessionId: string) {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { initiativeLocked: true },
+    });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    if (session.initiativeLocked) {
+      throw new Error('Forbidden: initiative is locked for this session');
+    }
   }
 
   private async resolveUserByTelegramId(telegramUserId: string) {
@@ -210,7 +223,7 @@ export class SessionService {
       return created;
     });
 
-    this.addSessionEvent(session.id, 'session_created', `Сессия "${session.name}" создана`, telegramUserId);
+    await this.addSessionEvent(session.id, 'session_created', `Сессия "${session.name}" создана`, telegramUserId);
 
     return session;
   }
@@ -294,7 +307,7 @@ export class SessionService {
       },
     });
 
-    this.addSessionEvent(session.id, 'player_joined', `Игрок ${telegramUserId} присоединился к сессии`, telegramUserId);
+    await this.addSessionEvent(session.id, 'player_joined', `Игрок ${telegramUserId} присоединился к сессии`, telegramUserId);
 
     return {
       sessionId: membership.sessionId,
@@ -328,7 +341,7 @@ export class SessionService {
       },
     });
 
-    this.addSessionEvent(sessionId, 'player_left', `Игрок ${telegramUserId} покинул сессию`, telegramUserId);
+    await this.addSessionEvent(sessionId, 'player_left', `Игрок ${telegramUserId} покинул сессию`, telegramUserId);
 
     return { message: 'Left session successfully' };
   }
@@ -410,10 +423,11 @@ export class SessionService {
       gmUserId: session.gmUserId,
       createdByUserId: session.createdByUserId,
       joinCode: session.joinCode,
+      initiativeLocked: session.initiativeLocked,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
       hasActiveGm: session.players.some((player) => player.role === 'GM'),
-      events: this.getSessionEvents(session.id),
+      events: await this.getSessionEvents(session.id),
       players: session.players.map((player) => ({
         id: player.id,
         role: player.role,
@@ -504,7 +518,7 @@ export class SessionService {
       },
     });
 
-    this.addSessionEvent(sessionId, 'character_attached', `${character.name} добавлен в сессию`, telegramUserId);
+    await this.addSessionEvent(sessionId, 'character_attached', `${character.name} добавлен в сессию`, telegramUserId);
 
     return {
       sessionCharacterId: sessionCharacter.id,
@@ -557,12 +571,12 @@ export class SessionService {
 
     if (isOwner) {
       const message = `${sessionCharacter.character.name} покинул сессию`;
-      this.addSessionEvent(sessionId, 'character_left', message, telegramUserId);
+      await this.addSessionEvent(sessionId, 'character_left', message, telegramUserId);
       return { message, characterName: sessionCharacter.character.name };
     }
 
     const message = `ГМ исключил ${sessionCharacter.character.name}`;
-    this.addSessionEvent(sessionId, 'character_removed_by_gm', message, telegramUserId);
+    await this.addSessionEvent(sessionId, 'character_removed_by_gm', message, telegramUserId);
     return { message, characterName: sessionCharacter.character.name };
   }
 
@@ -576,6 +590,7 @@ export class SessionService {
         id: true,
         name: true,
         joinCode: true,
+        initiativeLocked: true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -642,11 +657,12 @@ export class SessionService {
       id: session.id,
       name: session.name,
       joinCode: session.joinCode,
+      initiativeLocked: session.initiativeLocked,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
       playersCount: session._count.players,
       hasActiveGm: session.players.length > 0,
-      events: this.getSessionEvents(session.id),
+      events: await this.getSessionEvents(session.id),
       characters: session.characters.map((entry) => ({
         id: entry.id,
         character: entry.character,
@@ -661,12 +677,13 @@ export class SessionService {
     await this.requireSessionMember(sessionId, user.id);
 
     const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 100) : 30;
-    return this.getSessionEvents(sessionId).slice(0, safeLimit);
+    return this.getSessionEvents(sessionId, safeLimit);
   }
 
   async rollInitiativeForAll(sessionId: string, telegramUserId: string) {
     const user = await this.resolveUserByTelegramId(telegramUserId);
     await this.requireSessionGM(sessionId, user.id);
+    await this.ensureInitiativeUnlocked(sessionId);
 
     const sessionCharacters = await this.prisma.sessionCharacter.findMany({
       where: { sessionId },
@@ -721,7 +738,7 @@ export class SessionService {
       })
     );
 
-    this.addSessionEvent(sessionId, 'initiative_rolled_all', 'ГМ выполнил бросок инициативы для всей группы', telegramUserId);
+    await this.addSessionEvent(sessionId, 'initiative_rolled_all', 'ГМ выполнил бросок инициативы для всей группы', telegramUserId);
 
     return {
       updates,
@@ -732,6 +749,7 @@ export class SessionService {
   async rollInitiativeForOwnedCharacter(sessionId: string, characterId: string, telegramUserId: string) {
     const user = await this.resolveUserByTelegramId(telegramUserId);
     await this.requireSessionMember(sessionId, user.id);
+    await this.ensureInitiativeUnlocked(sessionId);
 
     const sessionCharacter = await this.prisma.sessionCharacter.findUnique({
       where: {
@@ -784,7 +802,7 @@ export class SessionService {
       },
     });
 
-    this.addSessionEvent(
+    await this.addSessionEvent(
       sessionId,
       'initiative_rolled_self',
       `${sessionCharacter.character.name} выполнил бросок инициативы (${roll}${dexModifier >= 0 ? '+' : ''}${dexModifier})`,
@@ -832,7 +850,7 @@ export class SessionService {
       },
     });
 
-    this.addSessionEvent(
+    await this.addSessionEvent(
       sessionId,
       'hp_updated',
       `HP персонажа ${sessionCharacter.character.name} изменён на ${currentHp}`,
@@ -850,6 +868,7 @@ export class SessionService {
   ) {
     const user = await this.resolveUserByTelegramId(telegramUserId);
     await this.requireSessionGM(sessionId, user.id);
+    await this.ensureInitiativeUnlocked(sessionId);
 
     this.validateInitiative(initiative);
 
@@ -870,7 +889,7 @@ export class SessionService {
       },
     });
 
-    this.addSessionEvent(
+    await this.addSessionEvent(
       sessionId,
       'initiative_updated',
       `Инициатива персонажа ${sessionCharacter.character.name} изменена на ${initiative}`,
@@ -878,6 +897,66 @@ export class SessionService {
     );
 
     return state;
+  }
+
+  async lockSessionInitiative(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: { initiativeLocked: true },
+    });
+
+    await this.addSessionEvent(sessionId, 'initiative_locked', 'ГМ зафиксировал инициативу (lock)', telegramUserId);
+
+    return { initiativeLocked: true };
+  }
+
+  async unlockSessionInitiative(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: { initiativeLocked: false },
+    });
+
+    await this.addSessionEvent(sessionId, 'initiative_unlocked', 'ГМ снял lock инициативы', telegramUserId);
+
+    return { initiativeLocked: false };
+  }
+
+  async resetSessionInitiative(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+
+    const sessionCharacters = await this.prisma.sessionCharacter.findMany({
+      where: { sessionId },
+      select: { id: true },
+    });
+
+    if (sessionCharacters.length > 0) {
+      await this.prisma.sessionCharacterState.updateMany({
+        where: {
+          sessionCharacterId: {
+            in: sessionCharacters.map((entry) => entry.id),
+          },
+        },
+        data: {
+          initiative: null,
+        },
+      });
+    }
+
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: { initiativeLocked: false },
+    });
+
+    await this.addSessionEvent(sessionId, 'initiative_reset', 'ГМ сбросил инициативу и снял lock', telegramUserId);
+
+    return { resetCount: sessionCharacters.length, initiativeLocked: false };
   }
 
   async applySessionCharacterEffect(
@@ -910,7 +989,7 @@ export class SessionService {
       },
     });
 
-    this.addSessionEvent(
+    await this.addSessionEvent(
       sessionId,
       'effect_applied',
       `Эффект ${effect.effectType} применён к ${sessionCharacter.character.name}`,

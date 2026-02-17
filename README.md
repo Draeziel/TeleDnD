@@ -158,6 +158,9 @@ In local/dev mode, set `REQUIRE_TELEGRAM_AUTH=false` and pass `x-telegram-user-i
 - `POST /api/sessions/:sessionId/characters/:characterId/set-initiative`: GM only.
 - `POST /api/sessions/:id/initiative/roll-all`: GM rolls initiative for all attached characters.
 - `POST /api/sessions/:id/initiative/roll-self`: Player rolls initiative for owned attached character.
+- `POST /api/sessions/:id/initiative/lock`: GM locks initiative changes/re-rolls.
+- `POST /api/sessions/:id/initiative/unlock`: GM unlocks initiative changes/re-rolls.
+- `POST /api/sessions/:id/initiative/reset`: GM resets all initiative values and unlocks.
 - `POST /api/sessions/:sessionId/characters/:characterId/apply-effect`: GM only.
 
 ### Smoke Testing
@@ -172,6 +175,12 @@ Optional local dev user for non-strict environments:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File ./run-smoke.ps1 -BaseUrl http://localhost:4000 -TestTelegramUserId 123456789
+```
+
+Strict Telegram auth smoke (real initData):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File ./run-smoke.ps1 -BaseUrl https://telednd-backend.onrender.com -TelegramInitData "<telegram-init-data>"
 ```
 
 In strict Telegram auth environments, protected endpoints may return `401` without real `initData`; smoke output marks these checks as auth-gated instead of hard failures.

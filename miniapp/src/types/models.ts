@@ -201,6 +201,7 @@ export interface SessionDetails {
   joinCode: string;
   gmUserId: string;
   createdByUserId: string;
+  initiativeLocked: boolean;
   createdAt: string;
   updatedAt: string;
   hasActiveGm: boolean;
@@ -226,6 +227,7 @@ export interface SessionSummary {
   id: string;
   name: string;
   joinCode: string;
+  initiativeLocked: boolean;
   createdAt: string;
   updatedAt: string;
   playersCount: number;

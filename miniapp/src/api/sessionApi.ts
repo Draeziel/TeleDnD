@@ -128,6 +128,21 @@ export const sessionApi = {
     };
   },
 
+  async lockInitiative(sessionId: string): Promise<{ initiativeLocked: boolean }> {
+    const { data } = await http.post(`/sessions/${sessionId}/initiative/lock`);
+    return data as { initiativeLocked: boolean };
+  },
+
+  async unlockInitiative(sessionId: string): Promise<{ initiativeLocked: boolean }> {
+    const { data } = await http.post(`/sessions/${sessionId}/initiative/unlock`);
+    return data as { initiativeLocked: boolean };
+  },
+
+  async resetInitiative(sessionId: string): Promise<{ resetCount: number; initiativeLocked: boolean }> {
+    const { data } = await http.post(`/sessions/${sessionId}/initiative/reset`);
+    return data as { resetCount: number; initiativeLocked: boolean };
+  },
+
   async applyEffect(
     sessionId: string,
     characterId: string,

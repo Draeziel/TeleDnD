@@ -1,7 +1,7 @@
 # Session / Party System Roadmap
 
 **Last Updated**: 2026-02-17  
-**Status**: Phase 1 implemented and stabilized for production MVP; initiative automation in progress
+**Status**: Phase 1 implemented and stabilized for production MVP; initiative automation baseline completed
 
 ---
 
@@ -85,6 +85,7 @@ Build a multiplayer session (party) system where:
 - [x] `GET /api/sessions/:id` (players + characters + states + effects summary)
 - [x] `GET /api/sessions/:id/summary` for lightweight polling
 - [x] `GET /api/sessions/:id/events` for lightweight event feed
+- [x] `POST /api/sessions/:id/initiative/lock|unlock|reset`
 
 ### D) Character assignment endpoints
 
@@ -120,14 +121,14 @@ Build a multiplayer session (party) system where:
 - [x] Show explicit “no active GM” state in session view
 - [x] Disable GM controls when session has no active GM
 - [x] Show actor-aware removal messages in UI
-- [x] Add lightweight session event journal (join/leave/remove/HP/init/effects)
+- [x] Add session event journal (join/leave/remove/HP/init/effects) with persistent DB storage
 
 ### I) Combat initiative automation
 
 - [x] GM button: roll initiative for all session characters (server-side d20 + DEX mod)
 - [x] Player button: roll own initiative for owned attached character
 - [x] Initiative roll audit log (who rolled, when, value)
-- [ ] Optional lock/reset policy for re-rolls per encounter
+- [x] Optional lock/reset policy for re-rolls per encounter
 
 ### H) Ownership hardening (post-Phase1 refinement)
 
@@ -173,15 +174,19 @@ Build a multiplayer session (party) system where:
 - 2026-02-17: Added `GET /api/sessions/:id/events` endpoint and API client method for standalone event feed.
 - 2026-02-17: Expanded smoke tests with session summary/events checks and initiative roll checks (`roll-self`, `roll-all`).
 - 2026-02-17: Implemented initiative roll automation endpoints and miniapp controls (GM all + player self).
+- 2026-02-17: Replaced in-memory event journal with persistent `session_events` storage and added migration `20260217215500_add_session_events_and_initiative_lock`.
+- 2026-02-17: Implemented initiative lock/unlock/reset flow (backend endpoints + miniapp controls).
+- 2026-02-17: Smoke scripts now support real Telegram `initData` via `-TelegramInitData`.
+- 2026-02-17: Local migration state recovered via `prisma migrate resolve --rolled-back` and successfully applied with `prisma migrate deploy`.
 
 ---
 
 ## Next Sprint (proposed)
 
 1. Stabilize production behavior with quick smoke checks after deploy (health + auth-gated session endpoints).
-2. Add optional lock/reset policy for initiative re-rolls per encounter.
-3. Evaluate event journal persistence strategy (in-memory vs durable store).
-4. Decide whether to keep events in summary payload or switch UI polling fully to `/events` endpoint.
+2. Decide whether to keep events in summary payload or switch UI polling fully to `/events` endpoint.
+3. Add event retention policy (TTL/archival) for `session_events` growth control.
+4. Evaluate optional explicit GM reassignment action while keeping no-transfer leave policy.
 
 ---
 

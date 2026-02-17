@@ -20,6 +20,7 @@ export function SessionViewPage() {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [rollingAll, setRollingAll] = useState(false);
   const [rollingSelfId, setRollingSelfId] = useState<string | null>(null);
+  const [initiativeActionLoading, setInitiativeActionLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
 
@@ -50,6 +51,7 @@ export function SessionViewPage() {
       joinCode: summary.joinCode,
       updatedAt: summary.updatedAt,
       playersCount: summary.playersCount,
+      initiativeLocked: summary.initiativeLocked,
       hasActiveGm: summary.hasActiveGm,
       events: summary.events,
       characters: nextCharacters,
@@ -185,6 +187,51 @@ export function SessionViewPage() {
     }
   };
 
+  const onLockInitiative = async () => {
+    try {
+      setInitiativeActionLoading(true);
+      setError('');
+      setStatus('');
+      await sessionApi.lockInitiative(id);
+      await load();
+      setStatus('Инициатива зафиксирована (lock)');
+    } catch {
+      setError('Не удалось зафиксировать инициативу (нужна роль GM)');
+    } finally {
+      setInitiativeActionLoading(false);
+    }
+  };
+
+  const onUnlockInitiative = async () => {
+    try {
+      setInitiativeActionLoading(true);
+      setError('');
+      setStatus('');
+      await sessionApi.unlockInitiative(id);
+      await load();
+      setStatus('Lock инициативы снят');
+    } catch {
+      setError('Не удалось снять lock инициативы (нужна роль GM)');
+    } finally {
+      setInitiativeActionLoading(false);
+    }
+  };
+
+  const onResetInitiative = async () => {
+    try {
+      setInitiativeActionLoading(true);
+      setError('');
+      setStatus('');
+      const result = await sessionApi.resetInitiative(id);
+      await load();
+      setStatus(`Инициатива сброшена для ${result.resetCount} персонажей`);
+    } catch {
+      setError('Не удалось сбросить инициативу (нужна роль GM)');
+    } finally {
+      setInitiativeActionLoading(false);
+    }
+  };
+
   if (loading) return <StatusBox type="info" message="Загрузка сессии..." />;
   if (error) return <StatusBox type="error" message={error} />;
   if (!session) return <StatusBox type="info" message="Сессия не найдена" />;
@@ -211,14 +258,30 @@ export function SessionViewPage() {
           <button disabled={loading} onClick={() => load()}>
             {loading ? 'Обновление...' : 'Обновить'}
           </button>
-          <button disabled={rollingAll || !session.hasActiveGm} onClick={onRollInitiativeAll}>
+          <button disabled={rollingAll || !session.hasActiveGm || session.initiativeLocked} onClick={onRollInitiativeAll}>
             {rollingAll ? 'Бросаем...' : 'Бросок инициативы (всем)'}
+          </button>
+          <button
+            disabled={initiativeActionLoading || !session.hasActiveGm || session.initiativeLocked}
+            onClick={onLockInitiative}
+          >
+            Lock
+          </button>
+          <button
+            disabled={initiativeActionLoading || !session.hasActiveGm || !session.initiativeLocked}
+            onClick={onUnlockInitiative}
+          >
+            Unlock
+          </button>
+          <button disabled={initiativeActionLoading || !session.hasActiveGm} onClick={onResetInitiative}>
+            Reset
           </button>
         </div>
         <h2>{session.name}</h2>
         <div>Код входа: {session.joinCode}</div>
         <div>Игроки: {session.playersCount ?? session.players.length}</div>
         <div>Персонажи: {session.characters.length}</div>
+        <div>Инициатива: {session.initiativeLocked ? 'зафиксирована' : 'открыта'}</div>
       </div>
 
       {!session.hasActiveGm && (
@@ -255,14 +318,14 @@ export function SessionViewPage() {
                     {removingId === entry.character.id ? 'Открепление...' : 'Открепить'}
                   </button>
                   <button
-                    disabled={rollingSelfId === entry.character.id}
+                    disabled={rollingSelfId === entry.character.id || session.initiativeLocked}
                     onClick={() => onRollInitiativeSelf(entry.character.id)}
                   >
                     {rollingSelfId === entry.character.id ? 'Бросок...' : 'Бросок себе'}
                   </button>
                   <button disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, Math.max(currentHp - 1, 0))}>HP -1</button>
                   <button disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, currentHp + 1)}>HP +1</button>
-                  <button disabled={!session.hasActiveGm} onClick={() => onSetInitiative(entry.character.id, initiative + 1)}>Иниц. +1</button>
+                  <button disabled={!session.hasActiveGm || session.initiativeLocked} onClick={() => onSetInitiative(entry.character.id, initiative + 1)}>Иниц. +1</button>
                 </div>
               </div>
             );

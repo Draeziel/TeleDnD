@@ -1,7 +1,7 @@
 # RPG Character Service - Project Snapshot
 
-**Last Updated**: 2026-02-17 20:05 UTC  
-**Status**: Beta - Sessions + ownership + no-GM policy + initiative roll automation deployed  
+**Last Updated**: 2026-02-17 20:35 UTC  
+**Status**: Beta - Sessions + ownership + no-GM policy + initiative automation/lock + persistent events deployed  
 **Tech Stack**: Node.js + TypeScript, Express, PostgreSQL, Prisma ORM, React + Vite + TypeScript, Cloudflare Pages, Render
 
 ---
@@ -165,6 +165,8 @@ CharacterDraft
 - Session list shows GM activity status (`active` / `no active GM`)
 - Dedicated events feed endpoint for session journal polling
 - Initiative automation endpoints: GM roll-all and player self-roll
+- Initiative lock/unlock/reset policy for encounter control
+- Session journal persisted in database (`session_events`)
 
 ### ✅ Ownership & Access Control
 - `Character.ownerUserId` used for per-user visibility and access checks
@@ -258,6 +260,9 @@ CharacterDraft
 | `DELETE` | `/api/sessions/:id/characters/:characterId` | Detach character from session |
 | `POST` | `/api/sessions/:id/initiative/roll-all` | GM: roll initiative for all attached characters |
 | `POST` | `/api/sessions/:id/initiative/roll-self` | Player: roll initiative for owned attached character |
+| `POST` | `/api/sessions/:id/initiative/lock` | GM: lock initiative updates/re-rolls |
+| `POST` | `/api/sessions/:id/initiative/unlock` | GM: unlock initiative updates/re-rolls |
+| `POST` | `/api/sessions/:id/initiative/reset` | GM: reset initiative values and unlock |
 | `POST` | `/api/sessions/:sessionId/characters/:characterId/set-hp` | GM: set HP |
 | `POST` | `/api/sessions/:sessionId/characters/:characterId/set-initiative` | GM: set initiative |
 | `POST` | `/api/sessions/:sessionId/characters/:characterId/apply-effect` | GM: apply effect |
@@ -305,6 +310,8 @@ The project is functionally complete for MVP usage with:
 - Summary-based polling with no-GM state handling
 - Session event journal and actor-aware remove notifications
 - Initiative roll automation (`roll-self`, `roll-all`) and session timeline logging
+- Initiative lock/unlock/reset controls in miniapp
+- Smoke scripts support real Telegram `initData` (`-TelegramInitData`)
 - Owned-character deletion from miniapp list
 
 **What's not yet implemented**:
@@ -318,10 +325,10 @@ The project is functionally complete for MVP usage with:
 ## 7. Next Planned Steps
 
 ### Immediate Next Sprint
-- Add initiative lock/reset policy for encounter re-roll control
 - Decide whether to consume `/api/sessions/:id/events` directly in miniapp polling path
-- Evaluate event journal persistence (in-memory vs persistent audit trail)
-- Add compact smoke helper for authenticated session flow with real Telegram initData
+- Add retention policy (TTL/archival) for `session_events`
+- Add optional explicit GM reassignment action
+- Expand production smoke checklist for post-deploy validation cadence
 
 ### Near-term Improvements
 - Structured request logging and correlation IDs

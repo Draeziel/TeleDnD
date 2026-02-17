@@ -34,6 +34,35 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.btn {
+  border-radius: 8px;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  font-weight: 500;
+}
+
+.btn-secondary {
+  background: #fff;
+  color: #111827;
+}
+
+.btn-primary {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
+}
+
+.btn-danger {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 input,
 select {
   border: 1px solid #d1d5db;
@@ -240,6 +269,24 @@ td {
   .grid-2,
   .grid-3 {
     grid-template-columns: 1fr;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  .toolbar .btn {
+    flex: 1 1 calc(50% - 8px);
+  }
+
+  .list-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .inline-row {
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .topbar {

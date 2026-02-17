@@ -183,6 +183,7 @@ Build a multiplayer session (party) system where:
 - 2026-02-17: Upgraded probes with richer `/healthz` payload and new `/readyz` endpoint with DB readiness check.
 - 2026-02-17: Added encounter turn flow (`/encounter/start`, `/encounter/next-turn`, `/encounter/end`) with active turn tracking and round progression; miniapp now shows current turn and encounter controls.
 - 2026-02-17: Improved combat UX in session view: compact combat bar with current/next turn indicators and quick `Next turn` action.
+- 2026-02-17: Polished session visual style: unified button variants (primary/secondary/danger) and improved mobile layout for toolbar/cards/actions.
 
 ---
 

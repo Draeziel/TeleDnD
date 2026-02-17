@@ -168,6 +168,7 @@ CharacterDraft
 - Initiative lock/unlock/reset policy for encounter control
 - Encounter turn flow: start/next/end encounter with active turn marker and round progression
 - Session view combat bar shows current and next turn with quick next-turn action
+- Session UI polish: consistent button hierarchy and improved mobile layout in session screen
 - Session journal persisted in database (`session_events`)
 
 ### ✅ Ownership & Access Control

@@ -341,40 +341,48 @@ export function SessionViewPage() {
     <div className="page-stack">
       <div className="section-card">
         <div className="toolbar">
-          <button disabled={loading} onClick={() => load()}>
+          <button className="btn btn-secondary" disabled={loading} onClick={() => load()}>
             {loading ? 'Обновление...' : 'Обновить'}
           </button>
-          <button disabled={copyingCode} onClick={onCopyJoinCode}>
+          <button className="btn btn-secondary" disabled={copyingCode} onClick={onCopyJoinCode}>
             {copyingCode ? 'Копируем...' : 'Скопировать код'}
           </button>
-          <button disabled={rollingAll || !session.hasActiveGm || session.initiativeLocked} onClick={onRollInitiativeAll}>
+          <button
+            className="btn btn-primary"
+            disabled={rollingAll || !session.hasActiveGm || session.initiativeLocked}
+            onClick={onRollInitiativeAll}
+          >
             {rollingAll ? 'Бросаем...' : 'Бросок инициативы (всем)'}
           </button>
           <button
+            className="btn btn-primary"
             disabled={encounterActionLoading || !session.hasActiveGm || initiativeOrder.length === 0 || session.encounterActive}
             onClick={onStartEncounter}
           >
             Start encounter
           </button>
           <button
+            className="btn btn-danger"
             disabled={encounterActionLoading || !session.hasActiveGm || !session.encounterActive}
             onClick={onEndEncounter}
           >
             End encounter
           </button>
           <button
+            className="btn btn-secondary"
             disabled={initiativeActionLoading || !session.hasActiveGm || session.initiativeLocked}
             onClick={onLockInitiative}
           >
             Lock
           </button>
           <button
+            className="btn btn-secondary"
             disabled={initiativeActionLoading || !session.hasActiveGm || !session.initiativeLocked}
             onClick={onUnlockInitiative}
           >
             Unlock
           </button>
-          <button disabled={initiativeActionLoading || !session.hasActiveGm} onClick={onResetInitiative}>
+          <button className="btn btn-secondary" disabled={initiativeActionLoading || !session.hasActiveGm} onClick={onResetInitiative}>
             Reset
           </button>
         </div>
@@ -392,6 +400,7 @@ export function SessionViewPage() {
             <div>Следующий: {nextTurnCharacter?.character.name ?? '—'}</div>
           </div>
           <button
+            className="btn btn-primary"
             disabled={encounterActionLoading || !session.hasActiveGm || !session.encounterActive}
             onClick={onNextTurn}
           >
@@ -429,20 +438,22 @@ export function SessionViewPage() {
                 </div>
                 <div className="inline-row">
                   <button
+                    className="btn btn-danger"
                     disabled={removingId === entry.character.id}
                     onClick={() => onRemoveCharacter(entry.character.id)}
                   >
                     {removingId === entry.character.id ? 'Открепление...' : 'Открепить'}
                   </button>
                   <button
+                    className="btn btn-secondary"
                     disabled={rollingSelfId === entry.character.id || session.initiativeLocked}
                     onClick={() => onRollInitiativeSelf(entry.character.id)}
                   >
                     {rollingSelfId === entry.character.id ? 'Бросок...' : 'Бросок себе'}
                   </button>
-                  <button disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, Math.max(currentHp - 1, 0))}>HP -1</button>
-                  <button disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, currentHp + 1)}>HP +1</button>
-                  <button disabled={!session.hasActiveGm || session.initiativeLocked} onClick={() => onSetInitiative(entry.character.id, initiative + 1)}>Иниц. +1</button>
+                  <button className="btn btn-secondary" disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, Math.max(currentHp - 1, 0))}>HP -1</button>
+                  <button className="btn btn-secondary" disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, currentHp + 1)}>HP +1</button>
+                  <button className="btn btn-secondary" disabled={!session.hasActiveGm || session.initiativeLocked} onClick={() => onSetInitiative(entry.character.id, initiative + 1)}>Иниц. +1</button>
                 </div>
               </div>
             );
@@ -482,7 +493,7 @@ export function SessionViewPage() {
                 <div>Класс: {character.class?.name || '—'}</div>
                 <div>Уровень: {character.level}</div>
               </div>
-              <button disabled={attachingId === character.id} onClick={() => onAttachCharacter(character.id)}>
+              <button className="btn btn-primary" disabled={attachingId === character.id} onClick={() => onAttachCharacter(character.id)}>
                 {attachingId === character.id ? 'Добавление...' : 'Добавить'}
               </button>
             </div>

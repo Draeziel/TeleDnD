@@ -149,6 +149,7 @@ export interface SessionListItem {
   gmUserId: string;
   createdByUserId: string;
   role: 'GM' | 'PLAYER';
+  hasActiveGm: boolean;
   createdAt: string;
   updatedAt: string;
   playersCount: number;

@@ -110,6 +110,7 @@ export function SessionsPage() {
               <div>
                 <strong>{session.name}</strong>
                 <div>Роль: {roleLabel(session.role)}</div>
+                <div>Статус ГМа: {session.hasActiveGm ? 'активен' : 'нет активного ГМа'}</div>
                 <div>Код входа: {session.joinCode}</div>
                 <div>Игроки: {session.playersCount} · Персонажи: {session.charactersCount}</div>
               </div>

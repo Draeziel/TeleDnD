@@ -23,7 +23,7 @@ export function requestLoggingMiddleware() {
     const providedRequestId = req.header('x-request-id');
     const requestId = providedRequestId && providedRequestId.trim() ? providedRequestId.trim() : crypto.randomUUID();
 
-    (res.locals as any).requestId = requestId;
+    res.locals.requestId = requestId;
     res.setHeader('x-request-id', requestId);
 
     const method = req.method;

@@ -21,8 +21,20 @@ export function SessionViewPage() {
   const [rollingAll, setRollingAll] = useState(false);
   const [rollingSelfId, setRollingSelfId] = useState<string | null>(null);
   const [initiativeActionLoading, setInitiativeActionLoading] = useState(false);
+  const [copyingCode, setCopyingCode] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+
+  const formatErrorMessage = (fallback: string, unknownError: unknown) => {
+    const errorResponse = (unknownError as any)?.response?.data;
+    const requestId = errorResponse?.requestId;
+
+    if (requestId) {
+      return `${fallback} (requestId: ${requestId})`;
+    }
+
+    return fallback;
+  };
 
   const mergeSummaryIntoSession = (prev: SessionViewModel | null, summary: SessionSummary): SessionViewModel | null => {
     if (!prev) {
@@ -82,9 +94,9 @@ export function SessionViewPage() {
           })),
         });
       }
-    } catch {
+    } catch (unknownError) {
       if (!silent || !session) {
-        setError('Не удалось загрузить данные сессии');
+        setError(formatErrorMessage('Не удалось загрузить данные сессии', unknownError));
       }
     } finally {
       if (!silent) {
@@ -97,8 +109,8 @@ export function SessionViewPage() {
     try {
       const data = await characterApi.getCharacters();
       setMyCharacters(data);
-    } catch {
-      setError('Не удалось загрузить список ваших персонажей');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось загрузить список ваших персонажей', unknownError));
     }
   };
 
@@ -117,8 +129,8 @@ export function SessionViewPage() {
       await sessionApi.attachCharacter(id, characterId);
       await load();
       setStatus('Персонаж добавлен в сессию');
-    } catch {
-      setError('Не удалось добавить персонажа в сессию');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось добавить персонажа в сессию', unknownError));
     } finally {
       setAttachingId(null);
     }
@@ -132,8 +144,8 @@ export function SessionViewPage() {
       const result = await sessionApi.removeCharacter(id, characterId);
       await load();
       setStatus(result.message || 'Персонаж удалён из сессии');
-    } catch {
-      setError('Не удалось убрать персонажа из сессии');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось убрать персонажа из сессии', unknownError));
     } finally {
       setRemovingId(null);
     }
@@ -143,8 +155,8 @@ export function SessionViewPage() {
     try {
       await sessionApi.setHp(id, characterId, hp);
       await load();
-    } catch {
-      setError('Не удалось изменить HP (нужна роль GM)');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось изменить HP (нужна роль GM)', unknownError));
     }
   };
 
@@ -152,8 +164,8 @@ export function SessionViewPage() {
     try {
       await sessionApi.setInitiative(id, characterId, initiative);
       await load();
-    } catch {
-      setError('Не удалось изменить инициативу (нужна роль GM)');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось изменить инициативу (нужна роль GM)', unknownError));
     }
   };
 
@@ -165,8 +177,8 @@ export function SessionViewPage() {
       const result = await sessionApi.rollInitiativeAll(id);
       await load();
       setStatus(`Инициатива брошена для ${result.rolledCount} персонажей`);
-    } catch {
-      setError('Не удалось выполнить массовый бросок инициативы (нужна роль GM)');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось выполнить массовый бросок инициативы (нужна роль GM)', unknownError));
     } finally {
       setRollingAll(false);
     }
@@ -180,8 +192,8 @@ export function SessionViewPage() {
       const result = await sessionApi.rollInitiativeSelf(id, characterId);
       await load();
       setStatus(`${result.characterName}: бросок ${result.roll}${result.dexModifier >= 0 ? '+' : ''}${result.dexModifier} = ${result.initiative}`);
-    } catch {
-      setError('Не удалось выполнить личный бросок инициативы (доступно только владельцу персонажа)');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось выполнить личный бросок инициативы (доступно только владельцу персонажа)', unknownError));
     } finally {
       setRollingSelfId(null);
     }
@@ -195,8 +207,8 @@ export function SessionViewPage() {
       await sessionApi.lockInitiative(id);
       await load();
       setStatus('Инициатива зафиксирована (lock)');
-    } catch {
-      setError('Не удалось зафиксировать инициативу (нужна роль GM)');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось зафиксировать инициативу (нужна роль GM)', unknownError));
     } finally {
       setInitiativeActionLoading(false);
     }
@@ -210,8 +222,8 @@ export function SessionViewPage() {
       await sessionApi.unlockInitiative(id);
       await load();
       setStatus('Lock инициативы снят');
-    } catch {
-      setError('Не удалось снять lock инициативы (нужна роль GM)');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось снять lock инициативы (нужна роль GM)', unknownError));
     } finally {
       setInitiativeActionLoading(false);
     }
@@ -225,15 +237,30 @@ export function SessionViewPage() {
       const result = await sessionApi.resetInitiative(id);
       await load();
       setStatus(`Инициатива сброшена для ${result.resetCount} персонажей`);
-    } catch {
-      setError('Не удалось сбросить инициативу (нужна роль GM)');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось сбросить инициативу (нужна роль GM)', unknownError));
     } finally {
       setInitiativeActionLoading(false);
     }
   };
 
-  if (loading) return <StatusBox type="info" message="Загрузка сессии..." />;
-  if (error) return <StatusBox type="error" message={error} />;
+  const onCopyJoinCode = async () => {
+    try {
+      if (!session?.joinCode) {
+        return;
+      }
+
+      setCopyingCode(true);
+      await navigator.clipboard.writeText(session.joinCode);
+      setStatus('Код входа скопирован');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось скопировать код входа', unknownError));
+    } finally {
+      setCopyingCode(false);
+    }
+  };
+
+  if (loading && !session) return <StatusBox type="info" message="Загрузка сессии..." />;
   if (!session) return <StatusBox type="info" message="Сессия не найдена" />;
 
   const attachedCharacterIds = new Set(session.characters.map((entry) => entry.character.id));
@@ -257,6 +284,9 @@ export function SessionViewPage() {
         <div className="toolbar">
           <button disabled={loading} onClick={() => load()}>
             {loading ? 'Обновление...' : 'Обновить'}
+          </button>
+          <button disabled={copyingCode} onClick={onCopyJoinCode}>
+            {copyingCode ? 'Копируем...' : 'Скопировать код'}
           </button>
           <button disabled={rollingAll || !session.hasActiveGm || session.initiativeLocked} onClick={onRollInitiativeAll}>
             {rollingAll ? 'Бросаем...' : 'Бросок инициативы (всем)'}
@@ -292,6 +322,7 @@ export function SessionViewPage() {
       )}
 
       {status && <StatusBox type="success" message={status} />}
+      {error && <StatusBox type="error" message={error} />}
 
       <div className="section-card">
         <h2>Группа</h2>

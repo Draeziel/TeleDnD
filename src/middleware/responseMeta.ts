@@ -5,7 +5,7 @@ export function responseMetaMiddleware() {
     const originalJson = res.json.bind(res);
 
     res.json = ((body: unknown) => {
-      const requestId = (res.locals as any).requestId;
+      const requestId = res.locals.requestId;
 
       if (
         requestId &&

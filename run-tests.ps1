@@ -203,8 +203,9 @@ if ($Smoke) {
         try {
             $summaryResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/summary" -Method Get -Headers $smokeHeaders -UseBasicParsing -ErrorAction Stop
             $summary = $summaryResponse.Content | ConvertFrom-Json
-            $summaryOk = $summary.id -eq $sessionId
-            Add-SmokeResult "Session summary" $summaryOk "GET /api/sessions/:id/summary returned matching id=$summaryOk"
+            $summaryHasFlags = $null -ne $summary.hasActiveGm -and $null -ne $summary.initiativeLocked
+            $summaryOk = $summary.id -eq $sessionId -and $summaryHasFlags
+            Add-SmokeResult "Session summary" $summaryOk "GET /api/sessions/:id/summary id=$($summary.id -eq $sessionId), flags=$summaryHasFlags"
         } catch {
             Add-SmokeResult "Session summary" $false "GET /api/sessions/:id/summary failed: $($_.Exception.Message)"
         }

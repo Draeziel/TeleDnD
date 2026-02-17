@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import logger from '../utils/logger';
 
 const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
-    const requestId = (res.locals as any).requestId;
+    const requestId = res.locals.requestId;
     logger.error('unhandled_error', {
         requestId,
         method: req.method,

@@ -3,16 +3,54 @@ import { useParams } from 'react-router-dom';
 import { sessionApi } from '../api/sessionApi';
 import { characterApi } from '../api/characterApi';
 import { StatusBox } from '../components/StatusBox';
-import type { CharacterSummary, SessionDetails } from '../types/models';
+import type { CharacterSummary, SessionDetails, SessionSummary } from '../types/models';
+
+type SessionCharacterView = SessionDetails['characters'][number] & { effectsCount?: number };
+type SessionViewModel = Omit<SessionDetails, 'characters'> & {
+  playersCount?: number;
+  characters: SessionCharacterView[];
+};
 
 export function SessionViewPage() {
   const { id = '' } = useParams();
-  const [session, setSession] = useState<SessionDetails | null>(null);
+  const [session, setSession] = useState<SessionViewModel | null>(null);
   const [myCharacters, setMyCharacters] = useState<CharacterSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [attachingId, setAttachingId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+
+  const mergeSummaryIntoSession = (prev: SessionViewModel | null, summary: SessionSummary): SessionViewModel | null => {
+    if (!prev) {
+      return prev;
+    }
+
+    const nextCharacters: SessionCharacterView[] = summary.characters.map((characterSummary) => {
+      const existing = prev.characters.find((entry) => entry.id === characterSummary.id);
+
+      return {
+        ...(existing || {
+          id: characterSummary.id,
+          character: characterSummary.character,
+          state: null,
+          effects: [],
+        }),
+        character: characterSummary.character,
+        state: characterSummary.state,
+        effectsCount: characterSummary.effectsCount,
+      };
+    });
+
+    return {
+      ...prev,
+      name: summary.name,
+      joinCode: summary.joinCode,
+      updatedAt: summary.updatedAt,
+      playersCount: summary.playersCount,
+      characters: nextCharacters,
+    };
+  };
 
   const load = async (silent = false) => {
     if (!id) return;
@@ -23,8 +61,21 @@ export function SessionViewPage() {
       if (!silent) {
         setError('');
       }
-      const data = await sessionApi.getSession(id);
-      setSession(data);
+
+      if (silent) {
+        const summary = await sessionApi.getSessionSummary(id);
+        setSession((prev) => mergeSummaryIntoSession(prev, summary));
+      } else {
+        const data = await sessionApi.getSession(id);
+        setSession({
+          ...data,
+          playersCount: data.players.length,
+          characters: data.characters.map((entry) => ({
+            ...entry,
+            effectsCount: entry.effects.length,
+          })),
+        });
+      }
     } catch {
       if (!silent || !session) {
         setError('Не удалось загрузить данные сессии');
@@ -56,8 +107,10 @@ export function SessionViewPage() {
     try {
       setAttachingId(characterId);
       setError('');
+      setStatus('');
       await sessionApi.attachCharacter(id, characterId);
       await load();
+      setStatus('Персонаж добавлен в сессию');
     } catch {
       setError('Не удалось добавить персонажа в сессию');
     } finally {
@@ -69,8 +122,10 @@ export function SessionViewPage() {
     try {
       setRemovingId(characterId);
       setError('');
-      await sessionApi.removeCharacter(id, characterId);
+      setStatus('');
+      const result = await sessionApi.removeCharacter(id, characterId);
       await load();
+      setStatus(result.message || 'Персонаж удалён из сессии');
     } catch {
       setError('Не удалось убрать персонажа из сессии');
     } finally {
@@ -125,9 +180,11 @@ export function SessionViewPage() {
         </div>
         <h2>{session.name}</h2>
         <div>Код входа: {session.joinCode}</div>
-        <div>Игроки: {session.players.length}</div>
+        <div>Игроки: {session.playersCount ?? session.players.length}</div>
         <div>Персонажи: {session.characters.length}</div>
       </div>
+
+      {status && <StatusBox type="success" message={status} />}
 
       <div className="section-card">
         <h2>Группа</h2>
@@ -144,7 +201,7 @@ export function SessionViewPage() {
                   <div>Класс: {entry.character.class?.name || '—'}</div>
                   <div>HP: {currentHp} / {entry.state?.maxHpSnapshot ?? '—'}</div>
                   <div>Инициатива: {entry.state?.initiative ?? '—'}</div>
-                  <div>Эффекты: {entry.effects.length}</div>
+                  <div>Эффекты: {entry.effectsCount ?? entry.effects.length}</div>
                 </div>
                 <div className="inline-row">
                   <button

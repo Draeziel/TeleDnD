@@ -259,10 +259,6 @@ export class SessionService {
       throw new Error('Session membership not found');
     }
 
-    if (membership.role === 'GM') {
-      throw new Error('GM cannot leave session without transfer');
-    }
-
     await this.prisma.sessionPlayer.delete({
       where: {
         sessionId_userId: {
@@ -466,6 +462,7 @@ export class SessionService {
         character: {
           select: {
             ownerUserId: true,
+            name: true,
           },
         },
       },
@@ -491,7 +488,90 @@ export class SessionService {
       },
     });
 
-    return { message: 'Character removed from session' };
+    if (isOwner) {
+      return { message: `${sessionCharacter.character.name} покинул сессию`, characterName: sessionCharacter.character.name };
+    }
+
+    return { message: `ГМ исключил ${sessionCharacter.character.name}`, characterName: sessionCharacter.character.name };
+  }
+
+  async getSessionSummary(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionMember(sessionId, user.id);
+
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: {
+        id: true,
+        name: true,
+        joinCode: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            players: true,
+          },
+        },
+        characters: {
+          select: {
+            id: true,
+            character: {
+              select: {
+                id: true,
+                name: true,
+                level: true,
+                class: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+            state: {
+              select: {
+                id: true,
+                sessionCharacterId: true,
+                currentHp: true,
+                maxHpSnapshot: true,
+                tempHp: true,
+                initiative: true,
+                notes: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+            },
+            _count: {
+              select: {
+                effects: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    return {
+      id: session.id,
+      name: session.name,
+      joinCode: session.joinCode,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      playersCount: session._count.players,
+      characters: session.characters.map((entry) => ({
+        id: entry.id,
+        character: entry.character,
+        state: entry.state,
+        effectsCount: entry._count.effects,
+      })),
+    };
   }
 
   async setSessionCharacterHp(

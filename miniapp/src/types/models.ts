@@ -210,3 +210,26 @@ export interface SessionDetails {
     effects: SessionEffect[];
   }>;
 }
+
+export interface SessionSummary {
+  id: string;
+  name: string;
+  joinCode: string;
+  createdAt: string;
+  updatedAt: string;
+  playersCount: number;
+  characters: Array<{
+    id: string;
+    character: {
+      id: string;
+      name: string;
+      level: number;
+      class: {
+        id: string;
+        name: string;
+      };
+    };
+    state: SessionCharacterState | null;
+    effectsCount: number;
+  }>;
+}

@@ -1,5 +1,5 @@
 import { http } from './http';
-import type { SessionDetails, SessionListItem, SessionCharacterState, SessionEffect } from '../types/models';
+import type { SessionDetails, SessionListItem, SessionCharacterState, SessionEffect, SessionSummary } from '../types/models';
 
 export const sessionApi = {
   async listSessions(): Promise<SessionListItem[]> {
@@ -24,6 +24,11 @@ export const sessionApi = {
 
   async getSession(sessionId: string): Promise<SessionDetails> {
     const { data } = await http.get<SessionDetails>(`/sessions/${sessionId}`);
+    return data;
+  },
+
+  async getSessionSummary(sessionId: string): Promise<SessionSummary> {
+    const { data } = await http.get<SessionSummary>(`/sessions/${sessionId}/summary`);
     return data;
   },
 

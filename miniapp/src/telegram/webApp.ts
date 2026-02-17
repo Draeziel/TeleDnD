@@ -47,3 +47,15 @@ export function getTestTelegramUserId(): string {
     return '';
   }
 }
+
+export function showConfirm(message: string): Promise<boolean> {
+  const webApp = getTelegramWebApp();
+
+  if (webApp?.showConfirm) {
+    return new Promise((resolve) => {
+      webApp.showConfirm?.(message, (confirmed) => resolve(Boolean(confirmed)));
+    });
+  }
+
+  return Promise.resolve(window.confirm(message));
+}

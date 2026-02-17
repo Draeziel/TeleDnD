@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { sessionApi } from '../api/sessionApi';
 import { StatusBox } from '../components/StatusBox';
 import type { SessionListItem } from '../types/models';
+import { showConfirm } from '../telegram/webApp';
 
 export function SessionsPage() {
   const navigate = useNavigate();
@@ -57,7 +58,7 @@ export function SessionsPage() {
   };
 
   const onDelete = async (sessionId: string) => {
-    const confirmed = window.confirm('Удалить сессию? Это действие нельзя отменить.');
+    const confirmed = await showConfirm('Удалить сессию? Это действие нельзя отменить.');
     if (!confirmed) {
       return;
     }

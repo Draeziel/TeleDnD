@@ -14,6 +14,7 @@ export interface TelegramWebApp {
   initDataUnsafe: TelegramWebAppInitDataUnsafe;
   ready: () => void;
   expand: () => void;
+  showConfirm?: (message: string, callback: (confirmed: boolean) => void) => void;
 }
 
 declare global {

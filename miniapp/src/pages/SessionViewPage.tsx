@@ -329,6 +329,13 @@ export function SessionViewPage() {
   const activeTurnCharacter = session.characters.find(
     (entry) => entry.id === session.activeTurnSessionCharacterId
   );
+  const activeTurnIndex = initiativeOrder.findIndex((entry) => entry.id === session.activeTurnSessionCharacterId);
+  const nextTurnCharacter =
+    initiativeOrder.length === 0
+      ? null
+      : activeTurnIndex >= 0
+        ? initiativeOrder[(activeTurnIndex + 1) % initiativeOrder.length]
+        : initiativeOrder[0];
 
   return (
     <div className="page-stack">
@@ -348,12 +355,6 @@ export function SessionViewPage() {
             onClick={onStartEncounter}
           >
             Start encounter
-          </button>
-          <button
-            disabled={encounterActionLoading || !session.hasActiveGm || !session.encounterActive}
-            onClick={onNextTurn}
-          >
-            Next turn
           </button>
           <button
             disabled={encounterActionLoading || !session.hasActiveGm || !session.encounterActive}
@@ -383,7 +384,20 @@ export function SessionViewPage() {
         <div>Персонажи: {session.characters.length}</div>
         <div>Инициатива: {session.initiativeLocked ? 'зафиксирована' : 'открыта'}</div>
         <div>Encounter: {session.encounterActive ? `активен (раунд ${session.combatRound})` : 'не активен'}</div>
-        <div>Текущий ход: {activeTurnCharacter?.character.name ?? '—'}</div>
+        <div className="list-item">
+          <div>
+            <strong>Combat</strong>
+            <div>Раунд: {session.encounterActive ? session.combatRound : '—'}</div>
+            <div>Текущий: {activeTurnCharacter?.character.name ?? '—'}</div>
+            <div>Следующий: {nextTurnCharacter?.character.name ?? '—'}</div>
+          </div>
+          <button
+            disabled={encounterActionLoading || !session.hasActiveGm || !session.encounterActive}
+            onClick={onNextTurn}
+          >
+            Next turn
+          </button>
+        </div>
       </div>
 
       {!session.hasActiveGm && (

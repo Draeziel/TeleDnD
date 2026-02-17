@@ -167,6 +167,7 @@ CharacterDraft
 - Initiative automation endpoints: GM roll-all and player self-roll
 - Initiative lock/unlock/reset policy for encounter control
 - Encounter turn flow: start/next/end encounter with active turn marker and round progression
+- Session view combat bar shows current and next turn with quick next-turn action
 - Session journal persisted in database (`session_events`)
 
 ### ✅ Ownership & Access Control

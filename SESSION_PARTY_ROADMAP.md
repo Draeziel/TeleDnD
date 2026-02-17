@@ -185,6 +185,7 @@ Build a multiplayer session (party) system where:
 - 2026-02-17: Improved combat UX in session view: compact combat bar with current/next turn indicators and quick `Next turn` action.
 - 2026-02-17: Polished session visual style: unified button variants (primary/secondary/danger) and improved mobile layout for toolbar/cards/actions.
 - 2026-02-17: Made session header controls contextual: tap session name to refresh, tap join code to copy, tap initiative status to toggle lock/unlock, and start/stop round via icon near round number.
+- 2026-02-17: Replaced contextual text links with compact inline buttons in session header/combat block for cleaner, more consistent visual UX.
 
 ---
 

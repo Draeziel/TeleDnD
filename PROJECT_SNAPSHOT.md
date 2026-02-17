@@ -1,7 +1,7 @@
 # RPG Character Service - Project Snapshot
 
-**Last Updated**: 2026-02-17 20:50 UTC  
-**Status**: Beta - Sessions + ownership + no-GM policy + initiative automation/lock + persistent events deployed  
+**Last Updated**: 2026-02-17 21:50 UTC  
+**Status**: Beta - Sessions + ownership + no-GM policy + initiative automation/lock + encounter turn flow + contextual inline controls deployed  
 **Tech Stack**: Node.js + TypeScript, Express, PostgreSQL, Prisma ORM, React + Vite + TypeScript, Cloudflare Pages, Render
 
 ---
@@ -170,6 +170,7 @@ CharacterDraft
 - Session view combat bar shows current and next turn with quick next-turn action
 - Session UI polish: consistent button hierarchy and improved mobile layout in session screen
 - Contextual controls in session screen: tap name to refresh, tap join code to copy, tap initiative label to toggle lock, and round start/stop icon near round value
+- Contextual actions now use compact inline buttons (instead of text-link style) for cleaner and more consistent visual UX
 - Session journal persisted in database (`session_events`)
 
 ### ✅ Ownership & Access Control

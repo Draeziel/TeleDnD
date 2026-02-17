@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: telednd-backend
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm ci && npm run build
+    startCommand: npx prisma migrate deploy && node dist/server.js
+    healthCheckPath: /api/characters/classes
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: telednd-db
+          property: connectionString
+
+databases:
+  - name: telednd-db
+    databaseName: telednd
+    user: telednd_user
+    plan: free

@@ -25,13 +25,25 @@ export function getTelegramUserId(): string | null {
     return String(fromTelegram);
   }
 
-  return localStorage.getItem(TEST_TELEGRAM_USER_ID_KEY);
+  try {
+    return localStorage.getItem(TEST_TELEGRAM_USER_ID_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export function setTestTelegramUserId(userId: string): void {
-  localStorage.setItem(TEST_TELEGRAM_USER_ID_KEY, userId);
+  try {
+    localStorage.setItem(TEST_TELEGRAM_USER_ID_KEY, userId);
+  } catch {
+    return;
+  }
 }
 
 export function getTestTelegramUserId(): string {
-  return localStorage.getItem(TEST_TELEGRAM_USER_ID_KEY) || '';
+  try {
+    return localStorage.getItem(TEST_TELEGRAM_USER_ID_KEY) || '';
+  } catch {
+    return '';
+  }
 }

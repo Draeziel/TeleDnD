@@ -300,6 +300,7 @@ node dist/server.js          # Start server (port 4000)
 - Use `test.rest` file with REST Client extension
 - All endpoints documented with examples
 - POST `/api/drafts` to create draft and test workflow
+- Quick smoke command: `./run-smoke.ps1`
 - Run post-deploy smoke suite: `./run-tests.ps1 -Smoke -BaseUrl https://telednd-backend.onrender.com`
 
 ### Adding New Content

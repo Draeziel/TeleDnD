@@ -11,6 +11,7 @@ export function SessionsPage() {
   const [error, setError] = useState('');
   const [createName, setCreateName] = useState('');
   const [joinCode, setJoinCode] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const roleLabel = (role: SessionListItem['role']) => (role === 'GM' ? 'Мастер' : 'Игрок');
 
@@ -55,6 +56,24 @@ export function SessionsPage() {
     }
   };
 
+  const onDelete = async (sessionId: string) => {
+    const confirmed = window.confirm('Удалить сессию? Это действие нельзя отменить.');
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeletingId(sessionId);
+      setError('');
+      await sessionApi.deleteSession(sessionId);
+      setSessions((prev) => prev.filter((session) => session.id !== sessionId));
+    } catch {
+      setError('Не удалось удалить сессию. Удаление доступно только для ГМа.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="page-stack">
       <div className="toolbar">
@@ -94,7 +113,14 @@ export function SessionsPage() {
                 <div>Код входа: {session.joinCode}</div>
                 <div>Игроки: {session.playersCount} · Персонажи: {session.charactersCount}</div>
               </div>
-              <button onClick={() => navigate(`/sessions/${session.id}`)}>Открыть</button>
+              <div className="inline-row">
+                <button onClick={() => navigate(`/sessions/${session.id}`)}>Открыть</button>
+                {session.role === 'GM' && (
+                  <button disabled={deletingId === session.id} onClick={() => onDelete(session.id)}>
+                    {deletingId === session.id ? 'Удаление...' : 'Удалить'}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>

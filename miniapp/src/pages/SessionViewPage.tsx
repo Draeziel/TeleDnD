@@ -14,17 +14,25 @@ export function SessionViewPage() {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  const load = async () => {
+  const load = async (silent = false) => {
     if (!id) return;
     try {
-      setLoading(true);
-      setError('');
+      if (!silent) {
+        setLoading(true);
+      }
+      if (!silent) {
+        setError('');
+      }
       const data = await sessionApi.getSession(id);
       setSession(data);
     } catch {
-      setError('Не удалось загрузить данные сессии');
+      if (!silent || !session) {
+        setError('Не удалось загрузить данные сессии');
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -40,7 +48,7 @@ export function SessionViewPage() {
   useEffect(() => {
     load();
     loadMyCharacters();
-    const timer = setInterval(load, 7000);
+    const timer = setInterval(() => load(true), 7000);
     return () => clearInterval(timer);
   }, [id]);
 

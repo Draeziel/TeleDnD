@@ -17,6 +17,11 @@ export const sessionApi = {
     return data as { sessionId: string; userId: string; role: 'GM' | 'PLAYER' };
   },
 
+  async deleteSession(sessionId: string): Promise<{ message: string }> {
+    const { data } = await http.delete(`/sessions/${sessionId}`);
+    return data as { message: string };
+  },
+
   async getSession(sessionId: string): Promise<SessionDetails> {
     const { data } = await http.get<SessionDetails>(`/sessions/${sessionId}`);
     return data;

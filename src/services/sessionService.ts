@@ -275,6 +275,27 @@ export class SessionService {
     return { message: 'Left session successfully' };
   }
 
+  async deleteSession(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { id: true },
+    });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    await this.requireSessionGM(sessionId, user.id);
+
+    await this.prisma.session.delete({
+      where: { id: sessionId },
+    });
+
+    return { message: 'Session deleted successfully' };
+  }
+
   async getSessionById(sessionId: string, telegramUserId: string) {
     const user = await this.resolveUserByTelegramId(telegramUserId);
     await this.requireSessionMember(sessionId, user.id);

@@ -172,6 +172,9 @@ In local/dev mode, set `REQUIRE_TELEGRAM_AUTH=false` and `ALLOW_TELEGRAM_USER_ID
 - `POST /api/sessions/:id/initiative/lock`: GM locks initiative changes/re-rolls.
 - `POST /api/sessions/:id/initiative/unlock`: GM unlocks initiative changes/re-rolls.
 - `POST /api/sessions/:id/initiative/reset`: GM resets all initiative values and unlocks.
+- `POST /api/sessions/:id/encounter/start`: GM starts encounter and sets first active turn by initiative.
+- `POST /api/sessions/:id/encounter/next-turn`: GM advances active turn and increments round on wrap.
+- `POST /api/sessions/:id/encounter/end`: GM ends encounter and clears active turn.
 - `POST /api/sessions/:sessionId/characters/:characterId/apply-effect`: GM only.
 
 ### Smoke Testing

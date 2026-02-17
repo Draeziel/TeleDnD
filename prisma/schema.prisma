@@ -246,6 +246,9 @@ model Session {
   createdByUserId String
   joinCode        String              @unique
   initiativeLocked Boolean            @default(false) @map("initiative_locked")
+  encounterActive Boolean             @default(false) @map("encounter_active")
+  combatRound     Int                 @default(1) @map("combat_round")
+  activeTurnSessionCharacterId String? @map("active_turn_session_character_id")
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   gmUser          User                @relation("SessionGM", fields: [gmUserId], references: [id], onDelete: Cascade)

@@ -21,6 +21,7 @@ export function SessionViewPage() {
   const [rollingAll, setRollingAll] = useState(false);
   const [rollingSelfId, setRollingSelfId] = useState<string | null>(null);
   const [initiativeActionLoading, setInitiativeActionLoading] = useState(false);
+  const [encounterActionLoading, setEncounterActionLoading] = useState(false);
   const [copyingCode, setCopyingCode] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
@@ -64,6 +65,9 @@ export function SessionViewPage() {
       updatedAt: summary.updatedAt,
       playersCount: summary.playersCount,
       initiativeLocked: summary.initiativeLocked,
+      encounterActive: summary.encounterActive,
+      combatRound: summary.combatRound,
+      activeTurnSessionCharacterId: summary.activeTurnSessionCharacterId,
       hasActiveGm: summary.hasActiveGm,
       events: summary.events,
       characters: nextCharacters,
@@ -260,6 +264,51 @@ export function SessionViewPage() {
     }
   };
 
+  const onStartEncounter = async () => {
+    try {
+      setEncounterActionLoading(true);
+      setError('');
+      setStatus('');
+      const result = await sessionApi.startEncounter(id);
+      await load();
+      setStatus(`Encounter запущен. Раунд ${result.combatRound}`);
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось начать encounter (нужна роль GM и выставленная инициатива)', unknownError));
+    } finally {
+      setEncounterActionLoading(false);
+    }
+  };
+
+  const onNextTurn = async () => {
+    try {
+      setEncounterActionLoading(true);
+      setError('');
+      setStatus('');
+      const result = await sessionApi.nextEncounterTurn(id);
+      await load();
+      setStatus(`Ход передан. Текущий раунд: ${result.combatRound}`);
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось передать ход (нужна роль GM и активный encounter)', unknownError));
+    } finally {
+      setEncounterActionLoading(false);
+    }
+  };
+
+  const onEndEncounter = async () => {
+    try {
+      setEncounterActionLoading(true);
+      setError('');
+      setStatus('');
+      await sessionApi.endEncounter(id);
+      await load();
+      setStatus('Encounter завершён');
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось завершить encounter (нужна роль GM)', unknownError));
+    } finally {
+      setEncounterActionLoading(false);
+    }
+  };
+
   if (loading && !session) return <StatusBox type="info" message="Загрузка сессии..." />;
   if (!session) return <StatusBox type="info" message="Сессия не найдена" />;
 
@@ -277,6 +326,9 @@ export function SessionViewPage() {
 
       return left.character.name.localeCompare(right.character.name);
     });
+  const activeTurnCharacter = session.characters.find(
+    (entry) => entry.id === session.activeTurnSessionCharacterId
+  );
 
   return (
     <div className="page-stack">
@@ -290,6 +342,24 @@ export function SessionViewPage() {
           </button>
           <button disabled={rollingAll || !session.hasActiveGm || session.initiativeLocked} onClick={onRollInitiativeAll}>
             {rollingAll ? 'Бросаем...' : 'Бросок инициативы (всем)'}
+          </button>
+          <button
+            disabled={encounterActionLoading || !session.hasActiveGm || initiativeOrder.length === 0 || session.encounterActive}
+            onClick={onStartEncounter}
+          >
+            Start encounter
+          </button>
+          <button
+            disabled={encounterActionLoading || !session.hasActiveGm || !session.encounterActive}
+            onClick={onNextTurn}
+          >
+            Next turn
+          </button>
+          <button
+            disabled={encounterActionLoading || !session.hasActiveGm || !session.encounterActive}
+            onClick={onEndEncounter}
+          >
+            End encounter
           </button>
           <button
             disabled={initiativeActionLoading || !session.hasActiveGm || session.initiativeLocked}
@@ -312,6 +382,8 @@ export function SessionViewPage() {
         <div>Игроки: {session.playersCount ?? session.players.length}</div>
         <div>Персонажи: {session.characters.length}</div>
         <div>Инициатива: {session.initiativeLocked ? 'зафиксирована' : 'открыта'}</div>
+        <div>Encounter: {session.encounterActive ? `активен (раунд ${session.combatRound})` : 'не активен'}</div>
+        <div>Текущий ход: {activeTurnCharacter?.character.name ?? '—'}</div>
       </div>
 
       {!session.hasActiveGm && (
@@ -373,7 +445,7 @@ export function SessionViewPage() {
             {initiativeOrder.map((entry, index) => (
               <div className="list-item" key={`initiative-${entry.id}`}>
                 <div>
-                  <strong>{index + 1}. {entry.character.name}</strong>
+                  <strong>{session.activeTurnSessionCharacterId === entry.id ? '▶ ' : ''}{index + 1}. {entry.character.name}</strong>
                   <div>Класс: {entry.character.class?.name || '—'}</div>
                 </div>
                 <span>Инициатива: {entry.state?.initiative}</span>

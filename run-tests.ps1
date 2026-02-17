@@ -203,7 +203,7 @@ if ($Smoke) {
         try {
             $summaryResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/summary" -Method Get -Headers $smokeHeaders -UseBasicParsing -ErrorAction Stop
             $summary = $summaryResponse.Content | ConvertFrom-Json
-            $summaryHasFlags = $null -ne $summary.hasActiveGm -and $null -ne $summary.initiativeLocked
+            $summaryHasFlags = $null -ne $summary.hasActiveGm -and $null -ne $summary.initiativeLocked -and $null -ne $summary.encounterActive -and $null -ne $summary.combatRound
             $summaryOk = $summary.id -eq $sessionId -and $summaryHasFlags
             Add-SmokeResult "Session summary" $summaryOk "GET /api/sessions/:id/summary id=$($summary.id -eq $sessionId), flags=$summaryHasFlags"
         } catch {
@@ -262,6 +262,45 @@ if ($Smoke) {
             }
 
             try {
+                $startEncounterResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/encounter/start" `
+                    -Method Post `
+                    -Headers $smokeHeaders `
+                    -UseBasicParsing -ErrorAction Stop
+
+                $startEncounter = $startEncounterResponse.Content | ConvertFrom-Json
+                $startEncounterOk = $startEncounter.encounterActive -eq $true -and $startEncounter.combatRound -eq 1
+                Add-SmokeResult "Encounter start" $startEncounterOk "POST /api/sessions/:id/encounter/start active=$($startEncounter.encounterActive), round=$($startEncounter.combatRound)"
+            } catch {
+                Add-SmokeResult "Encounter start" $false "POST /api/sessions/:id/encounter/start failed: $($_.Exception.Message)"
+            }
+
+            try {
+                $nextTurnResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/encounter/next-turn" `
+                    -Method Post `
+                    -Headers $smokeHeaders `
+                    -UseBasicParsing -ErrorAction Stop
+
+                $nextTurn = $nextTurnResponse.Content | ConvertFrom-Json
+                $nextTurnOk = $nextTurn.encounterActive -eq $true -and $nextTurn.combatRound -ge 1
+                Add-SmokeResult "Encounter next turn" $nextTurnOk "POST /api/sessions/:id/encounter/next-turn active=$($nextTurn.encounterActive), round=$($nextTurn.combatRound)"
+            } catch {
+                Add-SmokeResult "Encounter next turn" $false "POST /api/sessions/:id/encounter/next-turn failed: $($_.Exception.Message)"
+            }
+
+            try {
+                $endEncounterResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/encounter/end" `
+                    -Method Post `
+                    -Headers $smokeHeaders `
+                    -UseBasicParsing -ErrorAction Stop
+
+                $endEncounter = $endEncounterResponse.Content | ConvertFrom-Json
+                $endEncounterOk = $endEncounter.encounterActive -eq $false -and $endEncounter.combatRound -eq 1
+                Add-SmokeResult "Encounter end" $endEncounterOk "POST /api/sessions/:id/encounter/end active=$($endEncounter.encounterActive), round=$($endEncounter.combatRound)"
+            } catch {
+                Add-SmokeResult "Encounter end" $false "POST /api/sessions/:id/encounter/end failed: $($_.Exception.Message)"
+            }
+
+            try {
                 Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/initiative/lock" `
                     -Method Post `
                     -Headers $smokeHeaders `
@@ -311,6 +350,9 @@ if ($Smoke) {
             Add-SmokeResult "Session attach character" $true "Skipped: no characterId available (likely auth-gated create)"
             Add-SmokeResult "Initiative roll self" $true "Skipped: no characterId available (likely auth-gated create)"
             Add-SmokeResult "Initiative roll all" $true "Skipped: no characterId available (likely auth-gated create)"
+            Add-SmokeResult "Encounter start" $true "Skipped: no characterId available (likely auth-gated create)"
+            Add-SmokeResult "Encounter next turn" $true "Skipped: no characterId available (likely auth-gated create)"
+            Add-SmokeResult "Encounter end" $true "Skipped: no characterId available (likely auth-gated create)"
             Add-SmokeResult "Initiative lock" $true "Skipped: no characterId available (likely auth-gated create)"
             Add-SmokeResult "Initiative lock guard" $true "Skipped: no characterId available (likely auth-gated create)"
             Add-SmokeResult "Initiative unlock" $true "Skipped: no characterId available (likely auth-gated create)"
@@ -330,6 +372,9 @@ if ($Smoke) {
         Add-SmokeResult "Session attach character" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Initiative roll self" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Initiative roll all" $true "Skipped: no sessionId available (likely auth-gated create)"
+        Add-SmokeResult "Encounter start" $true "Skipped: no sessionId available (likely auth-gated create)"
+        Add-SmokeResult "Encounter next turn" $true "Skipped: no sessionId available (likely auth-gated create)"
+        Add-SmokeResult "Encounter end" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Initiative lock" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Initiative lock guard" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Initiative unlock" $true "Skipped: no sessionId available (likely auth-gated create)"

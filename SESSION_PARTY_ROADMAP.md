@@ -181,6 +181,7 @@ Build a multiplayer session (party) system where:
 - 2026-02-17: Added GitHub Actions CI gate (`.github/workflows/ci.yml`) with Postgres service, backend+miniapp build, and smoke suite run.
 - 2026-02-17: Added response metadata middleware to include `requestId` in JSON object responses.
 - 2026-02-17: Upgraded probes with richer `/healthz` payload and new `/readyz` endpoint with DB readiness check.
+- 2026-02-17: Added encounter turn flow (`/encounter/start`, `/encounter/next-turn`, `/encounter/end`) with active turn tracking and round progression; miniapp now shows current turn and encounter controls.
 
 ---
 
@@ -205,7 +206,7 @@ Build a multiplayer session (party) system where:
 
 ### P1 — Gameplay and UX robustness
 
-- [ ] Add encounter flow primitives: start encounter, active turn marker, next turn, finish encounter.
+- [x] Add encounter flow primitives: start encounter, active turn marker, next turn, finish encounter.
 - [ ] Add safe “undo last combat action” for GM (HP/initiative/effect mutations).
 - [ ] Add network resilience UX in miniapp (retry/backoff and clearer offline recovery).
 - [ ] Improve small-screen ergonomics (tap targets, dense combat layout, minimal scroll friction).

@@ -54,6 +54,81 @@ export class SessionService {
     }
   }
 
+  private async getEncounterOrder(sessionId: string): Promise<string[]> {
+    const entries = await this.prisma.sessionCharacter.findMany({
+      where: { sessionId },
+      select: {
+        id: true,
+        character: {
+          select: {
+            name: true,
+          },
+        },
+        state: {
+          select: {
+            initiative: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    return entries
+      .filter((entry) => entry.state?.initiative !== null && entry.state?.initiative !== undefined)
+      .sort((left, right) => {
+        const leftInitiative = left.state?.initiative ?? -999;
+        const rightInitiative = right.state?.initiative ?? -999;
+
+        if (rightInitiative !== leftInitiative) {
+          return rightInitiative - leftInitiative;
+        }
+
+        return left.character.name.localeCompare(right.character.name);
+      })
+      .map((entry) => entry.id);
+  }
+
+  private async syncEncounterTurnPointer(sessionId: string): Promise<void> {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: {
+        id: true,
+        encounterActive: true,
+        combatRound: true,
+        activeTurnSessionCharacterId: true,
+      },
+    });
+
+    if (!session || !session.encounterActive) {
+      return;
+    }
+
+    const order = await this.getEncounterOrder(sessionId);
+    if (order.length === 0) {
+      await this.prisma.session.update({
+        where: { id: sessionId },
+        data: {
+          encounterActive: false,
+          combatRound: 1,
+          activeTurnSessionCharacterId: null,
+        },
+      });
+      return;
+    }
+
+    if (!session.activeTurnSessionCharacterId || !order.includes(session.activeTurnSessionCharacterId)) {
+      await this.prisma.session.update({
+        where: { id: sessionId },
+        data: {
+          activeTurnSessionCharacterId: order[0],
+          combatRound: Math.max(session.combatRound, 1),
+        },
+      });
+    }
+  }
+
   private async resolveUserByTelegramId(telegramUserId: string) {
     return this.prisma.user.upsert({
       where: { telegramId: telegramUserId },
@@ -424,6 +499,9 @@ export class SessionService {
       createdByUserId: session.createdByUserId,
       joinCode: session.joinCode,
       initiativeLocked: session.initiativeLocked,
+      encounterActive: session.encounterActive,
+      combatRound: session.combatRound,
+      activeTurnSessionCharacterId: session.activeTurnSessionCharacterId,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
       hasActiveGm: session.players.some((player) => player.role === 'GM'),
@@ -569,6 +647,8 @@ export class SessionService {
       },
     });
 
+    await this.syncEncounterTurnPointer(sessionId);
+
     if (isOwner) {
       const message = `${sessionCharacter.character.name} покинул сессию`;
       await this.addSessionEvent(sessionId, 'character_left', message, telegramUserId);
@@ -591,6 +671,9 @@ export class SessionService {
         name: true,
         joinCode: true,
         initiativeLocked: true,
+        encounterActive: true,
+        combatRound: true,
+        activeTurnSessionCharacterId: true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -658,6 +741,9 @@ export class SessionService {
       name: session.name,
       joinCode: session.joinCode,
       initiativeLocked: session.initiativeLocked,
+      encounterActive: session.encounterActive,
+      combatRound: session.combatRound,
+      activeTurnSessionCharacterId: session.activeTurnSessionCharacterId,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
       playersCount: session._count.players,
@@ -739,6 +825,7 @@ export class SessionService {
     );
 
     await this.addSessionEvent(sessionId, 'initiative_rolled_all', 'ГМ выполнил бросок инициативы для всей группы', telegramUserId);
+    await this.syncEncounterTurnPointer(sessionId);
 
     return {
       updates,
@@ -808,6 +895,7 @@ export class SessionService {
       `${sessionCharacter.character.name} выполнил бросок инициативы (${roll}${dexModifier >= 0 ? '+' : ''}${dexModifier})`,
       telegramUserId
     );
+    await this.syncEncounterTurnPointer(sessionId);
 
     return {
       sessionCharacterId: sessionCharacter.id,
@@ -895,6 +983,7 @@ export class SessionService {
       `Инициатива персонажа ${sessionCharacter.character.name} изменена на ${initiative}`,
       telegramUserId
     );
+    await this.syncEncounterTurnPointer(sessionId);
 
     return state;
   }
@@ -951,12 +1040,125 @@ export class SessionService {
 
     await this.prisma.session.update({
       where: { id: sessionId },
-      data: { initiativeLocked: false },
+      data: {
+        initiativeLocked: false,
+        encounterActive: false,
+        combatRound: 1,
+        activeTurnSessionCharacterId: null,
+      },
     });
 
     await this.addSessionEvent(sessionId, 'initiative_reset', 'ГМ сбросил инициативу и снял lock', telegramUserId);
 
     return { resetCount: sessionCharacters.length, initiativeLocked: false };
+  }
+
+  async startEncounter(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+
+    const order = await this.getEncounterOrder(sessionId);
+    if (order.length === 0) {
+      throw new Error('Validation: cannot start encounter without rolled initiative');
+    }
+
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        encounterActive: true,
+        combatRound: 1,
+        activeTurnSessionCharacterId: order[0],
+      },
+    });
+
+    await this.addSessionEvent(sessionId, 'encounter_started', 'ГМ начал encounter и открыл первый ход', telegramUserId);
+
+    return {
+      encounterActive: true,
+      combatRound: 1,
+      activeTurnSessionCharacterId: order[0],
+    };
+  }
+
+  async nextEncounterTurn(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: {
+        encounterActive: true,
+        combatRound: true,
+        activeTurnSessionCharacterId: true,
+      },
+    });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    if (!session.encounterActive) {
+      throw new Error('Validation: encounter is not active');
+    }
+
+    const order = await this.getEncounterOrder(sessionId);
+    if (order.length === 0) {
+      throw new Error('Validation: no characters with initiative to advance turn');
+    }
+
+    const currentIndex = session.activeTurnSessionCharacterId
+      ? order.indexOf(session.activeTurnSessionCharacterId)
+      : -1;
+
+    let nextIndex = 0;
+    let nextRound = Math.max(session.combatRound, 1);
+
+    if (currentIndex >= 0) {
+      nextIndex = (currentIndex + 1) % order.length;
+      if (nextIndex === 0) {
+        nextRound += 1;
+      }
+    }
+
+    const nextId = order[nextIndex];
+
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        activeTurnSessionCharacterId: nextId,
+        combatRound: nextRound,
+      },
+    });
+
+    await this.addSessionEvent(sessionId, 'turn_advanced', `ГМ передал ход. Раунд ${nextRound}`, telegramUserId);
+
+    return {
+      encounterActive: true,
+      combatRound: nextRound,
+      activeTurnSessionCharacterId: nextId,
+    };
+  }
+
+  async endEncounter(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        encounterActive: false,
+        combatRound: 1,
+        activeTurnSessionCharacterId: null,
+      },
+    });
+
+    await this.addSessionEvent(sessionId, 'encounter_ended', 'ГМ завершил encounter', telegramUserId);
+
+    return {
+      encounterActive: false,
+      combatRound: 1,
+      activeTurnSessionCharacterId: null,
+    };
   }
 
   async applySessionCharacterEffect(

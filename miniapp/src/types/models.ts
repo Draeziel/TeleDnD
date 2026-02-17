@@ -202,6 +202,9 @@ export interface SessionDetails {
   gmUserId: string;
   createdByUserId: string;
   initiativeLocked: boolean;
+  encounterActive: boolean;
+  combatRound: number;
+  activeTurnSessionCharacterId: string | null;
   createdAt: string;
   updatedAt: string;
   hasActiveGm: boolean;
@@ -228,6 +231,9 @@ export interface SessionSummary {
   name: string;
   joinCode: string;
   initiativeLocked: boolean;
+  encounterActive: boolean;
+  combatRound: number;
+  activeTurnSessionCharacterId: string | null;
   createdAt: string;
   updatedAt: string;
   playersCount: number;

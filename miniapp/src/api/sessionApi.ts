@@ -143,6 +143,45 @@ export const sessionApi = {
     return data as { resetCount: number; initiativeLocked: boolean };
   },
 
+  async startEncounter(sessionId: string): Promise<{
+    encounterActive: boolean;
+    combatRound: number;
+    activeTurnSessionCharacterId: string | null;
+  }> {
+    const { data } = await http.post(`/sessions/${sessionId}/encounter/start`);
+    return data as {
+      encounterActive: boolean;
+      combatRound: number;
+      activeTurnSessionCharacterId: string | null;
+    };
+  },
+
+  async nextEncounterTurn(sessionId: string): Promise<{
+    encounterActive: boolean;
+    combatRound: number;
+    activeTurnSessionCharacterId: string | null;
+  }> {
+    const { data } = await http.post(`/sessions/${sessionId}/encounter/next-turn`);
+    return data as {
+      encounterActive: boolean;
+      combatRound: number;
+      activeTurnSessionCharacterId: string | null;
+    };
+  },
+
+  async endEncounter(sessionId: string): Promise<{
+    encounterActive: boolean;
+    combatRound: number;
+    activeTurnSessionCharacterId: string | null;
+  }> {
+    const { data } = await http.post(`/sessions/${sessionId}/encounter/end`);
+    return data as {
+      encounterActive: boolean;
+      combatRound: number;
+      activeTurnSessionCharacterId: string | null;
+    };
+  },
+
   async applyEffect(
     sessionId: string,
     characterId: string,

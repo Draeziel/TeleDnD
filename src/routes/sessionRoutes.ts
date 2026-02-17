@@ -18,6 +18,9 @@ export default function sessionRoutes(prisma: PrismaClient) {
   router.post('/:id/initiative/lock', sessionController.lockInitiative.bind(sessionController));
   router.post('/:id/initiative/unlock', sessionController.unlockInitiative.bind(sessionController));
   router.post('/:id/initiative/reset', sessionController.resetInitiative.bind(sessionController));
+  router.post('/:id/encounter/start', sessionController.startEncounter.bind(sessionController));
+  router.post('/:id/encounter/next-turn', sessionController.nextEncounterTurn.bind(sessionController));
+  router.post('/:id/encounter/end', sessionController.endEncounter.bind(sessionController));
   router.get('/:id', sessionController.getSession.bind(sessionController));
   router.post('/:id/characters', sessionController.attachCharacter.bind(sessionController));
   router.delete('/:id/characters/:characterId', sessionController.removeCharacter.bind(sessionController));

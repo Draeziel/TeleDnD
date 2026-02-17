@@ -8,6 +8,7 @@ import sessionRoutes from './routes/sessionRoutes';
 import errorHandler from './middleware/errorHandler';
 import { telegramAuthMiddleware } from './middleware/telegramAuth';
 import { requestLoggingMiddleware } from './middleware/requestLogging';
+import { responseMetaMiddleware } from './middleware/responseMeta';
 import logger from './utils/logger';
 
 const app = express();
@@ -30,8 +31,36 @@ app.set('trust proxy', 1);
 app.use(express.json());
 app.use(cors());
 app.use(requestLoggingMiddleware());
+app.use(responseMetaMiddleware());
 app.get('/healthz', (_req, res) => {
-    res.status(200).json({ status: 'ok' });
+    res.status(200).json({
+        status: 'ok',
+        service: 'rpg-character-service',
+        env: process.env.NODE_ENV || 'development',
+        uptimeSec: Math.floor(process.uptime()),
+        now: new Date().toISOString(),
+    });
+});
+
+app.get('/readyz', async (_req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.status(200).json({
+            status: 'ready',
+            checks: {
+                database: 'ok',
+            },
+            now: new Date().toISOString(),
+        });
+    } catch {
+        res.status(503).json({
+            status: 'not_ready',
+            checks: {
+                database: 'error',
+            },
+            now: new Date().toISOString(),
+        });
+    }
 });
 
 app.use('/api', apiLimiter);

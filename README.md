@@ -121,7 +121,8 @@ In local/dev mode, set `REQUIRE_TELEGRAM_AUTH=false` and `ALLOW_TELEGRAM_USER_ID
 
 ### Health Check
 
-- `GET /healthz` returns `{ "status": "ok" }` and can be used by uptime probes.
+- `GET /healthz` returns service liveness payload (`status`, `env`, `uptimeSec`, timestamp, `requestId`).
+- `GET /readyz` verifies runtime readiness, including database connectivity (`200` when ready, `503` otherwise).
 
 ### API Endpoints
 

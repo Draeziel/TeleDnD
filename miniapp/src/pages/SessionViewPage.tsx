@@ -39,8 +39,19 @@ export function SessionViewPage() {
   const [error, setError] = useState('');
 
   const formatErrorMessage = (fallback: string, unknownError: unknown) => {
-    const errorResponse = (unknownError as any)?.response?.data;
-    const requestId = errorResponse?.requestId;
+    const responsePayload = (unknownError as { response?: { data?: { message?: string; requestId?: string } } })?.response?.data;
+    const requestId = responsePayload?.requestId;
+    let backendMessage = typeof responsePayload?.message === 'string' ? responsePayload.message.trim() : '';
+
+    if (backendMessage.startsWith('Validation:')) {
+      backendMessage = backendMessage.replace('Validation:', '').trim();
+    } else if (backendMessage.startsWith('Forbidden:')) {
+      backendMessage = backendMessage.replace('Forbidden:', '').trim();
+    }
+
+    if (backendMessage) {
+      return requestId ? `${backendMessage} (requestId: ${requestId})` : backendMessage;
+    }
 
     if (requestId) {
       return `${fallback} (requestId: ${requestId})`;
@@ -352,12 +363,32 @@ export function SessionViewPage() {
 
   const onStartEncounter = async () => {
     try {
+      if (!session) {
+        return;
+      }
+
       setEncounterActionLoading(true);
+
+      const hasInitiative = session.characters.some(
+        (entry) => entry.state?.initiative !== null && entry.state?.initiative !== undefined
+      );
+
+      if (!hasInitiative) {
+        const rolled = await sessionApi.rollInitiativeAll(id);
+
+        if (rolled.rolledCount === 0) {
+          throw new Error('Validation: cannot start encounter without rolled initiative');
+        }
+
+        notify('info', `Подготовка боя: авто-бросок инициативы для ${rolled.rolledCount} персонажей`);
+        await load();
+      }
+
       const result = await sessionApi.startEncounter(id);
       await load();
       notify('success', `Encounter запущен. Раунд ${result.combatRound}`);
     } catch (unknownError) {
-      notify('error', formatErrorMessage('Не удалось начать encounter (нужна роль GM и выставленная инициатива)', unknownError));
+      notify('error', formatErrorMessage('Не удалось начать encounter', unknownError));
     } finally {
       setEncounterActionLoading(false);
     }

@@ -271,3 +271,4 @@ Build a multiplayer session (party) system where:
    - `/api/monsters/templates` list/create,
    - `/api/sessions/:id/monsters` quantity add,
    - miniapp `Монстры` page and compact add-monsters flow in session view.
+- Extended monster template fields to stat-block format (type/alignment/speed/abilities/immunities/traits/actions/legendary actions) plus icon/image slots; split monster creation/view areas and added `Мои/Глобальные` tabs with card-style preview.

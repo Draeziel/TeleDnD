@@ -4,15 +4,20 @@ import { monsterApi } from '../api/monsterApi';
 import { StatusBox } from '../components/StatusBox';
 import type { MonsterTemplate } from '../types/models';
 
+type MonstersTab = 'PERSONAL' | 'GLOBAL';
+
 export function MonstersPage() {
   const [items, setItems] = useState<MonsterTemplate[]>([]);
   const [canManageGlobal, setCanManageGlobal] = useState(false);
+  const [activeTab, setActiveTab] = useState<MonstersTab>('PERSONAL');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
 
   const [name, setName] = useState('');
+  const [iconUrl, setIconUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const [size, setSize] = useState('Большой');
   const [creatureType, setCreatureType] = useState('небожитель');
   const [alignment, setAlignment] = useState('законно-добрый');
@@ -48,6 +53,7 @@ export function MonstersPage() {
       setCanManageGlobal(payload.canManageGlobal);
       if (!payload.canManageGlobal) {
         setScope('PERSONAL');
+        setActiveTab('PERSONAL');
       }
     } catch {
       setError('Не удалось загрузить каталог монстров');
@@ -70,6 +76,8 @@ export function MonstersPage() {
 
       const created = await monsterApi.createTemplate({
         name,
+        iconUrl,
+        imageUrl,
         size,
         creatureType,
         alignment,
@@ -98,8 +106,13 @@ export function MonstersPage() {
 
       setStatus(`Шаблон "${created.name}" создан`);
       setName('');
+      setIconUrl('');
+      setImageUrl('');
       setChallengeRating('');
       setSource('');
+      setTraits('');
+      setActions('');
+      setLegendaryActions('');
       await load();
     } catch {
       setError('Не удалось создать шаблон монстра');
@@ -110,19 +123,59 @@ export function MonstersPage() {
 
   const globalItems = useMemo(() => items.filter((item) => item.scope === 'GLOBAL'), [items]);
   const personalItems = useMemo(() => items.filter((item) => item.scope === 'PERSONAL'), [items]);
+  const visibleItems = activeTab === 'PERSONAL' ? personalItems : globalItems;
+
+  const renderCard = (monster: MonsterTemplate) => (
+    <div className="monster-card" key={monster.id}>
+      <div className="monster-card-media">
+        {monster.imageUrl ? (
+          <img className="monster-card-image" src={monster.imageUrl} alt={monster.name} />
+        ) : (
+          <div className="monster-card-image placeholder">Нет изображения</div>
+        )}
+        <div className="monster-card-icon-wrap">
+          {monster.iconUrl ? (
+            <img className="monster-card-icon" src={monster.iconUrl} alt={`${monster.name} icon`} />
+          ) : (
+            <div className="monster-card-icon placeholder">?</div>
+          )}
+        </div>
+      </div>
+      <div className="monster-card-body">
+        <div className="monster-card-header">
+          <strong>{monster.name}</strong>
+          <span>{monster.challengeRating || 'CR —'}</span>
+        </div>
+        <div className="meta-row">{[monster.size, monster.creatureType, monster.alignment].filter(Boolean).join(', ') || '—'}</div>
+        <div className="meta-row">AC {monster.armorClass} • HP {monster.maxHp}{monster.hitDice ? ` (${monster.hitDice})` : ''} • Скорость {monster.speed || '—'}</div>
+        <div className="meta-row">СИЛ {monster.strength} • ЛОВ {monster.dexterity} • ТЕЛ {monster.constitution} • ИНТ {monster.intelligence} • МДР {monster.wisdom} • ХАР {monster.charisma}</div>
+        {(monster.damageImmunities || monster.conditionImmunities || monster.senses || monster.languages) && (
+          <div className="meta-row">
+            {monster.damageImmunities ? `Урон: ${monster.damageImmunities}. ` : ''}
+            {monster.conditionImmunities ? `Состояния: ${monster.conditionImmunities}. ` : ''}
+            {monster.senses ? `Чувства: ${monster.senses}. ` : ''}
+            {monster.languages ? `Языки: ${monster.languages}.` : ''}
+          </div>
+        )}
+        {monster.traits && <details><summary>Особенности</summary><p>{monster.traits}</p></details>}
+        {monster.actions && <details><summary>Действия</summary><p>{monster.actions}</p></details>}
+        {monster.legendaryActions && <details><summary>Легендарные действия</summary><p>{monster.legendaryActions}</p></details>}
+      </div>
+    </div>
+  );
 
   return (
     <div className="page-stack">
       <div className="section-card">
         <h2>Монстры</h2>
-        <p className="meta-row">Каталог мастера: глобальные шаблоны + персональные шаблоны пользователя.</p>
+        <p className="meta-row">Отдельно: создание шаблона и просмотр каталога. Вкладки — личные и глобальные монстры.</p>
       </div>
 
       {status && <StatusBox type="success" message={status} />}
       {error && <StatusBox type="error" message={error} />}
 
       <div className="section-card">
-        <h2>Быстро создать шаблон</h2>
+        <h2>Создание монстра</h2>
         <form className="form-stack" onSubmit={onCreate}>
           <input
             required
@@ -132,6 +185,10 @@ export function MonstersPage() {
             minLength={2}
             maxLength={80}
           />
+          <div className="grid-2">
+            <input value={iconUrl} onChange={(event) => setIconUrl(event.target.value)} placeholder="URL иконки" maxLength={500} />
+            <input value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="URL изображения" maxLength={500} />
+          </div>
           <div className="grid-3">
             <input value={size} onChange={(event) => setSize(event.target.value)} placeholder="Размер" maxLength={40} />
             <input value={creatureType} onChange={(event) => setCreatureType(event.target.value)} placeholder="Тип" maxLength={60} />
@@ -220,45 +277,22 @@ export function MonstersPage() {
       </div>
 
       <div className="section-card">
-        <h2>Глобальный каталог</h2>
+        <h2>Просмотр монстров</h2>
+        <div className="tabs-row">
+          <button className={`btn ${activeTab === 'PERSONAL' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('PERSONAL')}>
+            Мои монстры
+          </button>
+          <button className={`btn ${activeTab === 'GLOBAL' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('GLOBAL')}>
+            Глобальные
+          </button>
+        </div>
         {loading ? (
           <StatusBox type="info" message="Загрузка..." />
-        ) : globalItems.length === 0 ? (
-          <StatusBox type="info" message="Глобальных шаблонов пока нет" />
+        ) : visibleItems.length === 0 ? (
+          <StatusBox type="info" message={activeTab === 'PERSONAL' ? 'Персональных шаблонов пока нет' : 'Глобальных шаблонов пока нет'} />
         ) : (
           <div className="list-grid">
-            {globalItems.map((monster) => (
-              <div className="list-item" key={monster.id}>
-                <div>
-                  <strong>{monster.name}</strong>
-                  <div>{[monster.size, monster.creatureType, monster.alignment].filter(Boolean).join(', ') || '—'}</div>
-                  <div>AC: {monster.armorClass} • HP: {monster.maxHp} • Init: {monster.initiativeModifier >= 0 ? '+' : ''}{monster.initiativeModifier}</div>
-                </div>
-                <span>{monster.challengeRating || '—'}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="section-card">
-        <h2>Мои шаблоны</h2>
-        {loading ? (
-          <StatusBox type="info" message="Загрузка..." />
-        ) : personalItems.length === 0 ? (
-          <StatusBox type="info" message="Персональных шаблонов пока нет" />
-        ) : (
-          <div className="list-grid">
-            {personalItems.map((monster) => (
-              <div className="list-item" key={monster.id}>
-                <div>
-                  <strong>{monster.name}</strong>
-                  <div>{[monster.size, monster.creatureType, monster.alignment].filter(Boolean).join(', ') || '—'}</div>
-                  <div>AC: {monster.armorClass} • HP: {monster.maxHp} • Init: {monster.initiativeModifier >= 0 ? '+' : ''}{monster.initiativeModifier}</div>
-                </div>
-                <span>{monster.challengeRating || '—'}</span>
-              </div>
-            ))}
+            {visibleItems.map(renderCard)}
           </div>
         )}
       </div>

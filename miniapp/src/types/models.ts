@@ -220,6 +220,8 @@ export interface MonsterTemplate {
   traits: string | null;
   actions: string | null;
   legendaryActions: string | null;
+  iconUrl: string | null;
+  imageUrl: string | null;
   source: string | null;
   scope: 'GLOBAL' | 'PERSONAL';
   ownerUserId: string | null;

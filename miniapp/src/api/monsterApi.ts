@@ -38,6 +38,8 @@ export const monsterApi = {
     traits?: string;
     actions?: string;
     legendaryActions?: string;
+    iconUrl?: string;
+    imageUrl?: string;
     source?: string;
     scope?: 'GLOBAL' | 'PERSONAL';
   }): Promise<MonsterTemplate> {

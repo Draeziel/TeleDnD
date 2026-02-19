@@ -179,6 +179,7 @@ CharacterDraft
 - Protected API endpoints: `GET /api/monsters/templates`, `POST /api/monsters/templates`
 - Admin allowlist policy for global templates via `TELEGRAM_ADMIN_IDS`
 - Miniapp master tooling: new `Монстры` page in top navigation
+- Rich stat-block monster fields + icon/image slots, tabbed `Мои/Глобальные` catalog view, and card-style monster preview UI
 
 ### ✅ Ownership & Access Control
 - `Character.ownerUserId` used for per-user visibility and access checks

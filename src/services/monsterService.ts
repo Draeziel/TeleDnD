@@ -78,6 +78,8 @@ export class MonsterService {
         traits: template.traits,
         actions: template.actions,
         legendaryActions: template.legendaryActions,
+        iconUrl: template.iconUrl,
+        imageUrl: template.imageUrl,
         source: template.source,
         scope: template.scope,
         ownerUserId: template.ownerUserId,
@@ -113,6 +115,8 @@ export class MonsterService {
       traits?: string;
       actions?: string;
       legendaryActions?: string;
+      iconUrl?: string;
+      imageUrl?: string;
       source?: string;
       scope?: string;
     }
@@ -190,6 +194,8 @@ export class MonsterService {
         traits: input.traits?.trim() || null,
         actions: input.actions?.trim() || null,
         legendaryActions: input.legendaryActions?.trim() || null,
+        iconUrl: input.iconUrl?.trim() || null,
+        imageUrl: input.imageUrl?.trim() || null,
         source: input.source?.trim() || null,
         scope,
         ownerUserId: scope === 'PERSONAL' ? user.id : null,
@@ -221,6 +227,8 @@ export class MonsterService {
       traits: created.traits,
       actions: created.actions,
       legendaryActions: created.legendaryActions,
+      iconUrl: created.iconUrl,
+      imageUrl: created.imageUrl,
       source: created.source,
       scope: created.scope,
       ownerUserId: created.ownerUserId,

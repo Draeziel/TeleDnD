@@ -483,7 +483,7 @@ export function SessionViewPage() {
       </div>
 
       <div className="section-card">
-        <h2>Добавить монстров</h2>
+        <h2>Добавление монстров</h2>
         <div className="inline-row">
           <select
             value={selectedMonsterTemplateId}
@@ -525,9 +525,9 @@ export function SessionViewPage() {
       {error && <StatusBox type="error" message={error} />}
 
       <div className="section-card">
-        <h2>Группа</h2>
+        <h2>Персонажи группы</h2>
         <div className="list-grid">
-          {session.characters.length === 0 && session.monsters.length === 0 && <StatusBox type="info" message="Участники боя пока не добавлены" />}
+          {session.characters.length === 0 && <StatusBox type="info" message="Персонажи пока не добавлены" />}
           {session.characters.map((entry) => {
             const currentHp = entry.state?.currentHp ?? 0;
             const initiative = entry.state?.initiative ?? 0;
@@ -563,15 +563,22 @@ export function SessionViewPage() {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      <div className="section-card">
+        <h2>Монстры в сессии</h2>
+        <div className="list-grid">
+          {session.monsters.length === 0 && <StatusBox type="info" message="Монстры пока не добавлены" />}
           {session.monsters.map((monster) => (
             <div className="list-item" key={monster.id}>
               <div>
                 <strong>{monster.nameSnapshot}</strong>
-                <div>Монстр: {monster.template?.name || 'custom'}</div>
+                <div>{monster.template ? [monster.template.size, monster.template.creatureType, monster.template.alignment].filter(Boolean).join(', ') : 'custom'}</div>
                 <div>HP: {monster.currentHp} / {monster.maxHpSnapshot}</div>
                 <div>Инициатива: {monster.initiative ?? '—'}</div>
               </div>
-              <div className="meta-row">AC: {monster.template?.armorClass ?? '—'}</div>
+              <div className="meta-row">AC: {monster.template?.armorClass ?? '—'} • CR: {monster.template?.challengeRating || '—'}</div>
             </div>
           ))}
         </div>

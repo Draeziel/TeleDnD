@@ -289,6 +289,8 @@ model MonsterTemplate {
   traits             String?
   actions            String?
   legendaryActions   String?         @map("legendary_actions")
+  iconUrl            String?         @map("icon_url")
+  imageUrl           String?         @map("image_url")
   source             String?
   scope              String          @default("PERSONAL")
   ownerUserId        String?         @map("owner_user_id")

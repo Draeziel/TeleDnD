@@ -15,7 +15,7 @@ export function SessionsPage() {
   const [error, setError] = useState('');
   const [createName, setCreateName] = useState('');
   const [joinCode, setJoinCode] = useState('');
-  const [selectedSessionId, setSelectedSessionId] = useState('');
+  const [copyingCodeId, setCopyingCodeId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -93,7 +93,6 @@ export function SessionsPage() {
       setError('');
       await sessionApi.deleteSession(sessionId);
       setSessions((prev) => prev.filter((session) => session.id !== sessionId));
-      setSelectedSessionId((current) => (current === sessionId ? '' : current));
     } catch (unknownError) {
       setError(formatErrorMessage('Не удалось удалить сессию. Удаление доступно только для ГМа.', unknownError));
     } finally {
@@ -102,19 +101,25 @@ export function SessionsPage() {
   };
 
   const canCreate = createName.trim().length >= MIN_SESSION_NAME_LENGTH && createName.trim().length <= MAX_SESSION_NAME_LENGTH;
-  const selectedSession = sessions.find((item) => item.id === selectedSessionId) || null;
 
-  const onToggleSession = (sessionId: string) => {
-    setSelectedSessionId((current) => (current === sessionId ? '' : sessionId));
+  const onCopyCode = async (session: SessionListItem) => {
+    try {
+      setCopyingCodeId(session.id);
+      setError('');
+      await navigator.clipboard.writeText(session.joinCode);
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось скопировать код сессии', unknownError));
+    } finally {
+      setCopyingCodeId(null);
+    }
   };
 
   return (
     <div className="page-stack">
       <div className="section-card">
         <h2>Сессии</h2>
-        <div className="grid-2">
-          <div className="form-stack">
-            <div className="meta-row">Создать сессию</div>
+        <div className="form-stack">
+          <div className="session-input-row">
             <input
               value={createName}
               onChange={(e) => setCreateName(e.target.value)}
@@ -122,24 +127,18 @@ export function SessionsPage() {
               placeholder="Название сессии"
             />
             <button className="btn btn-primary" onClick={onCreate} disabled={!canCreate}>
-              Создать сессию
+              Создать
             </button>
           </div>
-          <div className="form-stack">
-            <div className="meta-row">Войти по коду</div>
+          <div className="session-input-row">
             <input
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value)}
               placeholder="Код входа"
             />
-            <div className="inline-row">
-              <button className="btn btn-primary" onClick={onJoin} disabled={!joinCode.trim()}>
-                Войти
-              </button>
-              <button className="btn btn-secondary" disabled={refreshing} onClick={load}>
-                {refreshing ? 'Обновление...' : 'Обновить'}
-              </button>
-            </div>
+            <button className="btn btn-primary" onClick={onJoin} disabled={!joinCode.trim()}>
+              Войти
+            </button>
           </div>
         </div>
       </div>
@@ -149,54 +148,48 @@ export function SessionsPage() {
 
       {!loading && !error && (
         <div className="section-card">
-          <h2>Список сессий</h2>
+          <div className="session-list-header">
+            <h2>Список сессий</h2>
+            <button className="btn btn-secondary btn-icon" disabled={refreshing} onClick={load} aria-label="Обновить список сессий" title="Обновить">
+              {refreshing ? '…' : '↻'}
+            </button>
+          </div>
           {sessions.length === 0 && <StatusBox type="info" message="Сессий пока нет" />}
           {sessions.length > 0 && (
-            <div className="entity-list">
+            <div className="session-list">
               {sessions.map((session) => (
-                <div className="entity-list-item" key={session.id}>
-                  <div className="entity-list-icon placeholder">S</div>
-                  <div className="entity-list-main">
-                    <button className="btn btn-inline" onClick={() => onToggleSession(session.id)}>
+                <div className="session-list-item" key={session.id}>
+                  <div className="session-list-top">
+                    <button className="btn btn-inline" onClick={() => navigate(`/sessions/${session.id}`)}>
                       {session.name}
                     </button>
-                    <div className="entity-list-meta">
-                      {roleLabel(session.role)} · ГМ: {session.hasActiveGm ? 'активен' : 'нет'} · Код: {session.joinCode}
-                    </div>
-                    <div className="entity-list-meta">Игроки: {session.playersCount} · Персонажи: {session.charactersCount}</div>
-                  </div>
-                  <div className="entity-list-actions">
-                    <button className="btn btn-secondary btn-compact" onClick={() => navigate(`/sessions/${session.id}`)}>
-                      Открыть
+                    <button className="btn btn-secondary btn-compact session-chip" disabled title={roleLabel(session.role)}>
+                      {session.role === 'GM' ? '♛' : '🧑'}
                     </button>
-                    {session.role === 'GM' && (
-                      <button className="btn btn-danger btn-compact" disabled={deletingId === session.id} onClick={() => onDelete(session.id)}>
-                        {deletingId === session.id ? 'Удаление...' : 'Удалить'}
-                      </button>
-                    )}
+                    <button className="btn btn-secondary btn-compact session-chip" disabled title={`Игроков: ${session.playersCount}`}>
+                      👥 {session.playersCount}
+                    </button>
+                    <button
+                      className="btn btn-danger btn-compact session-delete"
+                      disabled={deletingId === session.id || session.role !== 'GM'}
+                      onClick={() => onDelete(session.id)}
+                      title={session.role === 'GM' ? 'Удалить сессию' : 'Удаление доступно только мастеру'}
+                      aria-label="Удалить сессию"
+                    >
+                      {deletingId === session.id ? '…' : '✖'}
+                    </button>
+                  </div>
+                  <div className="session-list-bottom">
+                    <button className="btn btn-inline" onClick={() => onCopyCode(session)} title="Скопировать код входа">
+                      {copyingCodeId === session.id ? 'копируем...' : session.joinCode}
+                    </button>
+                    <span className="meta-row">Персонажи: {session.charactersCount}</span>
+                    <span className="meta-row">ГМ: {session.hasActiveGm ? 'активен' : 'нет'}</span>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
-      )}
-
-      {selectedSession && (
-        <div className="section-card">
-          <h2>Карточка сессии</h2>
-          <div className="entity-details-card">
-            <div className="entity-details-title">{selectedSession.name}</div>
-            <div className="meta-row">Роль: {roleLabel(selectedSession.role)}</div>
-            <div className="meta-row">Статус ГМа: {selectedSession.hasActiveGm ? 'активен' : 'нет активного ГМа'}</div>
-            <div className="meta-row">Код входа: {selectedSession.joinCode}</div>
-            <div className="meta-row">Игроки: {selectedSession.playersCount} · Персонажи: {selectedSession.charactersCount}</div>
-            <div className="inline-row">
-              <button className="btn btn-primary btn-compact" onClick={() => navigate(`/sessions/${selectedSession.id}`)}>
-                Открыть сессию
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

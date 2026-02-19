@@ -6,6 +6,7 @@ import type {
   SessionEffect,
   SessionSummary,
   SessionEvent,
+  SessionMonster,
 } from '../types/models';
 
 export const sessionApi = {
@@ -44,6 +45,24 @@ export const sessionApi = {
       params: { limit },
     });
     return Array.isArray(data) ? data : [];
+  },
+
+  async getSessionMonsters(sessionId: string): Promise<SessionMonster[]> {
+    const { data } = await http.get<SessionMonster[]>(`/sessions/${sessionId}/monsters`);
+    return Array.isArray(data) ? data : [];
+  },
+
+  async addSessionMonsters(
+    sessionId: string,
+    monsterTemplateId: string,
+    quantity: number
+  ): Promise<{ addedCount: number; templateName: string }> {
+    const { data } = await http.post(`/sessions/${sessionId}/monsters`, {
+      monsterTemplateId,
+      quantity,
+    });
+
+    return data as { addedCount: number; templateName: string };
   },
 
   async attachCharacter(

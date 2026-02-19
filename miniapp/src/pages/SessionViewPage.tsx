@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { sessionApi } from '../api/sessionApi';
 import { characterApi } from '../api/characterApi';
+import { monsterApi } from '../api/monsterApi';
 import { StatusBox } from '../components/StatusBox';
-import type { CharacterSummary, SessionDetails, SessionSummary } from '../types/models';
+import type { CharacterSummary, MonsterTemplate, SessionDetails, SessionSummary } from '../types/models';
 
 type SessionCharacterView = SessionDetails['characters'][number] & { effectsCount?: number };
 type SessionViewModel = Omit<SessionDetails, 'characters'> & {
@@ -15,6 +16,10 @@ export function SessionViewPage() {
   const { id = '' } = useParams();
   const [session, setSession] = useState<SessionViewModel | null>(null);
   const [myCharacters, setMyCharacters] = useState<CharacterSummary[]>([]);
+  const [monsterTemplates, setMonsterTemplates] = useState<MonsterTemplate[]>([]);
+  const [selectedMonsterTemplateId, setSelectedMonsterTemplateId] = useState('');
+  const [monsterQuantity, setMonsterQuantity] = useState(1);
+  const [addingMonsters, setAddingMonsters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [attachingId, setAttachingId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -70,6 +75,7 @@ export function SessionViewPage() {
       activeTurnSessionCharacterId: summary.activeTurnSessionCharacterId,
       hasActiveGm: summary.hasActiveGm,
       events: summary.events,
+      monsters: summary.monsters,
       characters: nextCharacters,
     };
   };
@@ -92,6 +98,7 @@ export function SessionViewPage() {
         setSession({
           ...data,
           playersCount: data.players.length,
+          monsters: data.monsters || [],
           characters: data.characters.map((entry) => ({
             ...entry,
             effectsCount: entry.effects.length,
@@ -109,6 +116,22 @@ export function SessionViewPage() {
     }
   };
 
+  const loadMonsterTemplates = async () => {
+    try {
+      const payload = await monsterApi.listTemplates({ scope: 'all' });
+      setMonsterTemplates(payload.items);
+      setSelectedMonsterTemplateId((prev) => {
+        if (prev && payload.items.some((item) => item.id === prev)) {
+          return prev;
+        }
+
+        return payload.items[0]?.id || '';
+      });
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось загрузить каталог монстров', unknownError));
+    }
+  };
+
   const loadMyCharacters = async () => {
     try {
       const data = await characterApi.getCharacters();
@@ -121,6 +144,7 @@ export function SessionViewPage() {
   useEffect(() => {
     load();
     loadMyCharacters();
+    loadMonsterTemplates();
     const timer = setInterval(() => load(true), 7000);
     return () => clearInterval(timer);
   }, [id]);
@@ -309,6 +333,25 @@ export function SessionViewPage() {
     }
   };
 
+  const onAddMonsters = async () => {
+    if (!selectedMonsterTemplateId) {
+      return;
+    }
+
+    try {
+      setAddingMonsters(true);
+      setError('');
+      setStatus('');
+      const result = await sessionApi.addSessionMonsters(id, selectedMonsterTemplateId, monsterQuantity);
+      await load();
+      setStatus(`Добавлено ${result.addedCount} монстр(ов): ${result.templateName}`);
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось добавить монстров в сессию', unknownError));
+    } finally {
+      setAddingMonsters(false);
+    }
+  };
+
   if (loading && !session) return <StatusBox type="info" message="Загрузка сессии..." />;
   if (!session) return <StatusBox type="info" message="Сессия не найдена" />;
 
@@ -439,6 +482,38 @@ export function SessionViewPage() {
         </div>
       </div>
 
+      <div className="section-card">
+        <h2>Добавить монстров</h2>
+        <div className="inline-row">
+          <select
+            value={selectedMonsterTemplateId}
+            onChange={(event) => setSelectedMonsterTemplateId(event.target.value)}
+            disabled={addingMonsters || monsterTemplates.length === 0}
+          >
+            {monsterTemplates.length === 0 && <option value="">Нет доступных шаблонов</option>}
+            {monsterTemplates.map((template) => (
+              <option key={template.id} value={template.id}>
+                {template.name} ({template.scope === 'GLOBAL' ? 'global' : 'personal'})
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min={1}
+            max={30}
+            value={monsterQuantity}
+            onChange={(event) => setMonsterQuantity(Math.min(30, Math.max(1, Number(event.target.value) || 1)))}
+          />
+          <button
+            className="btn btn-primary"
+            disabled={addingMonsters || !session.hasActiveGm || !selectedMonsterTemplateId}
+            onClick={onAddMonsters}
+          >
+            {addingMonsters ? 'Добавляем...' : 'Добавить'}
+          </button>
+        </div>
+      </div>
+
       {!session.hasActiveGm && (
         <StatusBox
           type="info"
@@ -452,7 +527,7 @@ export function SessionViewPage() {
       <div className="section-card">
         <h2>Группа</h2>
         <div className="list-grid">
-          {session.characters.length === 0 && <StatusBox type="info" message="Персонажи пока не добавлены" />}
+          {session.characters.length === 0 && session.monsters.length === 0 && <StatusBox type="info" message="Участники боя пока не добавлены" />}
           {session.characters.map((entry) => {
             const currentHp = entry.state?.currentHp ?? 0;
             const initiative = entry.state?.initiative ?? 0;
@@ -488,6 +563,17 @@ export function SessionViewPage() {
               </div>
             );
           })}
+          {session.monsters.map((monster) => (
+            <div className="list-item" key={monster.id}>
+              <div>
+                <strong>{monster.nameSnapshot}</strong>
+                <div>Монстр: {monster.template?.name || 'custom'}</div>
+                <div>HP: {monster.currentHp} / {monster.maxHpSnapshot}</div>
+                <div>Инициатива: {monster.initiative ?? '—'}</div>
+              </div>
+              <div className="meta-row">AC: {monster.template?.armorClass ?? '—'}</div>
+            </div>
+          ))}
         </div>
       </div>
 

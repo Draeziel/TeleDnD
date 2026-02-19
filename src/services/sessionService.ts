@@ -485,6 +485,28 @@ export class SessionService {
             createdAt: 'asc',
           },
         },
+        monsters: {
+          include: {
+            monsterTemplate: {
+              select: {
+                id: true,
+                name: true,
+                armorClass: true,
+                maxHp: true,
+                initiativeModifier: true,
+                challengeRating: true,
+                source: true,
+                scope: true,
+                ownerUserId: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
       },
     });
 
@@ -521,6 +543,18 @@ export class SessionService {
         },
         state: sessionCharacter.state,
         effects: sessionCharacter.effects,
+      })),
+      monsters: session.monsters.map((monster) => ({
+        id: monster.id,
+        monsterTemplateId: monster.monsterTemplateId,
+        nameSnapshot: monster.nameSnapshot,
+        currentHp: monster.currentHp,
+        maxHpSnapshot: monster.maxHpSnapshot,
+        initiative: monster.initiative,
+        notes: monster.notes,
+        createdAt: monster.createdAt,
+        updatedAt: monster.updatedAt,
+        template: monster.monsterTemplate,
       })),
     };
   }
@@ -729,6 +763,37 @@ export class SessionService {
             createdAt: 'asc',
           },
         },
+        monsters: {
+          select: {
+            id: true,
+            monsterTemplateId: true,
+            nameSnapshot: true,
+            currentHp: true,
+            maxHpSnapshot: true,
+            initiative: true,
+            notes: true,
+            createdAt: true,
+            updatedAt: true,
+            monsterTemplate: {
+              select: {
+                id: true,
+                name: true,
+                armorClass: true,
+                maxHp: true,
+                initiativeModifier: true,
+                challengeRating: true,
+                source: true,
+                scope: true,
+                ownerUserId: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
       },
     });
 
@@ -755,6 +820,7 @@ export class SessionService {
         state: entry.state,
         effectsCount: entry._count.effects,
       })),
+      monsters: session.monsters,
     };
   }
 
@@ -764,6 +830,116 @@ export class SessionService {
 
     const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 100) : 30;
     return this.getSessionEvents(sessionId, safeLimit);
+  }
+
+  async getSessionMonsters(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionMember(sessionId, user.id);
+
+    const monsters = await this.prisma.sessionMonster.findMany({
+      where: { sessionId },
+      include: {
+        monsterTemplate: {
+          select: {
+            id: true,
+            name: true,
+            armorClass: true,
+            maxHp: true,
+            initiativeModifier: true,
+            challengeRating: true,
+            source: true,
+            scope: true,
+            ownerUserId: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    return monsters;
+  }
+
+  async addMonstersFromTemplate(
+    sessionId: string,
+    telegramUserId: string,
+    input: {
+      monsterTemplateId: string;
+      quantity: number;
+    }
+  ) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+
+    if (!input.monsterTemplateId || typeof input.monsterTemplateId !== 'string') {
+      throw new Error('Validation: monsterTemplateId is required');
+    }
+
+    if (!Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 30) {
+      throw new Error('Validation: quantity must be an integer in range 1..30');
+    }
+
+    const template = await this.prisma.monsterTemplate.findUnique({
+      where: { id: input.monsterTemplateId },
+      select: {
+        id: true,
+        name: true,
+        maxHp: true,
+        scope: true,
+        ownerUserId: true,
+      },
+    });
+
+    if (!template) {
+      throw new Error('Monster template not found');
+    }
+
+    const canUseTemplate = template.scope === 'GLOBAL' || (template.scope === 'PERSONAL' && template.ownerUserId === user.id);
+    if (!canUseTemplate) {
+      throw new Error('Forbidden: monster template is not available for current user');
+    }
+
+    const currentCount = await this.prisma.sessionMonster.count({
+      where: {
+        sessionId,
+        nameSnapshot: {
+          startsWith: `${template.name} #`,
+        },
+      },
+    });
+
+    const now = new Date();
+    const toCreate = Array.from({ length: input.quantity }).map((_, index) => {
+      const serial = currentCount + index + 1;
+      return {
+        sessionId,
+        monsterTemplateId: template.id,
+        nameSnapshot: `${template.name} #${serial}`,
+        currentHp: template.maxHp,
+        maxHpSnapshot: template.maxHp,
+        createdAt: now,
+        updatedAt: now,
+      };
+    });
+
+    await this.prisma.sessionMonster.createMany({
+      data: toCreate,
+    });
+
+    await this.addSessionEvent(
+      sessionId,
+      'monsters_added',
+      `ГМ добавил ${input.quantity} монстр(ов) типа ${template.name}`,
+      telegramUserId
+    );
+
+    return {
+      addedCount: input.quantity,
+      templateName: template.name,
+    };
   }
 
   async rollInitiativeForAll(sessionId: string, telegramUserId: string) {

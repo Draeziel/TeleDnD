@@ -195,6 +195,33 @@ export interface SessionEvent {
   createdAt: string;
 }
 
+export interface MonsterTemplate {
+  id: string;
+  name: string;
+  armorClass: number;
+  maxHp: number;
+  initiativeModifier: number;
+  challengeRating: string | null;
+  source: string | null;
+  scope: 'GLOBAL' | 'PERSONAL';
+  ownerUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SessionMonster {
+  id: string;
+  monsterTemplateId: string | null;
+  nameSnapshot: string;
+  currentHp: number;
+  maxHpSnapshot: number;
+  initiative: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  template?: MonsterTemplate | null;
+}
+
 export interface SessionDetails {
   id: string;
   name: string;
@@ -210,6 +237,7 @@ export interface SessionDetails {
   hasActiveGm: boolean;
   events: SessionEvent[];
   players: SessionPlayer[];
+  monsters: SessionMonster[];
   characters: Array<{
     id: string;
     character: {
@@ -239,6 +267,7 @@ export interface SessionSummary {
   playersCount: number;
   hasActiveGm: boolean;
   events: SessionEvent[];
+  monsters: SessionMonster[];
   characters: Array<{
     id: string;
     character: {

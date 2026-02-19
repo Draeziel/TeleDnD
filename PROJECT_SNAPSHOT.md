@@ -1,7 +1,7 @@
 # RPG Character Service - Project Snapshot
 
-**Last Updated**: 2026-02-17 21:50 UTC  
-**Status**: Beta - Sessions + ownership + no-GM policy + initiative automation/lock + encounter turn flow + contextual inline controls deployed  
+**Last Updated**: 2026-02-19 17:20 UTC  
+**Status**: Beta - Sessions + ownership + no-GM policy + initiative/encounter + monster catalog MVP + contextual inline controls deployed  
 **Tech Stack**: Node.js + TypeScript, Express, PostgreSQL, Prisma ORM, React + Vite + TypeScript, Cloudflare Pages, Render
 
 ---
@@ -171,7 +171,14 @@ CharacterDraft
 - Session UI polish: consistent button hierarchy and improved mobile layout in session screen
 - Contextual controls in session screen: tap name to refresh, tap join code to copy, tap initiative label to toggle lock, and round start/stop icon near round value
 - Contextual actions now use compact inline buttons (instead of text-link style) for cleaner and more consistent visual UX
+- Session supports quantity-based monster add from templates (`POST /api/sessions/:id/monsters`)
 - Session journal persisted in database (`session_events`)
+
+### ✅ Monster Catalog MVP
+- Monster template catalog with scopes: `GLOBAL` (admin-managed) and `PERSONAL` (owner-managed)
+- Protected API endpoints: `GET /api/monsters/templates`, `POST /api/monsters/templates`
+- Admin allowlist policy for global templates via `TELEGRAM_ADMIN_IDS`
+- Miniapp master tooling: new `Монстры` page in top navigation
 
 ### ✅ Ownership & Access Control
 - `Character.ownerUserId` used for per-user visibility and access checks

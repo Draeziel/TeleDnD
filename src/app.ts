@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import characterRoutes from './routes/characterRoutes';
 import draftRoutes from './routes/draftRoutes';
 import sessionRoutes from './routes/sessionRoutes';
+import monsterRoutes from './routes/monsterRoutes';
 import errorHandler from './middleware/errorHandler';
 import { telegramAuthMiddleware } from './middleware/telegramAuth';
 import { requestLoggingMiddleware } from './middleware/requestLogging';
@@ -86,6 +87,8 @@ app.use('/api/drafts', telegramAuthMiddleware());
 app.use('/api/drafts', draftRoutes(prisma));
 app.use('/api/sessions', telegramAuthMiddleware());
 app.use('/api/sessions', sessionRoutes(prisma));
+app.use('/api/monsters', telegramAuthMiddleware());
+app.use('/api/monsters', monsterRoutes(prisma));
 app.use(errorHandler);
 
 function parsePositiveInt(value: string | undefined, fallback: number) {

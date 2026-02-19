@@ -218,20 +218,21 @@ Build a multiplayer session (party) system where:
 
 ### P1.5 — Monster Catalog & GM Toolkit (new)
 
-- [ ] Add monster template catalog model with scopes:
+- [x] Add monster template catalog model with scopes:
    - `GLOBAL` templates (visible to all users; admin-managed only)
    - `PERSONAL` templates (visible/editable only by owner user)
-- [ ] Add admin authorization policy for global catalog management (Telegram ID allowlist).
-- [ ] Add session combatant support for monsters with quantity add (`N` instances in one action).
-- [ ] Add API endpoints for:
+- [x] Add admin authorization policy for global catalog management (Telegram ID allowlist).
+- [x] Add session combatant support for monsters with quantity add (`N` instances in one action).
+- [~] Add API endpoints for:
    - list/search monster templates (`global + personal` projection)
    - create personal monster template (GM/user)
-   - create/update/delete global monster template (admin only)
+   - create global monster template (admin only)
+   - update/delete global monster template (admin only)
    - add monsters to session by template + quantity
-- [ ] Add miniapp “GM Toolkit” section in main navigation:
+- [x] Add miniapp “GM Toolkit” section in main navigation:
    - `Персонажи` (player tools)
    - `Монстры` (GM tools; extensible for future sections)
-- [ ] Add minimal UI flow in session view for quick monster add:
+- [x] Add minimal UI flow in session view for quick monster add:
    - select template
    - set quantity
    - submit in one compact action
@@ -265,3 +266,8 @@ Build a multiplayer session (party) system where:
    - personal user-managed monster catalog,
    - GM toolkit navigation entry in miniapp,
    - quantity-based monster add into sessions.
+- Implemented MVP slice:
+   - Prisma models/migration for `monster_templates` and `session_monsters`,
+   - `/api/monsters/templates` list/create,
+   - `/api/sessions/:id/monsters` quantity add,
+   - miniapp `Монстры` page and compact add-monsters flow in session view.

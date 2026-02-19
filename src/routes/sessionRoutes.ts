@@ -13,6 +13,8 @@ export default function sessionRoutes(prisma: PrismaClient) {
   router.delete('/:id', sessionController.deleteSession.bind(sessionController));
   router.get('/:id/summary', sessionController.getSessionSummary.bind(sessionController));
   router.get('/:id/events', sessionController.getSessionEvents.bind(sessionController));
+  router.get('/:id/monsters', sessionController.getSessionMonsters.bind(sessionController));
+  router.post('/:id/monsters', sessionController.addSessionMonsters.bind(sessionController));
   router.post('/:id/initiative/roll-all', sessionController.rollInitiativeAll.bind(sessionController));
   router.post('/:id/initiative/roll-self', sessionController.rollInitiativeSelf.bind(sessionController));
   router.post('/:id/initiative/lock', sessionController.lockInitiative.bind(sessionController));

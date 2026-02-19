@@ -7,6 +7,7 @@ export function Layout() {
         <h1>Мини-приложение RPG-персонажей</h1>
         <nav>
           <Link to="/">Персонажи</Link>
+          <Link to="/monsters">Монстры</Link>
           <Link to="/create">Создать</Link>
           <Link to="/sessions">Сессии</Link>
         </nav>

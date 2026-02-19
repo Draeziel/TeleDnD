@@ -43,6 +43,7 @@ model User {
   createdSessions    Session[]       @relation("SessionCreator")
   gmSessions         Session[]       @relation("SessionGM")
   sessionPlayers     SessionPlayer[]
+  monsterTemplates   MonsterTemplate[]
 
   @@map("users")
 }
@@ -255,11 +256,51 @@ model Session {
   createdByUser   User                @relation("SessionCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
   players         SessionPlayer[]
   characters      SessionCharacter[]
+  monsters        SessionMonster[]
   events          SessionEvent[]
 
   @@index([gmUserId])
   @@index([createdByUserId])
   @@map("sessions")
+}
+
+model MonsterTemplate {
+  id                 String          @id @default(uuid())
+  name               String
+  armorClass         Int             @map("armor_class")
+  maxHp              Int             @map("max_hp")
+  initiativeModifier Int             @default(0) @map("initiative_modifier")
+  challengeRating    String?         @map("challenge_rating")
+  source             String?
+  scope              String          @default("PERSONAL")
+  ownerUserId        String?         @map("owner_user_id")
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  owner              User?           @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  sessionMonsters    SessionMonster[]
+
+  @@index([scope])
+  @@index([ownerUserId])
+  @@map("monster_templates")
+}
+
+model SessionMonster {
+  id                String           @id @default(uuid())
+  sessionId         String
+  monsterTemplateId String?          @map("monster_template_id")
+  nameSnapshot      String           @map("name_snapshot")
+  currentHp         Int              @map("current_hp")
+  maxHpSnapshot     Int              @map("max_hp_snapshot")
+  initiative        Int?
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  session           Session          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  monsterTemplate   MonsterTemplate? @relation(fields: [monsterTemplateId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([monsterTemplateId])
+  @@map("session_monsters")
 }
 
 model SessionEvent {

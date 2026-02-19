@@ -92,6 +92,7 @@ TELEGRAM_BOT_TOKEN=<your_bot_token>
 REQUIRE_TELEGRAM_AUTH=true
 ALLOW_TELEGRAM_USER_ID_FALLBACK=false
 TELEGRAM_INITDATA_MAX_AGE_SEC=86400
+TELEGRAM_ADMIN_IDS=111111111,222222222
 API_RATE_LIMIT_WINDOW_MS=60000
 API_RATE_LIMIT_MAX=120
 REQUEST_SLOW_MS=1200
@@ -104,6 +105,7 @@ SESSION_EVENTS_CLEANUP_INTERVAL_MIN=60
 - `REQUIRE_TELEGRAM_AUTH` – when `true`, protected endpoints reject requests without valid `x-telegram-init-data`. If omitted, defaults to `true` in production.
 - `ALLOW_TELEGRAM_USER_ID_FALLBACK` – allows `x-telegram-user-id` fallback only in non-production mode (for dev/test).
 - `TELEGRAM_INITDATA_MAX_AGE_SEC` – maximum allowed age of `auth_date` in seconds.
+- `TELEGRAM_ADMIN_IDS` – comma-separated Telegram IDs with admin rights for GLOBAL monster catalog management.
 - `API_RATE_LIMIT_WINDOW_MS` – rate-limit window for all `/api/*` routes in milliseconds (default: `60000`).
 - `API_RATE_LIMIT_MAX` – max requests per IP in one window for `/api/*` routes (default: `120`).
 - `REQUEST_SLOW_MS` – threshold in milliseconds for slow-request warning logs (default: `1200`).
@@ -175,7 +177,13 @@ In local/dev mode, set `REQUIRE_TELEGRAM_AUTH=false` and `ALLOW_TELEGRAM_USER_ID
 - `POST /api/sessions/:id/encounter/start`: GM starts encounter and sets first active turn by initiative.
 - `POST /api/sessions/:id/encounter/next-turn`: GM advances active turn and increments round on wrap.
 - `POST /api/sessions/:id/encounter/end`: GM ends encounter and clears active turn.
+- `GET /api/sessions/:id/monsters`: List monsters currently attached to session.
+- `POST /api/sessions/:id/monsters`: GM adds monsters from template with `quantity`.
 - `POST /api/sessions/:sessionId/characters/:characterId/apply-effect`: GM only.
+
+#### Protected monster catalog endpoints (Telegram user required)
+- `GET /api/monsters/templates`: List available templates (`GLOBAL` + caller-owned `PERSONAL`).
+- `POST /api/monsters/templates`: Create template (`PERSONAL` for regular users, `GLOBAL` for admin IDs).
 
 ### Smoke Testing
 

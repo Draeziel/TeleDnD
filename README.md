@@ -141,6 +141,12 @@ Run smoke against deployed backend with optional SLO thresholds:
 - `MaxSlowRatePct` validates `metrics.totals.slow / metrics.totals.requests`.
 - Leave thresholds at default `-1` to disable SLO assertions and run functional smoke only.
 
+### Automated production monitor
+
+- GitHub Actions workflow `.github/workflows/production-monitor.yml` runs every 30 minutes.
+- It checks `/livez`, `/healthz`, `/readyz`, `/metricsz` and runs smoke with SLO thresholds.
+- You can run it manually from Actions UI with custom `baseUrl`, `maxErrorRatePct`, `maxSlowRatePct`.
+
 ### API Endpoints
 
 #### Public reference endpoints

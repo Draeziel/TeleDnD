@@ -103,3 +103,19 @@ Interpretation:
 - `Error rate SLO` checks `metrics.totals.errors / metrics.totals.requests`.
 - `Slow rate SLO` checks `metrics.totals.slow / metrics.totals.requests`.
 - These checks are enabled only when thresholds are provided (>= 0).
+
+## Automated production monitoring (GitHub Actions)
+
+Repository includes `.github/workflows/production-monitor.yml`:
+- runs every 30 minutes,
+- probes `/livez`, `/healthz`, `/readyz`, `/metricsz`,
+- runs `run-smoke.ps1` with SLO thresholds.
+
+Manual run:
+1. GitHub -> `Actions` -> `Production Monitor`.
+2. Click `Run workflow`.
+3. (Optional) override base URL and SLO thresholds.
+
+Default thresholds:
+- max error rate: `5%`
+- max slow rate: `20%`

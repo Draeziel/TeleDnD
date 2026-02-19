@@ -1,0 +1,75 @@
+name: Production Monitor
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      baseUrl:
+        description: 'Production backend base URL'
+        required: false
+        default: 'https://telednd-backend.onrender.com'
+      maxErrorRatePct:
+        description: 'Max 5xx error-rate percent for smoke SLO'
+        required: false
+        default: '5'
+      maxSlowRatePct:
+        description: 'Max slow-request percent for smoke SLO'
+        required: false
+        default: '20'
+
+jobs:
+  monitor-prod:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve monitor settings
+        id: settings
+        shell: bash
+        run: |
+          BASE_URL="${{ github.event.inputs.baseUrl }}"
+          if [ -z "$BASE_URL" ]; then
+            BASE_URL="https://telednd-backend.onrender.com"
+          fi
+
+          MAX_ERROR="${{ github.event.inputs.maxErrorRatePct }}"
+          if [ -z "$MAX_ERROR" ]; then
+            MAX_ERROR="5"
+          fi
+
+          MAX_SLOW="${{ github.event.inputs.maxSlowRatePct }}"
+          if [ -z "$MAX_SLOW" ]; then
+            MAX_SLOW="20"
+          fi
+
+          echo "base_url=$BASE_URL" >> "$GITHUB_OUTPUT"
+          echo "max_error=$MAX_ERROR" >> "$GITHUB_OUTPUT"
+          echo "max_slow=$MAX_SLOW" >> "$GITHUB_OUTPUT"
+
+      - name: Probe livez
+        shell: bash
+        run: curl -fsS "${{ steps.settings.outputs.base_url }}/livez"
+
+      - name: Probe healthz
+        shell: bash
+        run: curl -fsS "${{ steps.settings.outputs.base_url }}/healthz"
+
+      - name: Probe readyz
+        shell: bash
+        run: curl -fsS "${{ steps.settings.outputs.base_url }}/readyz"
+
+      - name: Probe metricsz
+        shell: bash
+        run: curl -fsS "${{ steps.settings.outputs.base_url }}/metricsz"
+
+      - name: Run production smoke with SLO thresholds
+        shell: pwsh
+        run: |
+          ./run-smoke.ps1 `
+            -BaseUrl "${{ steps.settings.outputs.base_url }}" `
+            -MaxErrorRatePct ([double]"${{ steps.settings.outputs.max_error }}") `
+            -MaxSlowRatePct ([double]"${{ steps.settings.outputs.max_slow }}")

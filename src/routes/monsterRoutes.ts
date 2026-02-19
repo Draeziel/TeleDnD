@@ -8,6 +8,8 @@ export default function monsterRoutes(prisma: PrismaClient) {
 
   router.get('/templates', monsterController.listTemplates.bind(monsterController));
   router.post('/templates', monsterController.createTemplate.bind(monsterController));
+  router.put('/templates/:id', monsterController.updateTemplate.bind(monsterController));
+  router.delete('/templates/:id', monsterController.deleteTemplate.bind(monsterController));
 
   return router;
 }

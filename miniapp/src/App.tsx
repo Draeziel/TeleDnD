@@ -18,6 +18,7 @@ function App() {
           <Route path="/create" element={<CreateCharacterWizardPage />} />
           <Route path="/monsters" element={<MonstersPage />} />
           <Route path="/monsters/create" element={<MonsterCreatePage />} />
+          <Route path="/monsters/:monsterId/edit" element={<MonsterCreatePage />} />
           <Route path="/sessions" element={<SessionsPage />} />
           <Route path="/sessions/:id" element={<SessionViewPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

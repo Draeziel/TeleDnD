@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { monsterApi } from '../api/monsterApi';
 import { StatusBox } from '../components/StatusBox';
 
 export function MonsterCreatePage() {
+  const { monsterId } = useParams<{ monsterId: string }>();
+  const isEditMode = Boolean(monsterId);
   const navigate = useNavigate();
 
   const [creating, setCreating] = useState(false);
+  const [loadingMonster, setLoadingMonster] = useState(isEditMode);
   const [error, setError] = useState('');
 
   const [name, setName] = useState('');
@@ -36,6 +39,63 @@ export function MonsterCreatePage() {
   const [actions, setActions] = useState('');
   const [legendaryActions, setLegendaryActions] = useState('');
   const [source, setSource] = useState('');
+  const [templateScope, setTemplateScope] = useState<'GLOBAL' | 'PERSONAL'>('PERSONAL');
+
+  useEffect(() => {
+    if (!monsterId) {
+      setLoadingMonster(false);
+      return;
+    }
+
+    const loadMonster = async () => {
+      try {
+        setLoadingMonster(true);
+        setError('');
+
+        const payload = await monsterApi.listTemplates({ scope: 'all' });
+        const template = payload.items.find((item) => item.id === monsterId);
+
+        if (!template) {
+          setError('Шаблон монстра не найден');
+          return;
+        }
+
+        setName(template.name);
+        setIconUrl(template.iconUrl || '');
+        setImageUrl(template.imageUrl || '');
+        setSize(template.size || '');
+        setCreatureType(template.creatureType || '');
+        setAlignment(template.alignment || '');
+        setArmorClass(template.armorClass);
+        setMaxHp(template.maxHp);
+        setHitDice(template.hitDice || '');
+        setSpeed(template.speed || '');
+        setStrength(template.strength);
+        setDexterity(template.dexterity);
+        setConstitution(template.constitution);
+        setIntelligence(template.intelligence);
+        setWisdom(template.wisdom);
+        setCharisma(template.charisma);
+        setInitiativeModifier(template.initiativeModifier);
+        setChallengeRating(template.challengeRating || '');
+        setDamageImmunities(template.damageImmunities || '');
+        setConditionImmunities(template.conditionImmunities || '');
+        setSenses(template.senses || '');
+        setLanguages(template.languages || '');
+        setTraits(template.traits || '');
+        setActions(template.actions || '');
+        setLegendaryActions(template.legendaryActions || '');
+        setSource(template.source || '');
+        setTemplateScope(template.scope);
+      } catch {
+        setError('Не удалось загрузить шаблон монстра');
+      } finally {
+        setLoadingMonster(false);
+      }
+    };
+
+    loadMonster();
+  }, [monsterId]);
 
   const onCreate = async (event: FormEvent) => {
     event.preventDefault();
@@ -44,7 +104,7 @@ export function MonsterCreatePage() {
       setCreating(true);
       setError('');
 
-      await monsterApi.createTemplate({
+      const input = {
         name,
         iconUrl,
         imageUrl,
@@ -71,12 +131,18 @@ export function MonsterCreatePage() {
         actions,
         legendaryActions,
         source,
-        scope: 'PERSONAL',
-      });
+        scope: templateScope,
+      };
+
+      if (monsterId) {
+        await monsterApi.updateTemplate(monsterId, input);
+      } else {
+        await monsterApi.createTemplate(input);
+      }
 
       navigate('/monsters');
     } catch {
-      setError('Не удалось создать шаблон монстра');
+      setError(monsterId ? 'Не удалось обновить шаблон монстра' : 'Не удалось создать шаблон монстра');
     } finally {
       setCreating(false);
     }
@@ -85,7 +151,7 @@ export function MonsterCreatePage() {
   return (
     <div className="page-stack">
       <div className="section-card">
-        <h2>Создать монстра</h2>
+        <h2>{isEditMode ? 'Редактировать монстра' : 'Создать монстра'}</h2>
         <p className="meta-row">После сохранения вернёмся в список монстров.</p>
         <Link className="btn btn-secondary" to="/monsters">Назад к списку</Link>
       </div>
@@ -93,6 +159,9 @@ export function MonsterCreatePage() {
       {error && <StatusBox type="error" message={error} />}
 
       <div className="section-card">
+        {loadingMonster ? (
+          <StatusBox type="info" message="Загрузка шаблона..." />
+        ) : (
         <form className="form-stack" onSubmit={onCreate}>
           <input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Название монстра" minLength={2} maxLength={80} />
           <div className="grid-2">
@@ -135,9 +204,10 @@ export function MonsterCreatePage() {
           <textarea value={actions} onChange={(event) => setActions(event.target.value)} placeholder="Действия" rows={4} maxLength={4000} />
           <textarea value={legendaryActions} onChange={(event) => setLegendaryActions(event.target.value)} placeholder="Легендарные действия" rows={3} maxLength={4000} />
           <button className="btn btn-primary" disabled={creating} type="submit">
-            {creating ? 'Создаём...' : 'Создать'}
+            {creating ? (isEditMode ? 'Сохраняем...' : 'Создаём...') : (isEditMode ? 'Сохранить' : 'Создать')}
           </button>
         </form>
+        )}
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ export function MonstersPage() {
   const [items, setItems] = useState<MonsterTemplate[]>([]);
   const [activeTab, setActiveTab] = useState<MonstersTab>('PERSONAL');
   const [selectedMonsterId, setSelectedMonsterId] = useState('');
+  const [deletingMonsterId, setDeletingMonsterId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -38,6 +39,29 @@ export function MonstersPage() {
   const personalItems = useMemo(() => items.filter((item) => item.scope === 'PERSONAL'), [items]);
   const visibleItems = activeTab === 'PERSONAL' ? personalItems : globalItems;
   const selectedMonster = visibleItems.find((monster) => monster.id === selectedMonsterId) || null;
+
+  const onToggleMonsterCard = (monsterId: string) => {
+    setSelectedMonsterId((currentId) => (currentId === monsterId ? '' : monsterId));
+  };
+
+  const onDeleteMonster = async (monster: MonsterTemplate) => {
+    const shouldDelete = window.confirm(`Удалить шаблон «${monster.name}»?`);
+    if (!shouldDelete) {
+      return;
+    }
+
+    try {
+      setDeletingMonsterId(monster.id);
+      setError('');
+      await monsterApi.deleteTemplate(monster.id);
+      setItems((current) => current.filter((item) => item.id !== monster.id));
+      setSelectedMonsterId((currentId) => (currentId === monster.id ? '' : currentId));
+    } catch {
+      setError('Не удалось удалить шаблон монстра');
+    } finally {
+      setDeletingMonsterId('');
+    }
+  };
 
   const renderCard = (monster: MonsterTemplate) => (
     <div className="monster-card" key={monster.id}>
@@ -116,10 +140,22 @@ export function MonstersPage() {
                 )}
                 <button
                   className="btn btn-inline"
-                  onClick={() => setSelectedMonsterId(monster.id)}
+                  onClick={() => onToggleMonsterCard(monster.id)}
                 >
                   {monster.name}
                 </button>
+                <div className="inline-row">
+                  <Link className="btn btn-secondary btn-compact" to={`/monsters/${monster.id}/edit`}>
+                    Редактировать
+                  </Link>
+                  <button
+                    className="btn btn-secondary btn-compact"
+                    onClick={() => onDeleteMonster(monster)}
+                    disabled={deletingMonsterId === monster.id}
+                  >
+                    {deletingMonsterId === monster.id ? 'Удаляем...' : 'Удалить'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>

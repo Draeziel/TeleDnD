@@ -1,6 +1,36 @@
 import { PrismaClient } from '@prisma/client';
 import { isTelegramAdmin } from '../utils/admin';
 
+type MonsterTemplateInput = {
+  name: string;
+  size?: string;
+  creatureType?: string;
+  alignment?: string;
+  armorClass: number;
+  maxHp: number;
+  hitDice?: string;
+  speed?: string;
+  strength?: number;
+  dexterity?: number;
+  constitution?: number;
+  intelligence?: number;
+  wisdom?: number;
+  charisma?: number;
+  initiativeModifier?: number;
+  challengeRating?: string;
+  damageImmunities?: string;
+  conditionImmunities?: string;
+  senses?: string;
+  languages?: string;
+  traits?: string;
+  actions?: string;
+  legendaryActions?: string;
+  iconUrl?: string;
+  imageUrl?: string;
+  source?: string;
+  scope?: string;
+};
+
 export class MonsterService {
   private prisma: PrismaClient;
 
@@ -16,113 +46,43 @@ export class MonsterService {
     });
   }
 
-  async listTemplates(telegramUserId: string, query?: string, scope?: string) {
-    const user = await this.resolveUserByTelegramId(telegramUserId);
-    const normalizedQuery = query?.trim();
-    const normalizedScope = (scope || 'all').toLowerCase();
-
-    const scopeFilter =
-      normalizedScope === 'global'
-        ? { scope: 'GLOBAL' as const }
-        : normalizedScope === 'personal'
-          ? { scope: 'PERSONAL' as const, ownerUserId: user.id }
-          : {
-              OR: [
-                { scope: 'GLOBAL' as const },
-                { scope: 'PERSONAL' as const, ownerUserId: user.id },
-              ],
-            };
-
-    const templates = await this.prisma.monsterTemplate.findMany({
-      where: {
-        ...scopeFilter,
-        ...(normalizedQuery
-          ? {
-              name: {
-                contains: normalizedQuery,
-                mode: 'insensitive',
-              },
-            }
-          : {}),
-      },
-      orderBy: [
-        { scope: 'asc' },
-        { name: 'asc' },
-      ],
-    });
-
+  private serializeTemplate(template: any) {
     return {
-      canManageGlobal: isTelegramAdmin(telegramUserId),
-      items: templates.map((template) => ({
-        id: template.id,
-        name: template.name,
-        size: template.size,
-        creatureType: template.creatureType,
-        alignment: template.alignment,
-        armorClass: template.armorClass,
-        maxHp: template.maxHp,
-        hitDice: template.hitDice,
-        speed: template.speed,
-        strength: template.strength,
-        dexterity: template.dexterity,
-        constitution: template.constitution,
-        intelligence: template.intelligence,
-        wisdom: template.wisdom,
-        charisma: template.charisma,
-        initiativeModifier: template.initiativeModifier,
-        challengeRating: template.challengeRating,
-        damageImmunities: template.damageImmunities,
-        conditionImmunities: template.conditionImmunities,
-        senses: template.senses,
-        languages: template.languages,
-        traits: template.traits,
-        actions: template.actions,
-        legendaryActions: template.legendaryActions,
-        iconUrl: template.iconUrl,
-        imageUrl: template.imageUrl,
-        source: template.source,
-        scope: template.scope,
-        ownerUserId: template.ownerUserId,
-        createdAt: template.createdAt,
-        updatedAt: template.updatedAt,
-      })),
+      id: template.id,
+      name: template.name,
+      size: template.size,
+      creatureType: template.creatureType,
+      alignment: template.alignment,
+      armorClass: template.armorClass,
+      maxHp: template.maxHp,
+      hitDice: template.hitDice,
+      speed: template.speed,
+      strength: template.strength,
+      dexterity: template.dexterity,
+      constitution: template.constitution,
+      intelligence: template.intelligence,
+      wisdom: template.wisdom,
+      charisma: template.charisma,
+      initiativeModifier: template.initiativeModifier,
+      challengeRating: template.challengeRating,
+      damageImmunities: template.damageImmunities,
+      conditionImmunities: template.conditionImmunities,
+      senses: template.senses,
+      languages: template.languages,
+      traits: template.traits,
+      actions: template.actions,
+      legendaryActions: template.legendaryActions,
+      iconUrl: template.iconUrl,
+      imageUrl: template.imageUrl,
+      source: template.source,
+      scope: template.scope,
+      ownerUserId: template.ownerUserId,
+      createdAt: template.createdAt,
+      updatedAt: template.updatedAt,
     };
   }
 
-  async createTemplate(
-    telegramUserId: string,
-    input: {
-      name: string;
-      size?: string;
-      creatureType?: string;
-      alignment?: string;
-      armorClass: number;
-      maxHp: number;
-      hitDice?: string;
-      speed?: string;
-      strength?: number;
-      dexterity?: number;
-      constitution?: number;
-      intelligence?: number;
-      wisdom?: number;
-      charisma?: number;
-      initiativeModifier?: number;
-      challengeRating?: string;
-      damageImmunities?: string;
-      conditionImmunities?: string;
-      senses?: string;
-      languages?: string;
-      traits?: string;
-      actions?: string;
-      legendaryActions?: string;
-      iconUrl?: string;
-      imageUrl?: string;
-      source?: string;
-      scope?: string;
-    }
-  ) {
-    const user = await this.resolveUserByTelegramId(telegramUserId);
-
+  private prepareTemplateData(telegramUserId: string, input: MonsterTemplateInput) {
     const name = input.name?.trim();
     if (!name || name.length < 2 || name.length > 80) {
       throw new Error('Validation: name length must be between 2 and 80 characters');
@@ -162,78 +122,162 @@ export class MonsterService {
       return value;
     };
 
-    const strength = validateAbility(input.strength, 'strength');
-    const dexterity = validateAbility(input.dexterity, 'dexterity');
-    const constitution = validateAbility(input.constitution, 'constitution');
-    const intelligence = validateAbility(input.intelligence, 'intelligence');
-    const wisdom = validateAbility(input.wisdom, 'wisdom');
-    const charisma = validateAbility(input.charisma, 'charisma');
+    return {
+      name,
+      size: input.size?.trim() || null,
+      creatureType: input.creatureType?.trim() || null,
+      alignment: input.alignment?.trim() || null,
+      armorClass: input.armorClass,
+      maxHp: input.maxHp,
+      hitDice: input.hitDice?.trim() || null,
+      speed: input.speed?.trim() || null,
+      strength: validateAbility(input.strength, 'strength'),
+      dexterity: validateAbility(input.dexterity, 'dexterity'),
+      constitution: validateAbility(input.constitution, 'constitution'),
+      intelligence: validateAbility(input.intelligence, 'intelligence'),
+      wisdom: validateAbility(input.wisdom, 'wisdom'),
+      charisma: validateAbility(input.charisma, 'charisma'),
+      initiativeModifier,
+      challengeRating: input.challengeRating?.trim() || null,
+      damageImmunities: input.damageImmunities?.trim() || null,
+      conditionImmunities: input.conditionImmunities?.trim() || null,
+      senses: input.senses?.trim() || null,
+      languages: input.languages?.trim() || null,
+      traits: input.traits?.trim() || null,
+      actions: input.actions?.trim() || null,
+      legendaryActions: input.legendaryActions?.trim() || null,
+      iconUrl: input.iconUrl?.trim() || null,
+      imageUrl: input.imageUrl?.trim() || null,
+      source: input.source?.trim() || null,
+      scope,
+    };
+  }
 
-    const created = await this.prisma.monsterTemplate.create({
-      data: {
-        name,
-        size: input.size?.trim() || null,
-        creatureType: input.creatureType?.trim() || null,
-        alignment: input.alignment?.trim() || null,
-        armorClass: input.armorClass,
-        maxHp: input.maxHp,
-        hitDice: input.hitDice?.trim() || null,
-        speed: input.speed?.trim() || null,
-        strength,
-        dexterity,
-        constitution,
-        intelligence,
-        wisdom,
-        charisma,
-        initiativeModifier,
-        challengeRating: input.challengeRating?.trim() || null,
-        damageImmunities: input.damageImmunities?.trim() || null,
-        conditionImmunities: input.conditionImmunities?.trim() || null,
-        senses: input.senses?.trim() || null,
-        languages: input.languages?.trim() || null,
-        traits: input.traits?.trim() || null,
-        actions: input.actions?.trim() || null,
-        legendaryActions: input.legendaryActions?.trim() || null,
-        iconUrl: input.iconUrl?.trim() || null,
-        imageUrl: input.imageUrl?.trim() || null,
-        source: input.source?.trim() || null,
-        scope,
-        ownerUserId: scope === 'PERSONAL' ? user.id : null,
+  private assertManageTemplateAccess(telegramUserId: string, userId: string, template: { scope: string; ownerUserId: string | null }) {
+    if (template.scope === 'GLOBAL') {
+      if (!isTelegramAdmin(telegramUserId)) {
+        throw new Error('Forbidden: admin role required for GLOBAL monster templates');
+      }
+      return;
+    }
+
+    if (template.ownerUserId !== userId) {
+      throw new Error('Forbidden: you can manage only your PERSONAL monster templates');
+    }
+  }
+
+  async listTemplates(telegramUserId: string, query?: string, scope?: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    const normalizedQuery = query?.trim();
+    const normalizedScope = (scope || 'all').toLowerCase();
+
+    const scopeFilter =
+      normalizedScope === 'global'
+        ? { scope: 'GLOBAL' as const }
+        : normalizedScope === 'personal'
+          ? { scope: 'PERSONAL' as const, ownerUserId: user.id }
+          : {
+              OR: [
+                { scope: 'GLOBAL' as const },
+                { scope: 'PERSONAL' as const, ownerUserId: user.id },
+              ],
+            };
+
+    const templates = await this.prisma.monsterTemplate.findMany({
+      where: {
+        ...scopeFilter,
+        ...(normalizedQuery
+          ? {
+              name: {
+                contains: normalizedQuery,
+                mode: 'insensitive',
+              },
+            }
+          : {}),
       },
+      orderBy: [
+        { scope: 'asc' },
+        { name: 'asc' },
+      ],
     });
 
     return {
-      id: created.id,
-      name: created.name,
-      size: created.size,
-      creatureType: created.creatureType,
-      alignment: created.alignment,
-      armorClass: created.armorClass,
-      maxHp: created.maxHp,
-      hitDice: created.hitDice,
-      speed: created.speed,
-      strength: created.strength,
-      dexterity: created.dexterity,
-      constitution: created.constitution,
-      intelligence: created.intelligence,
-      wisdom: created.wisdom,
-      charisma: created.charisma,
-      initiativeModifier: created.initiativeModifier,
-      challengeRating: created.challengeRating,
-      damageImmunities: created.damageImmunities,
-      conditionImmunities: created.conditionImmunities,
-      senses: created.senses,
-      languages: created.languages,
-      traits: created.traits,
-      actions: created.actions,
-      legendaryActions: created.legendaryActions,
-      iconUrl: created.iconUrl,
-      imageUrl: created.imageUrl,
-      source: created.source,
-      scope: created.scope,
-      ownerUserId: created.ownerUserId,
-      createdAt: created.createdAt,
-      updatedAt: created.updatedAt,
+      canManageGlobal: isTelegramAdmin(telegramUserId),
+      items: templates.map((template) => this.serializeTemplate(template)),
+    };
+  }
+
+  async createTemplate(telegramUserId: string, input: MonsterTemplateInput) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    const data = this.prepareTemplateData(telegramUserId, input);
+
+    const created = await this.prisma.monsterTemplate.create({
+      data: {
+        ...data,
+        ownerUserId: data.scope === 'PERSONAL' ? user.id : null,
+      },
+    });
+
+    return this.serializeTemplate(created);
+  }
+
+  async updateTemplate(telegramUserId: string, templateId: string, input: MonsterTemplateInput) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+
+    const existing = await this.prisma.monsterTemplate.findUnique({
+      where: { id: templateId },
+      select: {
+        id: true,
+        scope: true,
+        ownerUserId: true,
+      },
+    });
+
+    if (!existing) {
+      throw new Error('Monster template not found');
+    }
+
+    this.assertManageTemplateAccess(telegramUserId, user.id, existing);
+
+    const data = this.prepareTemplateData(telegramUserId, input);
+    if (existing.scope === 'PERSONAL') {
+      data.scope = 'PERSONAL';
+    }
+
+    const updated = await this.prisma.monsterTemplate.update({
+      where: { id: existing.id },
+      data: {
+        ...data,
+        ownerUserId: data.scope === 'PERSONAL' ? user.id : null,
+      },
+    });
+
+    return this.serializeTemplate(updated);
+  }
+
+  async deleteTemplate(telegramUserId: string, templateId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+
+    const existing = await this.prisma.monsterTemplate.findUnique({
+      where: { id: templateId },
+      select: {
+        id: true,
+        scope: true,
+        ownerUserId: true,
+      },
+    });
+
+    if (!existing) {
+      throw new Error('Monster template not found');
+    }
+
+    this.assertManageTemplateAccess(telegramUserId, user.id, existing);
+
+    await this.prisma.monsterTemplate.delete({ where: { id: existing.id } });
+
+    return {
+      success: true,
+      id: existing.id,
     };
   }
 }

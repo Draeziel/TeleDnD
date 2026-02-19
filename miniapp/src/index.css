@@ -209,6 +209,13 @@ td {
   line-height: 1.2;
 }
 
+.combat-start-button {
+  width: 100%;
+  min-height: 56px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
 .initiative-controls {
   display: inline-flex;
   flex-wrap: wrap;

@@ -503,149 +503,155 @@ export function SessionViewPage() {
 
       {error && <StatusBox type="error" message={error} />}
 
-      <div className="section-card">
-        <h2>Бой</h2>
-        <div className="list-item">
-          <div>
-            <div className="initiative-controls" style={{ marginTop: '2px' }}>
-              <span>Инициатива:</span>
-              <button
-                className="btn btn-inline"
-                disabled={!session.hasActiveGm || initiativeActionLoading}
-                aria-label="Переключить lock инициативы"
-                onClick={() => {
-                  if (!session.hasActiveGm || initiativeActionLoading) {
-                    return;
-                  }
+      {session.encounterActive ? (
+        <div className="section-card">
+          <h2>Бой</h2>
+          <div className="list-item">
+            <div>
+              <div className="initiative-controls" style={{ marginTop: '2px' }}>
+                <span>Инициатива:</span>
+                <button
+                  className="btn btn-inline"
+                  disabled={!session.hasActiveGm || initiativeActionLoading}
+                  aria-label="Переключить lock инициативы"
+                  onClick={() => {
+                    if (!session.hasActiveGm || initiativeActionLoading) {
+                      return;
+                    }
 
-                  if (session.initiativeLocked) {
-                    void onUnlockInitiative();
-                    return;
-                  }
+                    if (session.initiativeLocked) {
+                      void onUnlockInitiative();
+                      return;
+                    }
 
-                  void onLockInitiative();
-                }}
-              >
-                {session.initiativeLocked ? '🔒' : '🔓'}
-              </button>
-              <button
-                className="btn btn-compact btn-secondary"
-                disabled={rollingAll || !session.hasActiveGm || session.initiativeLocked}
-                aria-label="Бросок инициативы для всех"
-                onClick={onRollInitiativeAll}
-              >
-                {rollingAll ? '🎲…' : '🎲 всем'}
-              </button>
-              <button
-                className="btn btn-compact btn-secondary"
-                disabled={initiativeActionLoading || !session.hasActiveGm}
-                aria-label="Сбросить инициативу"
-                onClick={onResetInitiative}
-              >
-                🎲✕
-              </button>
-            </div>
-            <div style={{ marginTop: '8px' }}>
-              Раунд: {session.encounterActive ? session.combatRound : '—'}{' '}
-              <button
-                className="btn btn-inline"
-                aria-label={session.encounterActive ? 'Завершить раунд' : 'Начать раунд'}
-                onClick={() => {
-                  if (!session.hasActiveGm || encounterActionLoading) {
-                    return;
-                  }
+                    void onLockInitiative();
+                  }}
+                >
+                  {session.initiativeLocked ? '🔒' : '🔓'}
+                </button>
+                <button
+                  className="btn btn-compact btn-secondary"
+                  disabled={rollingAll || !session.hasActiveGm || session.initiativeLocked}
+                  aria-label="Бросок инициативы для всех"
+                  onClick={onRollInitiativeAll}
+                >
+                  {rollingAll ? '🎲…' : '🎲 всем'}
+                </button>
+                <button
+                  className="btn btn-compact btn-secondary"
+                  disabled={initiativeActionLoading || !session.hasActiveGm}
+                  aria-label="Сбросить инициативу"
+                  onClick={onResetInitiative}
+                >
+                  🎲✕
+                </button>
+              </div>
+              <div style={{ marginTop: '8px' }}>
+                Раунд: {session.combatRound}{' '}
+                <button
+                  className="btn btn-inline"
+                  aria-label="Завершить раунд"
+                  onClick={() => {
+                    if (!session.hasActiveGm || encounterActionLoading) {
+                      return;
+                    }
 
-                  if (session.encounterActive) {
                     void onEndEncounter();
-                    return;
-                  }
+                  }}
+                >
+                  ■ Стоп
+                </button>
+              </div>
+              <div>Текущий: {activeTurnCharacter?.character.name ?? '—'}</div>
+              <div>Следующий: {nextTurnCharacter?.character.name ?? '—'}</div>
 
-                  void onStartEncounter();
-                }}
-              >
-                {session.encounterActive ? '■ Стоп' : '▶ Старт'}
-              </button>
+              <div className="inline-row" style={{ marginTop: '8px' }}>
+                <select
+                  value={selectedMonsterTemplateId}
+                  onChange={(event) => setSelectedMonsterTemplateId(event.target.value)}
+                  disabled={addingMonsters || monsterTemplates.length === 0}
+                >
+                  {monsterTemplates.length === 0 && <option value="">Нет доступных шаблонов</option>}
+                  {monsterTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name} ({template.scope === 'GLOBAL' ? 'global' : 'personal'})
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={monsterQuantity}
+                  onChange={(event) => setMonsterQuantity(Math.min(30, Math.max(1, Number(event.target.value) || 1)))}
+                />
+                <button
+                  className="btn btn-primary"
+                  disabled={addingMonsters || !session.hasActiveGm || !selectedMonsterTemplateId}
+                  onClick={onAddMonsters}
+                >
+                  {addingMonsters ? 'Добавляем...' : 'Добавить монстров'}
+                </button>
+              </div>
             </div>
-            <div>Текущий: {activeTurnCharacter?.character.name ?? '—'}</div>
-            <div>Следующий: {nextTurnCharacter?.character.name ?? '—'}</div>
-
-            <div className="inline-row" style={{ marginTop: '8px' }}>
-              <select
-                value={selectedMonsterTemplateId}
-                onChange={(event) => setSelectedMonsterTemplateId(event.target.value)}
-                disabled={addingMonsters || monsterTemplates.length === 0}
-              >
-                {monsterTemplates.length === 0 && <option value="">Нет доступных шаблонов</option>}
-                {monsterTemplates.map((template) => (
-                  <option key={template.id} value={template.id}>
-                    {template.name} ({template.scope === 'GLOBAL' ? 'global' : 'personal'})
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                min={1}
-                max={30}
-                value={monsterQuantity}
-                onChange={(event) => setMonsterQuantity(Math.min(30, Math.max(1, Number(event.target.value) || 1)))}
-              />
-              <button
-                className="btn btn-primary"
-                disabled={addingMonsters || !session.hasActiveGm || !selectedMonsterTemplateId}
-                onClick={onAddMonsters}
-              >
-                {addingMonsters ? 'Добавляем...' : 'Добавить монстров'}
-              </button>
-            </div>
+            <button
+              className="btn btn-primary"
+              disabled={encounterActionLoading || !session.hasActiveGm}
+              onClick={onNextTurn}
+            >
+              Next turn
+            </button>
           </div>
-          <button
-            className="btn btn-primary"
-            disabled={encounterActionLoading || !session.hasActiveGm || !session.encounterActive}
-            onClick={onNextTurn}
-          >
-            Next turn
-          </button>
-        </div>
 
-        {session.encounterActive ? (
-          <>
-            <h2>Монстры в сессии</h2>
+          <h2>Монстры в сессии</h2>
+          <div className="list-grid">
+            {session.monsters.length === 0 && <StatusBox type="info" message="Монстры пока не добавлены" />}
+            {session.monsters.map((monster) => (
+              <div className="list-item" key={monster.id}>
+                <div>
+                  <strong>{monster.nameSnapshot}</strong>
+                  <div>{monster.template ? [monster.template.size, monster.template.creatureType, monster.template.alignment].filter(Boolean).join(', ') : 'custom'}</div>
+                  <div>HP: {monster.currentHp} / {monster.maxHpSnapshot}</div>
+                  <div>Инициатива: {monster.initiative ?? '—'}</div>
+                </div>
+                <div className="meta-row">AC: {monster.template?.armorClass ?? '—'} • CR: {monster.template?.challengeRating || '—'}</div>
+              </div>
+            ))}
+          </div>
+
+          <h2>Порядок ходов</h2>
+          {initiativeOrder.length === 0 ? (
+            <StatusBox type="info" message="Инициатива пока не выставлена" />
+          ) : (
             <div className="list-grid">
-              {session.monsters.length === 0 && <StatusBox type="info" message="Монстры пока не добавлены" />}
-              {session.monsters.map((monster) => (
-                <div className="list-item" key={monster.id}>
+              {initiativeOrder.map((entry, index) => (
+                <div className="list-item" key={`initiative-${entry.id}`}>
                   <div>
-                    <strong>{monster.nameSnapshot}</strong>
-                    <div>{monster.template ? [monster.template.size, monster.template.creatureType, monster.template.alignment].filter(Boolean).join(', ') : 'custom'}</div>
-                    <div>HP: {monster.currentHp} / {monster.maxHpSnapshot}</div>
-                    <div>Инициатива: {monster.initiative ?? '—'}</div>
+                    <strong>{session.activeTurnSessionCharacterId === entry.id ? '▶ ' : ''}{index + 1}. {entry.character.name}</strong>
+                    <div>Класс: {entry.character.class?.name || '—'}</div>
                   </div>
-                  <div className="meta-row">AC: {monster.template?.armorClass ?? '—'} • CR: {monster.template?.challengeRating || '—'}</div>
+                  <span>Инициатива: {entry.state?.initiative}</span>
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      ) : (
+        <button
+          className="btn btn-primary combat-start-button"
+          disabled={encounterActionLoading || !session.hasActiveGm}
+          aria-label="Начать бой"
+          onClick={() => {
+            if (!session.hasActiveGm || encounterActionLoading) {
+              return;
+            }
 
-            <h2>Порядок ходов</h2>
-            {initiativeOrder.length === 0 ? (
-              <StatusBox type="info" message="Инициатива пока не выставлена" />
-            ) : (
-              <div className="list-grid">
-                {initiativeOrder.map((entry, index) => (
-                  <div className="list-item" key={`initiative-${entry.id}`}>
-                    <div>
-                      <strong>{session.activeTurnSessionCharacterId === entry.id ? '▶ ' : ''}{index + 1}. {entry.character.name}</strong>
-                      <div>Класс: {entry.character.class?.name || '—'}</div>
-                    </div>
-                    <span>Инициатива: {entry.state?.initiative}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        ) : (
-          <StatusBox type="info" message="Боевой encounter не активен" />
-        )}
-      </div>
+            void onStartEncounter();
+          }}
+        >
+          Начать бой!
+        </button>
+      )}
 
       <div className="section-card">
         <h2>{session.encounterActive ? 'Персонажи в бою' : 'Персонажи группы'}</h2>

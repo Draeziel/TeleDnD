@@ -56,10 +56,28 @@ export class MonsterService {
       items: templates.map((template) => ({
         id: template.id,
         name: template.name,
+        size: template.size,
+        creatureType: template.creatureType,
+        alignment: template.alignment,
         armorClass: template.armorClass,
         maxHp: template.maxHp,
+        hitDice: template.hitDice,
+        speed: template.speed,
+        strength: template.strength,
+        dexterity: template.dexterity,
+        constitution: template.constitution,
+        intelligence: template.intelligence,
+        wisdom: template.wisdom,
+        charisma: template.charisma,
         initiativeModifier: template.initiativeModifier,
         challengeRating: template.challengeRating,
+        damageImmunities: template.damageImmunities,
+        conditionImmunities: template.conditionImmunities,
+        senses: template.senses,
+        languages: template.languages,
+        traits: template.traits,
+        actions: template.actions,
+        legendaryActions: template.legendaryActions,
         source: template.source,
         scope: template.scope,
         ownerUserId: template.ownerUserId,
@@ -73,10 +91,28 @@ export class MonsterService {
     telegramUserId: string,
     input: {
       name: string;
+      size?: string;
+      creatureType?: string;
+      alignment?: string;
       armorClass: number;
       maxHp: number;
+      hitDice?: string;
+      speed?: string;
+      strength?: number;
+      dexterity?: number;
+      constitution?: number;
+      intelligence?: number;
+      wisdom?: number;
+      charisma?: number;
       initiativeModifier?: number;
       challengeRating?: string;
+      damageImmunities?: string;
+      conditionImmunities?: string;
+      senses?: string;
+      languages?: string;
+      traits?: string;
+      actions?: string;
+      legendaryActions?: string;
       source?: string;
       scope?: string;
     }
@@ -110,13 +146,50 @@ export class MonsterService {
       throw new Error('Forbidden: admin role required for GLOBAL monster templates');
     }
 
+    const validateAbility = (value: number | undefined, key: string) => {
+      if (value === undefined) {
+        return 10;
+      }
+
+      if (!Number.isInteger(value) || value < 1 || value > 30) {
+        throw new Error(`Validation: ${key} must be an integer in range 1..30`);
+      }
+
+      return value;
+    };
+
+    const strength = validateAbility(input.strength, 'strength');
+    const dexterity = validateAbility(input.dexterity, 'dexterity');
+    const constitution = validateAbility(input.constitution, 'constitution');
+    const intelligence = validateAbility(input.intelligence, 'intelligence');
+    const wisdom = validateAbility(input.wisdom, 'wisdom');
+    const charisma = validateAbility(input.charisma, 'charisma');
+
     const created = await this.prisma.monsterTemplate.create({
       data: {
         name,
+        size: input.size?.trim() || null,
+        creatureType: input.creatureType?.trim() || null,
+        alignment: input.alignment?.trim() || null,
         armorClass: input.armorClass,
         maxHp: input.maxHp,
+        hitDice: input.hitDice?.trim() || null,
+        speed: input.speed?.trim() || null,
+        strength,
+        dexterity,
+        constitution,
+        intelligence,
+        wisdom,
+        charisma,
         initiativeModifier,
         challengeRating: input.challengeRating?.trim() || null,
+        damageImmunities: input.damageImmunities?.trim() || null,
+        conditionImmunities: input.conditionImmunities?.trim() || null,
+        senses: input.senses?.trim() || null,
+        languages: input.languages?.trim() || null,
+        traits: input.traits?.trim() || null,
+        actions: input.actions?.trim() || null,
+        legendaryActions: input.legendaryActions?.trim() || null,
         source: input.source?.trim() || null,
         scope,
         ownerUserId: scope === 'PERSONAL' ? user.id : null,
@@ -126,10 +199,28 @@ export class MonsterService {
     return {
       id: created.id,
       name: created.name,
+      size: created.size,
+      creatureType: created.creatureType,
+      alignment: created.alignment,
       armorClass: created.armorClass,
       maxHp: created.maxHp,
+      hitDice: created.hitDice,
+      speed: created.speed,
+      strength: created.strength,
+      dexterity: created.dexterity,
+      constitution: created.constitution,
+      intelligence: created.intelligence,
+      wisdom: created.wisdom,
+      charisma: created.charisma,
       initiativeModifier: created.initiativeModifier,
       challengeRating: created.challengeRating,
+      damageImmunities: created.damageImmunities,
+      conditionImmunities: created.conditionImmunities,
+      senses: created.senses,
+      languages: created.languages,
+      traits: created.traits,
+      actions: created.actions,
+      legendaryActions: created.legendaryActions,
       source: created.source,
       scope: created.scope,
       ownerUserId: created.ownerUserId,

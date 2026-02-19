@@ -16,10 +16,28 @@ export const monsterApi = {
 
   async createTemplate(input: {
     name: string;
+    size?: string;
+    creatureType?: string;
+    alignment?: string;
     armorClass: number;
     maxHp: number;
+    hitDice?: string;
+    speed?: string;
+    strength?: number;
+    dexterity?: number;
+    constitution?: number;
+    intelligence?: number;
+    wisdom?: number;
+    charisma?: number;
     initiativeModifier?: number;
     challengeRating?: string;
+    damageImmunities?: string;
+    conditionImmunities?: string;
+    senses?: string;
+    languages?: string;
+    traits?: string;
+    actions?: string;
+    legendaryActions?: string;
     source?: string;
     scope?: 'GLOBAL' | 'PERSONAL';
   }): Promise<MonsterTemplate> {

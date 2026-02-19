@@ -198,10 +198,28 @@ export interface SessionEvent {
 export interface MonsterTemplate {
   id: string;
   name: string;
+  size: string | null;
+  creatureType: string | null;
+  alignment: string | null;
   armorClass: number;
   maxHp: number;
+  hitDice: string | null;
+  speed: string | null;
+  strength: number;
+  dexterity: number;
+  constitution: number;
+  intelligence: number;
+  wisdom: number;
+  charisma: number;
   initiativeModifier: number;
   challengeRating: string | null;
+  damageImmunities: string | null;
+  conditionImmunities: string | null;
+  senses: string | null;
+  languages: string | null;
+  traits: string | null;
+  actions: string | null;
+  legendaryActions: string | null;
   source: string | null;
   scope: 'GLOBAL' | 'PERSONAL';
   ownerUserId: string | null;

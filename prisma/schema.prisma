@@ -267,10 +267,28 @@ model Session {
 model MonsterTemplate {
   id                 String          @id @default(uuid())
   name               String
+  size               String?
+  creatureType       String?         @map("creature_type")
+  alignment          String?
   armorClass         Int             @map("armor_class")
   maxHp              Int             @map("max_hp")
+  hitDice            String?         @map("hit_dice")
+  speed              String?
+  strength           Int             @default(10)
+  dexterity          Int             @default(10)
+  constitution       Int             @default(10)
+  intelligence       Int             @default(10)
+  wisdom             Int             @default(10)
+  charisma           Int             @default(10)
   initiativeModifier Int             @default(0) @map("initiative_modifier")
   challengeRating    String?         @map("challenge_rating")
+  damageImmunities   String?         @map("damage_immunities")
+  conditionImmunities String?        @map("condition_immunities")
+  senses             String?
+  languages          String?
+  traits             String?
+  actions            String?
+  legendaryActions   String?         @map("legendary_actions")
   source             String?
   scope              String          @default("PERSONAL")
   ownerUserId        String?         @map("owner_user_id")

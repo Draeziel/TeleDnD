@@ -33,6 +33,7 @@ export function SessionViewPage() {
   const [showAttachCharacters, setShowAttachCharacters] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
   const [combatInterfaceRequested, setCombatInterfaceRequested] = useState(false);
+  const [showMonsterAddControls, setShowMonsterAddControls] = useState(false);
   const [toastNotifications, setToastNotifications] = useState<Array<{ id: string; type: 'success' | 'error' | 'info'; message: string }>>([]);
   const [uiJournal, setUiJournal] = useState<Array<{ id: string; message: string; createdAt: string }>>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
@@ -436,16 +437,6 @@ export function SessionViewPage() {
 
       return left.character.name.localeCompare(right.character.name);
     });
-  const activeTurnCharacter = session.characters.find(
-    (entry) => entry.id === session.activeTurnSessionCharacterId
-  );
-  const activeTurnIndex = initiativeOrder.findIndex((entry) => entry.id === session.activeTurnSessionCharacterId);
-  const nextTurnCharacter =
-    initiativeOrder.length === 0
-      ? null
-      : activeTurnIndex >= 0
-        ? initiativeOrder[(activeTurnIndex + 1) % initiativeOrder.length]
-        : initiativeOrder[0];
   const myRole = session.players.find((player) => player.user.telegramId === userId)?.role || 'PLAYER';
   const isGmViewer = myRole === 'GM';
   const selectedCharacter = session.characters.find((entry) => entry.character.id === selectedCharacterId) || null;
@@ -561,10 +552,10 @@ export function SessionViewPage() {
                 </button>
               </div>
               <div style={{ marginTop: '8px' }}>
-                Раунд: {session.encounterActive ? session.combatRound : '—'}{' '}
+                <strong>Р:{session.encounterActive ? session.combatRound : '—'}</strong>{' '}
                 <button
                   className="btn btn-inline"
-                  aria-label={session.encounterActive ? 'Завершить раунд' : 'Начать раунд'}
+                  aria-label={session.encounterActive ? 'Завершить бой' : 'Начать сражение'}
                   onClick={() => {
                     if (!session.hasActiveGm || encounterActionLoading) {
                       return;
@@ -578,40 +569,54 @@ export function SessionViewPage() {
                     void onStartEncounter();
                   }}
                 >
-                  {session.encounterActive ? '■ Стоп' : '▶ Начать раунд'}
+                  {session.encounterActive ? '■ Завершить бой' : '▶ Начать сражение'}
                 </button>
               </div>
-              <div>Текущий: {activeTurnCharacter?.character.name ?? '—'}</div>
-              <div>Следующий: {nextTurnCharacter?.character.name ?? '—'}</div>
-
               <div className="inline-row" style={{ marginTop: '8px' }}>
-                <select
-                  value={selectedMonsterTemplateId}
-                  onChange={(event) => setSelectedMonsterTemplateId(event.target.value)}
-                  disabled={addingMonsters || monsterTemplates.length === 0}
-                >
-                  {monsterTemplates.length === 0 && <option value="">Нет доступных шаблонов</option>}
-                  {monsterTemplates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name} ({template.scope === 'GLOBAL' ? 'global' : 'personal'})
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min={1}
-                  max={30}
-                  value={monsterQuantity}
-                  onChange={(event) => setMonsterQuantity(Math.min(30, Math.max(1, Number(event.target.value) || 1)))}
-                />
                 <button
-                  className="btn btn-primary"
-                  disabled={addingMonsters || !session.hasActiveGm || !selectedMonsterTemplateId}
-                  onClick={onAddMonsters}
+                  className="btn btn-secondary btn-icon"
+                  aria-label="Открыть добавление монстров"
+                  title="Добавить монстров"
+                  disabled={!session.hasActiveGm || addingMonsters}
+                  onClick={() => setShowMonsterAddControls((current) => !current)}
                 >
-                  {addingMonsters ? 'Добавляем...' : 'Добавить монстров'}
+                  👾➕
                 </button>
               </div>
+
+              {showMonsterAddControls && (
+                <div className="monster-add-row" style={{ marginTop: '8px' }}>
+                  <select
+                    value={selectedMonsterTemplateId}
+                    onChange={(event) => setSelectedMonsterTemplateId(event.target.value)}
+                    disabled={addingMonsters || monsterTemplates.length === 0}
+                  >
+                    {monsterTemplates.length === 0 && <option value="">Нет доступных шаблонов</option>}
+                    {monsterTemplates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name} ({template.scope === 'GLOBAL' ? 'global' : 'personal'})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="monster-qty-input"
+                    type="number"
+                    min={1}
+                    max={30}
+                    value={monsterQuantity}
+                    onChange={(event) => setMonsterQuantity(Math.min(30, Math.max(1, Number(event.target.value) || 1)))}
+                  />
+                  <button
+                    className="btn btn-primary btn-icon"
+                    aria-label="Подтвердить добавление монстров"
+                    title="Добавить"
+                    disabled={addingMonsters || !session.hasActiveGm || !selectedMonsterTemplateId}
+                    onClick={onAddMonsters}
+                  >
+                    {addingMonsters ? '…' : '➕'}
+                  </button>
+                </div>
+              )}
             </div>
             <button
               className="btn btn-primary"

@@ -646,6 +646,20 @@ td {
   justify-content: center;
 }
 
+.monster-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 68px 32px;
+  align-items: center;
+  gap: 8px;
+}
+
+.monster-qty-input {
+  width: 68px;
+  text-align: center;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
 .session-list {
   display: flex;
   flex-direction: column;

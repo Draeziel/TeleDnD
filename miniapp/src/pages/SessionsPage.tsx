@@ -163,12 +163,12 @@ export function SessionsPage() {
                     <button className="btn btn-inline" onClick={() => navigate(`/sessions/${session.id}`)}>
                       {session.name}
                     </button>
-                    <button className="btn btn-secondary btn-compact session-chip" disabled title={roleLabel(session.role)}>
-                      {session.role === 'GM' ? '♛' : '🧑'}
-                    </button>
-                    <button className="btn btn-secondary btn-compact session-chip" disabled title={`Игроков: ${session.playersCount}`}>
+                    <span className="session-chip session-chip-role" title={roleLabel(session.role)}>
+                      {session.role === 'GM' ? '♛ GM' : '🧑 Игрок'}
+                    </span>
+                    <span className="session-chip session-chip-players" title={`Игроков: ${session.playersCount}`}>
                       👥 {session.playersCount}
-                    </button>
+                    </span>
                     <button
                       className="btn btn-danger btn-compact session-delete"
                       disabled={deletingId === session.id || session.role !== 'GM'}

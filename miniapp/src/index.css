@@ -481,29 +481,54 @@ td {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  position: relative;
 }
 
 .session-list-top {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding-right: 42px;
 }
 
 .session-chip {
-  padding: 4px 10px;
-  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #1f2937;
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-height: 38px;
   font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.session-chip-role {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+}
+
+.session-chip-players {
+  background: #ecfeff;
+  border-color: #a5f3fc;
+  color: #155e75;
 }
 
 .session-delete {
-  margin-left: auto;
+  position: absolute;
+  top: 8px;
+  right: 8px;
   width: 34px;
   height: 34px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .session-list-bottom {
@@ -580,10 +605,12 @@ td {
 
   .session-list-top {
     flex-wrap: wrap;
+    padding-right: 42px;
   }
 
   .session-delete {
-    margin-left: 0;
+    top: 8px;
+    right: 8px;
   }
 
   .topbar {

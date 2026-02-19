@@ -32,6 +32,7 @@ export function SessionViewPage() {
   const [copyingCode, setCopyingCode] = useState(false);
   const [showAttachCharacters, setShowAttachCharacters] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
+  const [combatInterfaceRequested, setCombatInterfaceRequested] = useState(false);
   const [toastNotifications, setToastNotifications] = useState<Array<{ id: string; type: 'success' | 'error' | 'info'; message: string }>>([]);
   const [uiJournal, setUiJournal] = useState<Array<{ id: string; message: string; createdAt: string }>>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
@@ -363,27 +364,7 @@ export function SessionViewPage() {
 
   const onStartEncounter = async () => {
     try {
-      if (!session) {
-        return;
-      }
-
       setEncounterActionLoading(true);
-
-      const hasInitiative = session.characters.some(
-        (entry) => entry.state?.initiative !== null && entry.state?.initiative !== undefined
-      );
-
-      if (!hasInitiative) {
-        const rolled = await sessionApi.rollInitiativeAll(id);
-
-        if (rolled.rolledCount === 0) {
-          throw new Error('Validation: cannot start encounter without rolled initiative');
-        }
-
-        notify('info', `Подготовка боя: авто-бросок инициативы для ${rolled.rolledCount} персонажей`);
-        await load();
-      }
-
       const result = await sessionApi.startEncounter(id);
       await load();
       notify('success', `Encounter запущен. Раунд ${result.combatRound}`);
@@ -412,6 +393,7 @@ export function SessionViewPage() {
       setEncounterActionLoading(true);
       await sessionApi.endEncounter(id);
       await load();
+      setCombatInterfaceRequested(false);
       notify('success', 'Encounter завершён');
     } catch (unknownError) {
       notify('error', formatErrorMessage('Не удалось завершить encounter (нужна роль GM)', unknownError));
@@ -467,6 +449,7 @@ export function SessionViewPage() {
   const myRole = session.players.find((player) => player.user.telegramId === userId)?.role || 'PLAYER';
   const isGmViewer = myRole === 'GM';
   const selectedCharacter = session.characters.find((entry) => entry.character.id === selectedCharacterId) || null;
+  const isCombatInterfaceOpen = session.encounterActive || combatInterfaceRequested;
 
   const getAvatarInitials = (name: string) => {
     const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -534,7 +517,7 @@ export function SessionViewPage() {
 
       {error && <StatusBox type="error" message={error} />}
 
-      {session.encounterActive ? (
+      {isCombatInterfaceOpen ? (
         <div className="section-card">
           <h2>Бой</h2>
           <div className="list-item">
@@ -578,19 +561,24 @@ export function SessionViewPage() {
                 </button>
               </div>
               <div style={{ marginTop: '8px' }}>
-                Раунд: {session.combatRound}{' '}
+                Раунд: {session.encounterActive ? session.combatRound : '—'}{' '}
                 <button
                   className="btn btn-inline"
-                  aria-label="Завершить раунд"
+                  aria-label={session.encounterActive ? 'Завершить раунд' : 'Начать раунд'}
                   onClick={() => {
                     if (!session.hasActiveGm || encounterActionLoading) {
                       return;
                     }
 
-                    void onEndEncounter();
+                    if (session.encounterActive) {
+                      void onEndEncounter();
+                      return;
+                    }
+
+                    void onStartEncounter();
                   }}
                 >
-                  ■ Стоп
+                  {session.encounterActive ? '■ Стоп' : '▶ Начать раунд'}
                 </button>
               </div>
               <div>Текущий: {activeTurnCharacter?.character.name ?? '—'}</div>
@@ -627,63 +615,68 @@ export function SessionViewPage() {
             </div>
             <button
               className="btn btn-primary"
-              disabled={encounterActionLoading || !session.hasActiveGm}
+              disabled={encounterActionLoading || !session.hasActiveGm || !session.encounterActive}
               onClick={onNextTurn}
             >
               Next turn
             </button>
           </div>
 
-          <h2>Монстры в сессии</h2>
-          <div className="list-grid">
-            {session.monsters.length === 0 && <StatusBox type="info" message="Монстры пока не добавлены" />}
-            {session.monsters.map((monster) => (
-              <div className="list-item" key={monster.id}>
-                <div>
-                  <strong>{monster.nameSnapshot}</strong>
-                  <div>{monster.template ? [monster.template.size, monster.template.creatureType, monster.template.alignment].filter(Boolean).join(', ') : 'custom'}</div>
-                  <div>HP: {monster.currentHp} / {monster.maxHpSnapshot}</div>
-                  <div>Инициатива: {monster.initiative ?? '—'}</div>
-                </div>
-                <div className="meta-row">AC: {monster.template?.armorClass ?? '—'} • CR: {monster.template?.challengeRating || '—'}</div>
-              </div>
-            ))}
-          </div>
-
-          <h2>Порядок ходов</h2>
-          {initiativeOrder.length === 0 ? (
-            <StatusBox type="info" message="Инициатива пока не выставлена" />
-          ) : (
-            <div className="list-grid">
-              {initiativeOrder.map((entry, index) => (
-                <div className="list-item" key={`initiative-${entry.id}`}>
-                  <div>
-                    <strong>{session.activeTurnSessionCharacterId === entry.id ? '▶ ' : ''}{index + 1}. {entry.character.name}</strong>
-                    <div>Класс: {entry.character.class?.name || '—'}</div>
+          {session.encounterActive && (
+            <>
+              <h2>Монстры в сессии</h2>
+              <div className="list-grid">
+                {session.monsters.length === 0 && <StatusBox type="info" message="Монстры пока не добавлены" />}
+                {session.monsters.map((monster) => (
+                  <div className="list-item" key={monster.id}>
+                    <div>
+                      <strong>{monster.nameSnapshot}</strong>
+                      <div>{monster.template ? [monster.template.size, monster.template.creatureType, monster.template.alignment].filter(Boolean).join(', ') : 'custom'}</div>
+                      <div>HP: {monster.currentHp} / {monster.maxHpSnapshot}</div>
+                      <div>Инициатива: {monster.initiative ?? '—'}</div>
+                    </div>
+                    <div className="meta-row">AC: {monster.template?.armorClass ?? '—'} • CR: {monster.template?.challengeRating || '—'}</div>
                   </div>
-                  <span>Инициатива: {entry.state?.initiative}</span>
+                ))}
+              </div>
+
+              <h2>Порядок ходов</h2>
+              {initiativeOrder.length === 0 ? (
+                <StatusBox type="info" message="Инициатива пока не выставлена" />
+              ) : (
+                <div className="list-grid">
+                  {initiativeOrder.map((entry, index) => (
+                    <div className="list-item" key={`initiative-${entry.id}`}>
+                      <div>
+                        <strong>{session.activeTurnSessionCharacterId === entry.id ? '▶ ' : ''}{index + 1}. {entry.character.name}</strong>
+                        <div>Класс: {entry.character.class?.name || '—'}</div>
+                      </div>
+                      <span>Инициатива: {entry.state?.initiative}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       ) : (
         <button
           className="btn btn-primary combat-start-button"
-          disabled={encounterActionLoading || !session.hasActiveGm}
+          disabled={!session.hasActiveGm}
           aria-label="Начать бой"
           onClick={() => {
-            if (!session.hasActiveGm || encounterActionLoading) {
+            if (!session.hasActiveGm) {
               return;
             }
 
-            void onStartEncounter();
+            setCombatInterfaceRequested(true);
           }}
         >
           Начать бой!
         </button>
       )}
 
+      {!isCombatInterfaceOpen && (
       <div className="section-card">
         <h2>{session.encounterActive ? 'Персонажи в бою' : 'Персонажи группы'}</h2>
         {session.characters.length === 0 && <StatusBox type="info" message="Персонажи пока не добавлены" />}
@@ -797,7 +790,9 @@ export function SessionViewPage() {
           </div>
         )}
       </div>
+      )}
 
+      {!isCombatInterfaceOpen && (
       <div className="section-card">
         <div className="session-list-header">
           <h2>Добавить персонажа</h2>
@@ -825,8 +820,9 @@ export function SessionViewPage() {
           </div>
         )}
       </div>
+      )}
 
-      {isGmViewer && (
+      {!isCombatInterfaceOpen && isGmViewer && (
         <div className="section-card">
           <div className="session-list-header">
             <h2>Журнал событий</h2>

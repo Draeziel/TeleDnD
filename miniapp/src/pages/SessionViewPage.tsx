@@ -25,6 +25,7 @@ export function SessionViewPage() {
   const [loading, setLoading] = useState(true);
   const [attachingId, setAttachingId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removingMonsterId, setRemovingMonsterId] = useState<string | null>(null);
   const [rollingAll, setRollingAll] = useState(false);
   const [rollingSelfId, setRollingSelfId] = useState<string | null>(null);
   const [initiativeActionLoading, setInitiativeActionLoading] = useState(false);
@@ -420,6 +421,19 @@ export function SessionViewPage() {
     }
   };
 
+  const onRemoveMonster = async (monsterId: string) => {
+    try {
+      setRemovingMonsterId(monsterId);
+      const result = await sessionApi.removeSessionMonster(id, monsterId);
+      await load();
+      notify('success', result.message || 'Монстр удалён из сессии');
+    } catch (unknownError) {
+      notify('error', formatErrorMessage('Не удалось удалить монстра из сессии', unknownError));
+    } finally {
+      setRemovingMonsterId(null);
+    }
+  };
+
   if (loading && !session) return <StatusBox type="info" message="Загрузка сессии..." />;
   if (!session) return <StatusBox type="info" message="Сессия не найдена" />;
 
@@ -510,7 +524,25 @@ export function SessionViewPage() {
 
       {isCombatInterfaceOpen ? (
         <div className="section-card">
-          <h2>Бой</h2>
+          <div className="combat-head-row">
+            <h2>Бой</h2>
+            {session.encounterActive && (
+              <button
+                className="btn btn-inline"
+                aria-label="Завершить бой"
+                disabled={!session.hasActiveGm || encounterActionLoading}
+                onClick={() => {
+                  if (!session.hasActiveGm || encounterActionLoading) {
+                    return;
+                  }
+
+                  void onEndEncounter();
+                }}
+              >
+                Завершить бой
+              </button>
+            )}
+          </div>
           <div className="list-item">
             <div>
               <div className="initiative-controls" style={{ marginTop: '2px' }}>
@@ -553,38 +585,37 @@ export function SessionViewPage() {
               </div>
               <div style={{ marginTop: '8px' }}>
                 <strong>Р:{session.encounterActive ? session.combatRound : '—'}</strong>{' '}
-                <button
-                  className="btn btn-inline"
-                  aria-label={session.encounterActive ? 'Завершить бой' : 'Начать сражение'}
-                  onClick={() => {
-                    if (!session.hasActiveGm || encounterActionLoading) {
-                      return;
-                    }
+                {!session.encounterActive && (
+                  <button
+                    className="btn btn-inline"
+                    aria-label="Начать сражение"
+                    onClick={() => {
+                      if (!session.hasActiveGm || encounterActionLoading) {
+                        return;
+                      }
 
-                    if (session.encounterActive) {
-                      void onEndEncounter();
-                      return;
-                    }
-
-                    void onStartEncounter();
-                  }}
-                >
-                  {session.encounterActive ? '■ Завершить бой' : '▶ Начать сражение'}
-                </button>
+                      void onStartEncounter();
+                    }}
+                  >
+                    ▶ Начать сражение
+                  </button>
+                )}
               </div>
               <div className="inline-row" style={{ marginTop: '8px' }}>
-                <button
-                  className="btn btn-secondary btn-icon"
-                  aria-label="Открыть добавление монстров"
-                  title="Добавить монстров"
-                  disabled={!session.hasActiveGm || addingMonsters}
-                  onClick={() => setShowMonsterAddControls((current) => !current)}
-                >
-                  👾➕
-                </button>
+                {isGmViewer && (
+                  <button
+                    className="btn btn-secondary btn-icon"
+                    aria-label="Открыть добавление монстров"
+                    title="Добавить монстров"
+                    disabled={addingMonsters}
+                    onClick={() => setShowMonsterAddControls((current) => !current)}
+                  >
+                    👾➕
+                  </button>
+                )}
               </div>
 
-              {showMonsterAddControls && (
+              {isGmViewer && showMonsterAddControls && (
                 <div className="monster-add-row" style={{ marginTop: '8px' }}>
                   <select
                     value={selectedMonsterTemplateId}
@@ -610,7 +641,7 @@ export function SessionViewPage() {
                     className="btn btn-primary btn-icon"
                     aria-label="Подтвердить добавление монстров"
                     title="Добавить"
-                    disabled={addingMonsters || !session.hasActiveGm || !selectedMonsterTemplateId}
+                    disabled={addingMonsters || !selectedMonsterTemplateId}
                     onClick={onAddMonsters}
                   >
                     {addingMonsters ? '…' : '➕'}
@@ -619,13 +650,62 @@ export function SessionViewPage() {
               )}
             </div>
             <button
-              className="btn btn-primary"
+              className="btn btn-primary btn-icon"
               disabled={encounterActionLoading || !session.hasActiveGm || !session.encounterActive}
+              aria-label="Передать ход"
+              title="Передать ход"
               onClick={onNextTurn}
             >
-              Next turn
+              ⏭
             </button>
           </div>
+
+          {!session.encounterActive && (
+            <>
+              <h2>Участники</h2>
+              <div className="combat-actors-grid">
+                {session.characters.map((entry) => (
+                  <div className="combat-actor-card" key={`precombat-character-${entry.id}`}>
+                    <div className="combat-actor-title">{entry.character.name}</div>
+                    <div className="combat-actor-icon">{getAvatarInitials(entry.character.name)}</div>
+                    <div className="combat-actor-meta">❤️ {entry.state?.currentHp ?? 0} / {entry.state?.maxHpSnapshot ?? '—'}</div>
+                    <div className="combat-actor-meta">🛡 {characterArmorClass[entry.character.id] ?? '—'}</div>
+                    <button
+                      className="btn btn-danger btn-icon combat-actor-remove"
+                      aria-label={`Удалить ${entry.character.name}`}
+                      disabled={removingId === entry.character.id}
+                      onClick={() => onRemoveCharacter(entry.character.id)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+
+                {session.monsters.map((monster) => (
+                  <div className="combat-actor-card" key={`precombat-monster-${monster.id}`}>
+                    <div className="combat-actor-title">{monster.nameSnapshot}</div>
+                    {monster.template?.iconUrl ? (
+                      <img className="combat-actor-image" src={monster.template.iconUrl} alt={monster.nameSnapshot} />
+                    ) : (
+                      <div className="combat-actor-icon">👾</div>
+                    )}
+                    <div className="combat-actor-meta">❤️ {monster.currentHp} / {monster.maxHpSnapshot}</div>
+                    <div className="combat-actor-meta">🛡 {monster.template?.armorClass ?? '—'}</div>
+                    {isGmViewer && (
+                      <button
+                        className="btn btn-danger btn-icon combat-actor-remove"
+                        aria-label={`Удалить ${monster.nameSnapshot}`}
+                        disabled={removingMonsterId === monster.id}
+                        onClick={() => onRemoveMonster(monster.id)}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
           {session.encounterActive && (
             <>

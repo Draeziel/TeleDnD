@@ -660,6 +660,76 @@ td {
   padding-right: 6px;
 }
 
+.combat-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.combat-head-row h2 {
+  margin: 0;
+}
+
+.combat-actors-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.combat-actor-card {
+  position: relative;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 150px;
+}
+
+.combat-actor-title {
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.combat-actor-icon,
+.combat-actor-image {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #1e3a8a;
+  object-fit: cover;
+}
+
+.combat-actor-meta {
+  font-size: 12px;
+  color: #374151;
+}
+
+.combat-actor-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+
 .session-list {
   display: flex;
   flex-direction: column;
@@ -802,6 +872,10 @@ td {
 
   .character-board-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .combat-actors-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .session-head-row {

@@ -65,6 +65,11 @@ export const sessionApi = {
     return data as { addedCount: number; templateName: string };
   },
 
+  async removeSessionMonster(sessionId: string, monsterId: string): Promise<{ message: string; monsterId: string }> {
+    const { data } = await http.delete(`/sessions/${sessionId}/monsters/${monsterId}`);
+    return data as { message: string; monsterId: string };
+  },
+
   async attachCharacter(
     sessionId: string,
     characterId: string,

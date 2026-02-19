@@ -1017,6 +1017,39 @@ export class SessionService {
     };
   }
 
+  async removeSessionMonster(sessionId: string, sessionMonsterId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+
+    const monster = await this.prisma.sessionMonster.findFirst({
+      where: {
+        id: sessionMonsterId,
+        sessionId,
+      },
+      select: {
+        id: true,
+        nameSnapshot: true,
+      },
+    });
+
+    if (!monster) {
+      throw new Error('Session monster not found');
+    }
+
+    await this.prisma.sessionMonster.delete({
+      where: {
+        id: monster.id,
+      },
+    });
+
+    await this.addSessionEvent(sessionId, 'monster_removed', `ГМ удалил монстра ${monster.nameSnapshot}`, telegramUserId);
+
+    return {
+      message: 'Монстр удалён из сессии',
+      monsterId: monster.id,
+    };
+  }
+
   async rollInitiativeForAll(sessionId: string, telegramUserId: string) {
     const user = await this.resolveUserByTelegramId(telegramUserId);
     await this.requireSessionGM(sessionId, user.id);

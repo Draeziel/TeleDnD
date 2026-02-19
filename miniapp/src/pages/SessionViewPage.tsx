@@ -32,9 +32,10 @@ export function SessionViewPage() {
   const [copyingCode, setCopyingCode] = useState(false);
   const [showAttachCharacters, setShowAttachCharacters] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
+  const [toastNotifications, setToastNotifications] = useState<Array<{ id: string; type: 'success' | 'error' | 'info'; message: string }>>([]);
+  const [uiJournal, setUiJournal] = useState<Array<{ id: string; message: string; createdAt: string }>>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [characterArmorClass, setCharacterArmorClass] = useState<Record<string, number | null>>({});
-  const [status, setStatus] = useState('');
   const [error, setError] = useState('');
 
   const formatErrorMessage = (fallback: string, unknownError: unknown) => {
@@ -46,6 +47,26 @@ export function SessionViewPage() {
     }
 
     return fallback;
+  };
+
+  const notify = (type: 'success' | 'error' | 'info', message: string, addToJournal = true) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setToastNotifications((prev) => [...prev, { id, type, message }]);
+
+    if (addToJournal) {
+      setUiJournal((prev) => [
+        {
+          id,
+          message,
+          createdAt: new Date().toISOString(),
+        },
+        ...prev,
+      ]);
+    }
+
+    setTimeout(() => {
+      setToastNotifications((prev) => prev.filter((item) => item.id !== id));
+    }, 4000);
   };
 
   const mergeSummaryIntoSession = (prev: SessionViewModel | null, summary: SessionSummary): SessionViewModel | null => {
@@ -207,13 +228,11 @@ export function SessionViewPage() {
   const onAttachCharacter = async (characterId: string) => {
     try {
       setAttachingId(characterId);
-      setError('');
-      setStatus('');
       await sessionApi.attachCharacter(id, characterId);
       await load();
-      setStatus('Персонаж добавлен в сессию');
+      notify('success', 'Персонаж добавлен в сессию');
     } catch (unknownError) {
-      setError(formatErrorMessage('Не удалось добавить персонажа в сессию', unknownError));
+      notify('error', formatErrorMessage('Не удалось добавить персонажа в сессию', unknownError));
     } finally {
       setAttachingId(null);
     }
@@ -222,13 +241,11 @@ export function SessionViewPage() {
   const onRemoveCharacter = async (characterId: string) => {
     try {
       setRemovingId(characterId);
-      setError('');
-      setStatus('');
       const result = await sessionApi.removeCharacter(id, characterId);
       await load();
-      setStatus(result.message || 'Персонаж удалён из сессии');
+      notify('success', result.message || 'Персонаж удалён из сессии');
     } catch (unknownError) {
-      setError(formatErrorMessage('Не удалось убрать персонажа из сессии', unknownError));
+      notify('error', formatErrorMessage('Не удалось убрать персонажа из сессии', unknownError));
     } finally {
       setRemovingId(null);
     }
@@ -239,7 +256,7 @@ export function SessionViewPage() {
       await sessionApi.setHp(id, characterId, hp);
       await load();
     } catch (unknownError) {
-      setError(formatErrorMessage('Не удалось изменить HP (нужна роль GM)', unknownError));
+      notify('error', formatErrorMessage('Не удалось изменить HP (нужна роль GM)', unknownError));
     }
   };
 
@@ -248,20 +265,18 @@ export function SessionViewPage() {
       await sessionApi.setInitiative(id, characterId, initiative);
       await load();
     } catch (unknownError) {
-      setError(formatErrorMessage('Не удалось изменить инициативу (нужна роль GM)', unknownError));
+      notify('error', formatErrorMessage('Не удалось изменить инициативу (нужна роль GM)', unknownError));
     }
   };
 
   const onRollInitiativeAll = async () => {
     try {
       setRollingAll(true);
-      setError('');
-      setStatus('');
       const result = await sessionApi.rollInitiativeAll(id);
       await load();
-      setStatus(`Инициатива брошена для ${result.rolledCount} персонажей`);
+      notify('success', `Инициатива брошена для ${result.rolledCount} персонажей`);
     } catch (unknownError) {
-      setError(formatErrorMessage('Не удалось выполнить массовый бросок инициативы (нужна роль GM)', unknownError));
+      notify('error', formatErrorMessage('Не удалось выполнить массовый бросок инициативы (нужна роль GM)', unknownError));
     } finally {
       setRollingAll(false);
     }
@@ -270,13 +285,11 @@ export function SessionViewPage() {
   const onRollInitiativeSelf = async (characterId: string) => {
     try {
       setRollingSelfId(characterId);
-      setError('');
-      setStatus('');
       const result = await sessionApi.rollInitiativeSelf(id, characterId);
       await load();
-      setStatus(`${result.characterName}: бросок ${result.roll}${result.dexModifier >= 0 ? '+' : ''}${result.dexModifier} = ${result.initiative}`);
+      notify('success', `${result.characterName}: бросок ${result.roll}${result.dexModifier >= 0 ? '+' : ''}${result.dexModifier} = ${result.initiative}`);
     } catch (unknownError) {
-      setError(formatErrorMessage('Не удалось выполнить личный бросок инициативы (доступно только владельцу персонажа)', unknownError));
+      notify('error', formatErrorMessage('Не удалось выполнить личный бросок инициативы (доступно только владельцу персонажа)', unknownError));
     } finally {
       setRollingSelfId(null);
     }
@@ -285,13 +298,11 @@ export function SessionViewPage() {
   const onLockInitiative = async () => {
     try {
       setInitiativeActionLoading(true);
-      setError('');
-      setStatus('');
       await sessionApi.lockInitiative(id);
       await load();
-      setStatus('Инициатива зафиксирована (lock)');
+      notify('success', 'Инициатива зафиксирована (lock)');
     } catch (unknownError) {
-      setError(formatErrorMessage('Не удалось зафиксировать инициативу (нужна роль GM)', unknownError));
+      notify('error', formatErrorMessage('Не удалось зафиксировать инициативу (нужна роль GM)', unknownError));
     } finally {
       setInitiativeActionLoading(false);
     }
@@ -300,13 +311,11 @@ export function SessionViewPage() {
   const onUnlockInitiative = async () => {
     try {
       setInitiativeActionLoading(true);
-      setError('');
-      setStatus('');
       await sessionApi.unlockInitiative(id);
       await load();
-      setStatus('Lock инициативы снят');
+      notify('success', 'Lock инициативы снят');
     } catch (unknownError) {
-      setError(formatErrorMessage('Не удалось снять lock инициативы (нужна роль GM)', unknownError));
+      notify('error', formatErrorMessage('Не удалось снять lock инициативы (нужна роль GM)', unknownError));
     } finally {
       setInitiativeActionLoading(false);
     }
@@ -315,13 +324,11 @@ export function SessionViewPage() {
   const onResetInitiative = async () => {
     try {
       setInitiativeActionLoading(true);
-      setError('');
-      setStatus('');
       const result = await sessionApi.resetInitiative(id);
       await load();
-      setStatus(`Инициатива сброшена для ${result.resetCount} персонажей`);
+      notify('success', `Инициатива сброшена для ${result.resetCount} персонажей`);
     } catch (unknownError) {
-      setError(formatErrorMessage('Не удалось сбросить инициативу (нужна роль GM)', unknownError));
+      notify('error', formatErrorMessage('Не удалось сбросить инициативу (нужна роль GM)', unknownError));
     } finally {
       setInitiativeActionLoading(false);
     }
@@ -335,9 +342,9 @@ export function SessionViewPage() {
 
       setCopyingCode(true);
       await navigator.clipboard.writeText(session.joinCode);
-      setStatus('Код входа скопирован');
+      notify('success', 'Код входа скопирован');
     } catch (unknownError) {
-      setError(formatErrorMessage('Не удалось скопировать код входа', unknownError));
+      notify('error', formatErrorMessage('Не удалось скопировать код входа', unknownError));
     } finally {
       setCopyingCode(false);
     }
@@ -346,13 +353,11 @@ export function SessionViewPage() {
   const onStartEncounter = async () => {
     try {
       setEncounterActionLoading(true);
-      setError('');
-      setStatus('');
       const result = await sessionApi.startEncounter(id);
       await load();
-      setStatus(`Encounter запущен. Раунд ${result.combatRound}`);
+      notify('success', `Encounter запущен. Раунд ${result.combatRound}`);
     } catch (unknownError) {
-      setError(formatErrorMessage('Не удалось начать encounter (нужна роль GM и выставленная инициатива)', unknownError));
+      notify('error', formatErrorMessage('Не удалось начать encounter (нужна роль GM и выставленная инициатива)', unknownError));
     } finally {
       setEncounterActionLoading(false);
     }
@@ -361,13 +366,11 @@ export function SessionViewPage() {
   const onNextTurn = async () => {
     try {
       setEncounterActionLoading(true);
-      setError('');
-      setStatus('');
       const result = await sessionApi.nextEncounterTurn(id);
       await load();
-      setStatus(`Ход передан. Текущий раунд: ${result.combatRound}`);
+      notify('success', `Ход передан. Текущий раунд: ${result.combatRound}`);
     } catch (unknownError) {
-      setError(formatErrorMessage('Не удалось передать ход (нужна роль GM и активный encounter)', unknownError));
+      notify('error', formatErrorMessage('Не удалось передать ход (нужна роль GM и активный encounter)', unknownError));
     } finally {
       setEncounterActionLoading(false);
     }
@@ -376,13 +379,11 @@ export function SessionViewPage() {
   const onEndEncounter = async () => {
     try {
       setEncounterActionLoading(true);
-      setError('');
-      setStatus('');
       await sessionApi.endEncounter(id);
       await load();
-      setStatus('Encounter завершён');
+      notify('success', 'Encounter завершён');
     } catch (unknownError) {
-      setError(formatErrorMessage('Не удалось завершить encounter (нужна роль GM)', unknownError));
+      notify('error', formatErrorMessage('Не удалось завершить encounter (нужна роль GM)', unknownError));
     } finally {
       setEncounterActionLoading(false);
     }
@@ -395,13 +396,11 @@ export function SessionViewPage() {
 
     try {
       setAddingMonsters(true);
-      setError('');
-      setStatus('');
       const result = await sessionApi.addSessionMonsters(id, selectedMonsterTemplateId, monsterQuantity);
       await load();
-      setStatus(`Добавлено ${result.addedCount} монстр(ов): ${result.templateName}`);
+      notify('success', `Добавлено ${result.addedCount} монстр(ов): ${result.templateName}`);
     } catch (unknownError) {
-      setError(formatErrorMessage('Не удалось добавить монстров в сессию', unknownError));
+      notify('error', formatErrorMessage('Не удалось добавить монстров в сессию', unknownError));
     } finally {
       setAddingMonsters(false);
     }
@@ -453,27 +452,37 @@ export function SessionViewPage() {
 
   return (
     <div className="page-stack">
+      {toastNotifications.length > 0 && (
+        <div className="toast-stack">
+          {toastNotifications.map((toast) => (
+            <div key={toast.id} className={`toast-item ${toast.type}`}>
+              {toast.message}
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="section-card">
-        <h2
-          className="session-title"
-        >
-          <button
-            className="btn btn-inline"
-            aria-label="Обновить сессию"
-            onClick={() => load()}
-          >
-            {loading ? `${session.name} (обновление...)` : session.name}
-          </button>
-        </h2>
-        <div>
-          Код входа:{' '}
-          <button
-            className="btn btn-inline"
-            aria-label="Скопировать код входа"
-            onClick={onCopyJoinCode}
-          >
-            {copyingCode ? 'копируем...' : session.joinCode}
-          </button>
+        <div className="session-head-row">
+          <div className="session-head-left">
+            <button
+              className="btn btn-inline"
+              aria-label="Обновить сессию"
+              onClick={() => load()}
+            >
+              {loading ? `${session.name} (обновление...)` : session.name}
+            </button>
+          </div>
+          <div className="session-head-right">
+            <span className="meta-row">Код входа:</span>
+            <button
+              className="btn btn-inline"
+              aria-label="Скопировать код входа"
+              onClick={onCopyJoinCode}
+            >
+              {copyingCode ? 'копируем...' : session.joinCode}
+            </button>
+          </div>
         </div>
         <div className="session-summary-chips">
           <span className="session-chip session-chip-role" title={isGmViewer ? 'Мастер' : 'Игрок'}>
@@ -547,6 +556,35 @@ export function SessionViewPage() {
             </div>
             <div>Текущий: {activeTurnCharacter?.character.name ?? '—'}</div>
             <div>Следующий: {nextTurnCharacter?.character.name ?? '—'}</div>
+
+            <div className="inline-row" style={{ marginTop: '8px' }}>
+              <select
+                value={selectedMonsterTemplateId}
+                onChange={(event) => setSelectedMonsterTemplateId(event.target.value)}
+                disabled={addingMonsters || monsterTemplates.length === 0}
+              >
+                {monsterTemplates.length === 0 && <option value="">Нет доступных шаблонов</option>}
+                {monsterTemplates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name} ({template.scope === 'GLOBAL' ? 'global' : 'personal'})
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={monsterQuantity}
+                onChange={(event) => setMonsterQuantity(Math.min(30, Math.max(1, Number(event.target.value) || 1)))}
+              />
+              <button
+                className="btn btn-primary"
+                disabled={addingMonsters || !session.hasActiveGm || !selectedMonsterTemplateId}
+                onClick={onAddMonsters}
+              >
+                {addingMonsters ? 'Добавляем...' : 'Добавить монстров'}
+              </button>
+            </div>
           </div>
           <button
             className="btn btn-primary"
@@ -558,38 +596,6 @@ export function SessionViewPage() {
         </div>
       </div>
 
-      <div className="section-card">
-        <h2>Добавление монстров</h2>
-        <div className="inline-row">
-          <select
-            value={selectedMonsterTemplateId}
-            onChange={(event) => setSelectedMonsterTemplateId(event.target.value)}
-            disabled={addingMonsters || monsterTemplates.length === 0}
-          >
-            {monsterTemplates.length === 0 && <option value="">Нет доступных шаблонов</option>}
-            {monsterTemplates.map((template) => (
-              <option key={template.id} value={template.id}>
-                {template.name} ({template.scope === 'GLOBAL' ? 'global' : 'personal'})
-              </option>
-            ))}
-          </select>
-          <input
-            type="number"
-            min={1}
-            max={30}
-            value={monsterQuantity}
-            onChange={(event) => setMonsterQuantity(Math.min(30, Math.max(1, Number(event.target.value) || 1)))}
-          />
-          <button
-            className="btn btn-primary"
-            disabled={addingMonsters || !session.hasActiveGm || !selectedMonsterTemplateId}
-            onClick={onAddMonsters}
-          >
-            {addingMonsters ? 'Добавляем...' : 'Добавить'}
-          </button>
-        </div>
-      </div>
-
       {!session.hasActiveGm && (
         <StatusBox
           type="info"
@@ -597,7 +603,6 @@ export function SessionViewPage() {
         />
       )}
 
-      {status && <StatusBox type="success" message={status} />}
       {error && <StatusBox type="error" message={error} />}
 
       <div className="section-card">
@@ -714,42 +719,46 @@ export function SessionViewPage() {
         )}
       </div>
 
-      <div className="section-card">
-        <h2>Монстры в сессии</h2>
-        <div className="list-grid">
-          {session.monsters.length === 0 && <StatusBox type="info" message="Монстры пока не добавлены" />}
-          {session.monsters.map((monster) => (
-            <div className="list-item" key={monster.id}>
-              <div>
-                <strong>{monster.nameSnapshot}</strong>
-                <div>{monster.template ? [monster.template.size, monster.template.creatureType, monster.template.alignment].filter(Boolean).join(', ') : 'custom'}</div>
-                <div>HP: {monster.currentHp} / {monster.maxHpSnapshot}</div>
-                <div>Инициатива: {monster.initiative ?? '—'}</div>
-              </div>
-              <div className="meta-row">AC: {monster.template?.armorClass ?? '—'} • CR: {monster.template?.challengeRating || '—'}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="section-card">
-        <h2>Порядок ходов</h2>
-        {initiativeOrder.length === 0 ? (
-          <StatusBox type="info" message="Инициатива пока не выставлена" />
-        ) : (
-          <div className="list-grid">
-            {initiativeOrder.map((entry, index) => (
-              <div className="list-item" key={`initiative-${entry.id}`}>
-                <div>
-                  <strong>{session.activeTurnSessionCharacterId === entry.id ? '▶ ' : ''}{index + 1}. {entry.character.name}</strong>
-                  <div>Класс: {entry.character.class?.name || '—'}</div>
+      {session.encounterActive && (
+        <>
+          <div className="section-card">
+            <h2>Монстры в сессии</h2>
+            <div className="list-grid">
+              {session.monsters.length === 0 && <StatusBox type="info" message="Монстры пока не добавлены" />}
+              {session.monsters.map((monster) => (
+                <div className="list-item" key={monster.id}>
+                  <div>
+                    <strong>{monster.nameSnapshot}</strong>
+                    <div>{monster.template ? [monster.template.size, monster.template.creatureType, monster.template.alignment].filter(Boolean).join(', ') : 'custom'}</div>
+                    <div>HP: {monster.currentHp} / {monster.maxHpSnapshot}</div>
+                    <div>Инициатива: {monster.initiative ?? '—'}</div>
+                  </div>
+                  <div className="meta-row">AC: {monster.template?.armorClass ?? '—'} • CR: {monster.template?.challengeRating || '—'}</div>
                 </div>
-                <span>Инициатива: {entry.state?.initiative}</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        )}
-      </div>
+
+          <div className="section-card">
+            <h2>Порядок ходов</h2>
+            {initiativeOrder.length === 0 ? (
+              <StatusBox type="info" message="Инициатива пока не выставлена" />
+            ) : (
+              <div className="list-grid">
+                {initiativeOrder.map((entry, index) => (
+                  <div className="list-item" key={`initiative-${entry.id}`}>
+                    <div>
+                      <strong>{session.activeTurnSessionCharacterId === entry.id ? '▶ ' : ''}{index + 1}. {entry.character.name}</strong>
+                      <div>Класс: {entry.character.class?.name || '—'}</div>
+                    </div>
+                    <span>Инициатива: {entry.state?.initiative}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       <div className="section-card">
         <div className="session-list-header">
@@ -788,10 +797,19 @@ export function SessionViewPage() {
             </button>
           </div>
           {showEvents && (
-            session.events.length === 0 ? (
+            (session.events.length + uiJournal.length) === 0 ? (
               <StatusBox type="info" message="Событий пока нет" />
             ) : (
               <div className="list-grid">
+                {uiJournal.map((entry) => (
+                  <div className="list-item" key={`ui-${entry.id}`}>
+                    <div>
+                      <strong>{entry.message}</strong>
+                      <div>Кто: интерфейс</div>
+                    </div>
+                    <span>{new Date(entry.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                ))}
                 {session.events.map((event) => (
                   <div className="list-item" key={event.id}>
                     <div>

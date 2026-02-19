@@ -1,6 +1,6 @@
 # Session / Party System Roadmap
 
-**Last Updated**: 2026-02-17  
+**Last Updated**: 2026-02-19  
 **Status**: Phase 1 implemented and stabilized for production MVP; initiative automation baseline completed
 
 ---
@@ -216,6 +216,26 @@ Build a multiplayer session (party) system where:
 - [ ] Improve small-screen ergonomics (tap targets, dense combat layout, minimal scroll friction).
 - [ ] Define and implement retention policy for `session_events` (TTL/archive + cleanup task).
 
+### P1.5 — Monster Catalog & GM Toolkit (new)
+
+- [ ] Add monster template catalog model with scopes:
+   - `GLOBAL` templates (visible to all users; admin-managed only)
+   - `PERSONAL` templates (visible/editable only by owner user)
+- [ ] Add admin authorization policy for global catalog management (Telegram ID allowlist).
+- [ ] Add session combatant support for monsters with quantity add (`N` instances in one action).
+- [ ] Add API endpoints for:
+   - list/search monster templates (`global + personal` projection)
+   - create personal monster template (GM/user)
+   - create/update/delete global monster template (admin only)
+   - add monsters to session by template + quantity
+- [ ] Add miniapp “GM Toolkit” section in main navigation:
+   - `Персонажи` (player tools)
+   - `Монстры` (GM tools; extensible for future sections)
+- [ ] Add minimal UI flow in session view for quick monster add:
+   - select template
+   - set quantity
+   - submit in one compact action
+
 ### P2 — Companion product depth
 
 - [ ] Add session-level resource tracking (consumables/charges/conditions).
@@ -223,6 +243,7 @@ Build a multiplayer session (party) system where:
 - [ ] Add optional GM handover workflow while preserving no-transfer leave default.
 - [ ] Expand content-source tooling for scalable rule/content packs.
 - [ ] Add in-app onboarding checklist for first session run.
+- [ ] Add bulk import/sync tooling for global monster bestiary maintenance.
 
 ---
 
@@ -232,3 +253,15 @@ Build a multiplayer session (party) system where:
 - Should players be allowed to detach characters attached by GM?
 - Do we need soft-delete/audit trail for session events in Phase 1 or later?
 - Should `/api/sessions/:id/summary` ship in late Phase 1 or move to Phase 2 optimization?
+- Should personal monster templates be editable by non-GM users or GM-only for v1?
+
+---
+
+## Planning Update (2026-02-19)
+
+- Checked roadmap alignment for requested monster features.
+- Added explicit implementation plan for:
+   - global admin-managed monster catalog,
+   - personal user-managed monster catalog,
+   - GM toolkit navigation entry in miniapp,
+   - quantity-based monster add into sessions.

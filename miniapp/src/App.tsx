@@ -3,6 +3,7 @@ import { Layout } from './components/Layout';
 import { CharacterSheetPage } from './pages/CharacterSheetPage';
 import { CharactersPage } from './pages/CharactersPage';
 import { CreateCharacterWizardPage } from './pages/CreateCharacterWizardPage';
+import { MonsterCreatePage } from './pages/MonsterCreatePage';
 import { MonstersPage } from './pages/MonstersPage';
 import { SessionsPage } from './pages/SessionsPage';
 import { SessionViewPage } from './pages/SessionViewPage';
@@ -16,6 +17,7 @@ function App() {
           <Route path="/character/:id" element={<CharacterSheetPage />} />
           <Route path="/create" element={<CreateCharacterWizardPage />} />
           <Route path="/monsters" element={<MonstersPage />} />
+          <Route path="/monsters/create" element={<MonsterCreatePage />} />
           <Route path="/sessions" element={<SessionsPage />} />
           <Route path="/sessions/:id" element={<SessionViewPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

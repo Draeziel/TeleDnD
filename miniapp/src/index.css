@@ -343,6 +343,37 @@ td {
   gap: 8px;
 }
 
+.monster-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.monster-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.monster-list-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  object-fit: cover;
+  background: #f3f4f6;
+}
+
+.monster-list-icon.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: 12px;
+}
+
 .choice-block {
   border: 1px solid #e5e7eb;
   border-radius: 10px;

@@ -340,18 +340,6 @@ export function SessionViewPage() {
   return (
     <div className="page-stack">
       <div className="section-card">
-        <div className="toolbar">
-          <button
-            className="btn btn-primary"
-            disabled={rollingAll || !session.hasActiveGm || session.initiativeLocked}
-            onClick={onRollInitiativeAll}
-          >
-            {rollingAll ? 'Бросаем...' : 'Бросок инициативы (всем)'}
-          </button>
-          <button className="btn btn-secondary" disabled={initiativeActionLoading || !session.hasActiveGm} onClick={onResetInitiative}>
-            Reset
-          </button>
-        </div>
         <h2
           className="session-title"
         >
@@ -375,10 +363,11 @@ export function SessionViewPage() {
         </div>
         <div>Игроки: {session.playersCount ?? session.players.length}</div>
         <div>Персонажи: {session.characters.length}</div>
-        <div>
-          Инициатива:{' '}
+        <div className="initiative-controls">
+          <span>Инициатива:</span>
           <button
             className="btn btn-inline"
+            disabled={!session.hasActiveGm || initiativeActionLoading}
             aria-label="Переключить lock инициативы"
             onClick={() => {
               if (!session.hasActiveGm || initiativeActionLoading) {
@@ -394,6 +383,22 @@ export function SessionViewPage() {
             }}
           >
             {session.initiativeLocked ? 'зафиксирована' : 'открыта'}
+          </button>
+          <button
+            className="btn btn-compact btn-secondary"
+            disabled={rollingAll || !session.hasActiveGm || session.initiativeLocked}
+            aria-label="Бросок инициативы для всех"
+            onClick={onRollInitiativeAll}
+          >
+            {rollingAll ? '🎲…' : '🎲 всем'}
+          </button>
+          <button
+            className="btn btn-compact btn-secondary"
+            disabled={initiativeActionLoading || !session.hasActiveGm}
+            aria-label="Сбросить инициативу"
+            onClick={onResetInitiative}
+          >
+            🎲✕
           </button>
         </div>
         <div>Encounter: {session.encounterActive ? `активен (раунд ${session.combatRound})` : 'не активен'}</div>

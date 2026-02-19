@@ -195,6 +195,20 @@ td {
   line-height: 1.2;
 }
 
+.btn-compact {
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.initiative-controls {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
 .telegram-dev-box {
   background: #fff;
   border: 1px dashed #9ca3af;

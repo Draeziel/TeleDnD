@@ -768,6 +768,10 @@ td {
   font-size: 12px;
 }
 
+.combat-turn-card {
+  min-height: 168px;
+}
+
 .session-list {
   display: flex;
   flex-direction: column;

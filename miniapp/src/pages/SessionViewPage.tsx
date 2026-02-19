@@ -720,34 +720,21 @@ export function SessionViewPage() {
 
           {session.encounterActive && (
             <>
-              <h2>Монстры в сессии</h2>
-              <div className="list-grid">
-                {session.monsters.length === 0 && <StatusBox type="info" message="Монстры пока не добавлены" />}
-                {session.monsters.map((monster) => (
-                  <div className="list-item" key={monster.id}>
-                    <div>
-                      <strong>{monster.nameSnapshot}</strong>
-                      <div>{monster.template ? [monster.template.size, monster.template.creatureType, monster.template.alignment].filter(Boolean).join(', ') : 'custom'}</div>
-                      <div>HP: {monster.currentHp} / {monster.maxHpSnapshot}</div>
-                      <div>Инициатива: {monster.initiative ?? '—'}</div>
-                    </div>
-                    <div className="meta-row">AC: {monster.template?.armorClass ?? '—'} • CR: {monster.template?.challengeRating || '—'}</div>
-                  </div>
-                ))}
-              </div>
-
               <h2>Порядок ходов</h2>
               {initiativeOrder.length === 0 ? (
                 <StatusBox type="info" message="Инициатива пока не выставлена" />
               ) : (
                 <div className="combat-turn-grid">
                   {initiativeOrder.map((entry, index) => (
-                    <div className="list-item" key={`initiative-${entry.id}`}>
-                      <div>
-                        <strong>{session.activeTurnSessionCharacterId === entry.id ? '▶ ' : ''}{index + 1}. {entry.character.name}</strong>
-                        <div>Класс: {entry.character.class?.name || '—'}</div>
+                    <div className="combat-actor-card combat-turn-card" key={`initiative-${entry.id}`}>
+                      <span className="combat-actor-badge character">ПЕРС</span>
+                      <div className="combat-actor-title">
+                        {session.activeTurnSessionCharacterId === entry.id ? '▶ ' : ''}{index + 1}. {entry.character.name}
                       </div>
-                      <span>Инициатива: {entry.state?.initiative}</span>
+                      <div className="combat-actor-icon">{getAvatarInitials(entry.character.name)}</div>
+                      <div className="combat-actor-meta">❤️ {entry.state?.currentHp ?? 0} / {entry.state?.maxHpSnapshot ?? '—'}</div>
+                      <div className="combat-actor-meta">🛡 {characterArmorClass[entry.character.id] ?? '—'}</div>
+                      <div className="combat-actor-meta">🎲 {entry.state?.initiative ?? '—'}</div>
                     </div>
                   ))}
                 </div>

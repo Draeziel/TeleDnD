@@ -690,6 +690,38 @@ td {
   min-height: 150px;
 }
 
+.combat-actor-character {
+  background: #eff6ff;
+}
+
+.combat-actor-monster {
+  background: #fff1f2;
+}
+
+.combat-actor-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 3px 6px;
+  border: 1px solid;
+}
+
+.combat-actor-badge.character {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.combat-actor-badge.monster {
+  background: #ffe4e6;
+  border-color: #fda4af;
+  color: #be123c;
+}
+
 .combat-actor-title {
   width: 100%;
   text-align: center;

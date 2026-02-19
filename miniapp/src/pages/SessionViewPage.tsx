@@ -665,7 +665,8 @@ export function SessionViewPage() {
               <h2>Участники</h2>
               <div className="combat-actors-grid">
                 {session.characters.map((entry) => (
-                  <div className="combat-actor-card" key={`precombat-character-${entry.id}`}>
+                  <div className="combat-actor-card combat-actor-character" key={`precombat-character-${entry.id}`}>
+                    <span className="combat-actor-badge character">ПЕРС</span>
                     <div className="combat-actor-title">{entry.character.name}</div>
                     <div className="combat-actor-icon">{getAvatarInitials(entry.character.name)}</div>
                     <div className="combat-actor-meta">❤️ {entry.state?.currentHp ?? 0} / {entry.state?.maxHpSnapshot ?? '—'}</div>
@@ -682,7 +683,8 @@ export function SessionViewPage() {
                 ))}
 
                 {session.monsters.map((monster) => (
-                  <div className="combat-actor-card" key={`precombat-monster-${monster.id}`}>
+                  <div className="combat-actor-card combat-actor-monster" key={`precombat-monster-${monster.id}`}>
+                    <span className="combat-actor-badge monster">МОН</span>
                     <div className="combat-actor-title">{monster.nameSnapshot}</div>
                     {monster.template?.iconUrl ? (
                       <img className="combat-actor-image" src={monster.template.iconUrl} alt={monster.nameSnapshot} />

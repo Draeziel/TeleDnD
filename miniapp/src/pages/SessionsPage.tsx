@@ -15,6 +15,7 @@ export function SessionsPage() {
   const [error, setError] = useState('');
   const [createName, setCreateName] = useState('');
   const [joinCode, setJoinCode] = useState('');
+  const [selectedSessionId, setSelectedSessionId] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -92,6 +93,7 @@ export function SessionsPage() {
       setError('');
       await sessionApi.deleteSession(sessionId);
       setSessions((prev) => prev.filter((session) => session.id !== sessionId));
+      setSelectedSessionId((current) => (current === sessionId ? '' : current));
     } catch (unknownError) {
       setError(formatErrorMessage('Не удалось удалить сессию. Удаление доступно только для ГМа.', unknownError));
     } finally {
@@ -100,6 +102,11 @@ export function SessionsPage() {
   };
 
   const canCreate = createName.trim().length >= MIN_SESSION_NAME_LENGTH && createName.trim().length <= MAX_SESSION_NAME_LENGTH;
+  const selectedSession = sessions.find((item) => item.id === selectedSessionId) || null;
+
+  const onToggleSession = (sessionId: string) => {
+    setSelectedSessionId((current) => (current === sessionId ? '' : sessionId));
+  };
 
   return (
     <div className="page-stack">
@@ -150,7 +157,9 @@ export function SessionsPage() {
                 <div className="entity-list-item" key={session.id}>
                   <div className="entity-list-icon placeholder">S</div>
                   <div className="entity-list-main">
-                    <div className="entity-details-title">{session.name}</div>
+                    <button className="btn btn-inline" onClick={() => onToggleSession(session.id)}>
+                      {session.name}
+                    </button>
                     <div className="entity-list-meta">
                       {roleLabel(session.role)} · ГМ: {session.hasActiveGm ? 'активен' : 'нет'} · Код: {session.joinCode}
                     </div>
@@ -170,6 +179,24 @@ export function SessionsPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {selectedSession && (
+        <div className="section-card">
+          <h2>Карточка сессии</h2>
+          <div className="entity-details-card">
+            <div className="entity-details-title">{selectedSession.name}</div>
+            <div className="meta-row">Роль: {roleLabel(selectedSession.role)}</div>
+            <div className="meta-row">Статус ГМа: {selectedSession.hasActiveGm ? 'активен' : 'нет активного ГМа'}</div>
+            <div className="meta-row">Код входа: {selectedSession.joinCode}</div>
+            <div className="meta-row">Игроки: {selectedSession.playersCount} · Персонажи: {selectedSession.charactersCount}</div>
+            <div className="inline-row">
+              <button className="btn btn-primary btn-compact" onClick={() => navigate(`/sessions/${selectedSession.id}`)}>
+                Открыть сессию
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

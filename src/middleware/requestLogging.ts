@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import logger from '../utils/logger';
+import { trackRequestMetrics } from '../utils/requestMetrics';
 
 function normalizePath(path: string) {
   return path || '/';
@@ -49,12 +50,21 @@ export function requestLoggingMiddleware() {
 
       logger.info('http_request', logPayload);
 
-      if (Number.isFinite(slowMs) && durationMs >= slowMs) {
+      const isSlow = Number.isFinite(slowMs) && durationMs >= slowMs;
+
+      if (isSlow) {
         logger.warn('http_request_slow', {
           ...logPayload,
           thresholdMs: slowMs,
         });
       }
+
+      trackRequestMetrics({
+        route: routePattern || path,
+        statusCode: res.statusCode,
+        durationMs,
+        isSlow,
+      });
     });
 
     next();

@@ -102,8 +102,8 @@ SESSION_EVENTS_CLEANUP_INTERVAL_MIN=60
 ```
 
 - `TELEGRAM_BOT_TOKEN` – Telegram bot token used for signature verification.
-- `REQUIRE_TELEGRAM_AUTH` – when `true`, protected endpoints reject requests without valid `x-telegram-init-data`. If omitted, defaults to `true` in production.
-- `ALLOW_TELEGRAM_USER_ID_FALLBACK` – allows `x-telegram-user-id` fallback only in non-production mode (for dev/test).
+- `REQUIRE_TELEGRAM_AUTH` – when `true`, protected endpoints reject requests without valid `x-telegram-init-data`. In production, auth is always enforced regardless of this flag.
+- `ALLOW_TELEGRAM_USER_ID_FALLBACK` – allows `x-telegram-user-id` fallback only in non-production mode when `REQUIRE_TELEGRAM_AUTH=false` and this flag is explicitly set to `true`.
 - `TELEGRAM_INITDATA_MAX_AGE_SEC` – maximum allowed age of `auth_date` in seconds.
 - `TELEGRAM_ADMIN_IDS` – comma-separated Telegram IDs with admin rights for GLOBAL monster catalog management.
 - `API_RATE_LIMIT_WINDOW_MS` – rate-limit window for all `/api/*` routes in milliseconds (default: `60000`).
@@ -127,6 +127,7 @@ In local/dev mode, set `REQUIRE_TELEGRAM_AUTH=false` and `ALLOW_TELEGRAM_USER_ID
 
 - `GET /healthz` returns service liveness payload (`status`, `env`, `uptimeSec`, timestamp, `requestId`).
 - `GET /readyz` verifies runtime readiness, including database connectivity (`200` when ready, `503` otherwise).
+- `GET /metricsz` returns in-memory request metrics snapshot (total requests, 5xx count, slow requests, per-status and per-route aggregates).
 
 ### API Endpoints
 

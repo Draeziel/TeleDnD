@@ -202,11 +202,11 @@ Build a multiplayer session (party) system where:
 
 ### P0 — Production reliability baseline
 
-- [ ] Enforce strict Telegram auth in production paths (remove fallback behavior outside dev/test).
-- [ ] Add structured request logging with correlation/request IDs.
+- [x] Enforce strict Telegram auth in production paths (remove fallback behavior outside dev/test).
+- [x] Add structured request logging with correlation/request IDs.
 - [ ] Add error-rate and latency alerting for backend (Render + external monitor integration).
 - [ ] Define and track basic SLOs (availability, p95 latency, 5xx budget).
-- [ ] Add CI gate for backend build + miniapp build + smoke checks.
+- [x] Add CI gate for backend build + miniapp build + smoke checks.
 
 ### P1 — Gameplay and UX robustness
 
@@ -214,7 +214,7 @@ Build a multiplayer session (party) system where:
 - [ ] Add safe “undo last combat action” for GM (HP/initiative/effect mutations).
 - [ ] Add network resilience UX in miniapp (retry/backoff and clearer offline recovery).
 - [ ] Improve small-screen ergonomics (tap targets, dense combat layout, minimal scroll friction).
-- [ ] Define and implement retention policy for `session_events` (TTL/archive + cleanup task).
+- [x] Define and implement retention policy for `session_events` (TTL/archive + cleanup task).
 
 ### P1.5 — Monster Catalog & GM Toolkit (new)
 
@@ -223,11 +223,11 @@ Build a multiplayer session (party) system where:
    - `PERSONAL` templates (visible/editable only by owner user)
 - [x] Add admin authorization policy for global catalog management (Telegram ID allowlist).
 - [x] Add session combatant support for monsters with quantity add (`N` instances in one action).
-- [~] Add API endpoints for:
+- [x] Add API endpoints for:
    - list/search monster templates (`global + personal` projection)
    - create personal monster template (GM/user)
    - create global monster template (admin only)
-   - update/delete global monster template (admin only)
+   - update/delete monster template with scope-based permissions (global: admin only, personal: owner only)
    - add monsters to session by template + quantity
 - [x] Add miniapp “GM Toolkit” section in main navigation:
    - `Персонажи` (player tools)
@@ -272,3 +272,4 @@ Build a multiplayer session (party) system where:
    - `/api/sessions/:id/monsters` quantity add,
    - miniapp `Монстры` page and compact add-monsters flow in session view.
 - Extended monster template fields to stat-block format (type/alignment/speed/abilities/immunities/traits/actions/legendary actions) plus icon/image slots; split monster creation/view areas and added `Мои/Глобальные` tabs with card-style preview.
+- 2026-02-19: Hardened Telegram auth policy (strict in production), added in-memory request metrics endpoint (`/metricsz`), and aligned roadmap statuses for CI gate, session events retention, and monster template update/delete APIs.

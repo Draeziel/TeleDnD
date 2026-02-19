@@ -11,6 +11,7 @@ import { telegramAuthMiddleware } from './middleware/telegramAuth';
 import { requestLoggingMiddleware } from './middleware/requestLogging';
 import { responseMetaMiddleware } from './middleware/responseMeta';
 import logger from './utils/logger';
+import { getRequestMetricsSnapshot } from './utils/requestMetrics';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -79,6 +80,15 @@ app.get('/readyz', async (_req, res) => {
             now: new Date().toISOString(),
         });
     }
+});
+
+app.get('/metricsz', (_req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        service: 'rpg-character-service',
+        appVersion,
+        metrics: getRequestMetricsSnapshot(),
+    });
 });
 
 app.use('/api', apiLimiter);
@@ -160,9 +170,9 @@ const startServer = async () => {
         const nodeEnv = (process.env.NODE_ENV || 'development').toLowerCase();
         const isProduction = nodeEnv === 'production';
         const requireAuthEnv = process.env.REQUIRE_TELEGRAM_AUTH;
-        const requireAuth = requireAuthEnv ? requireAuthEnv === 'true' : isProduction;
+        const requireAuth = isProduction ? true : (requireAuthEnv ? requireAuthEnv === 'true' : false);
         const fallbackEnv = process.env.ALLOW_TELEGRAM_USER_ID_FALLBACK;
-        const allowFallback = !isProduction && (fallbackEnv ? fallbackEnv === 'true' : true);
+        const allowFallback = !isProduction && !requireAuth && fallbackEnv === 'true';
 
         logger.info('startup_ready', {
             env: nodeEnv,

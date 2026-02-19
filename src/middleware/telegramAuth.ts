@@ -75,10 +75,10 @@ export function telegramAuthMiddleware() {
     const nodeEnv = (process.env.NODE_ENV || 'development').toLowerCase();
     const isProduction = nodeEnv === 'production';
     const requireAuthEnv = process.env.REQUIRE_TELEGRAM_AUTH;
-    const requireAuth = requireAuthEnv ? requireAuthEnv === 'true' : isProduction;
+    const requireAuth = isProduction ? true : (requireAuthEnv ? requireAuthEnv === 'true' : false);
 
     const fallbackEnv = process.env.ALLOW_TELEGRAM_USER_ID_FALLBACK;
-    const allowFallback = !isProduction && (fallbackEnv ? fallbackEnv === 'true' : true);
+    const allowFallback = !isProduction && !requireAuth && fallbackEnv === 'true';
 
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const initDataHeader = req.header('x-telegram-init-data');

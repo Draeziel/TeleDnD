@@ -2,7 +2,9 @@ param(
     [string]$BaseUrl = "https://telednd-backend.onrender.com",
     [string]$CharacterName = "SmokeTestHero",
     [string]$TestTelegramUserId = "123456789",
-    [string]$TelegramInitData = ""
+    [string]$TelegramInitData = "",
+    [double]$MaxErrorRatePct = -1,
+    [double]$MaxSlowRatePct = -1
 )
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -13,5 +15,5 @@ if (-not (Test-Path $runTestsPath)) {
     exit 1
 }
 
-& $runTestsPath -Smoke -BaseUrl $BaseUrl -CharacterName $CharacterName -TestTelegramUserId $TestTelegramUserId -TelegramInitData $TelegramInitData
+& $runTestsPath -Smoke -BaseUrl $BaseUrl -CharacterName $CharacterName -TestTelegramUserId $TestTelegramUserId -TelegramInitData $TelegramInitData -MaxErrorRatePct $MaxErrorRatePct -MaxSlowRatePct $MaxSlowRatePct
 exit $LASTEXITCODE

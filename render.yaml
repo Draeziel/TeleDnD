@@ -6,10 +6,20 @@ services:
     rootDir: .
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npx prisma migrate deploy && node dist/server.js
-    healthCheckPath: /api/characters/classes
+    healthCheckPath: /readyz
     envVars:
       - key: NODE_ENV
         value: production
+      - key: REQUIRE_TELEGRAM_AUTH
+        value: "true"
+      - key: ALLOW_TELEGRAM_USER_ID_FALLBACK
+        value: "false"
+      - key: SESSION_EVENTS_CLEANUP_ENABLED
+        value: "true"
+      - key: SESSION_EVENTS_RETENTION_DAYS
+        value: "30"
+      - key: SESSION_EVENTS_CLEANUP_INTERVAL_MIN
+        value: "60"
       - key: PORT
         value: 10000
       - key: DATABASE_URL

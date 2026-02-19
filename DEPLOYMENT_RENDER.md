@@ -22,6 +22,13 @@ When status is `Live`, open backend URL:
 
 Expected: HTTP 200 (array response).
 
+Also verify probes:
+
+- `GET /livez` -> `status=alive`
+- `GET /healthz` -> `status=ok`
+- `GET /readyz` -> `status=ready`
+- `GET /metricsz` -> contains `metrics.totals`
+
 ## 3) Seed initial game data (one-time)
 
 Open Render -> service -> `Shell` and run:
@@ -83,3 +90,16 @@ Useful options:
 # Push to another branch
 ./trigger-deploy.ps1 -Branch develop
 ```
+
+## Post-deploy SLO smoke baseline
+
+Run smoke with optional SLO thresholds (in percentages):
+
+```powershell
+./run-smoke.ps1 -BaseUrl https://<your-render-service>.onrender.com -MaxErrorRatePct 5 -MaxSlowRatePct 20
+```
+
+Interpretation:
+- `Error rate SLO` checks `metrics.totals.errors / metrics.totals.requests`.
+- `Slow rate SLO` checks `metrics.totals.slow / metrics.totals.requests`.
+- These checks are enabled only when thresholds are provided (>= 0).

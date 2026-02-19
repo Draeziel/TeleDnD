@@ -129,6 +129,18 @@ In local/dev mode, set `REQUIRE_TELEGRAM_AUTH=false` and `ALLOW_TELEGRAM_USER_ID
 - `GET /readyz` verifies runtime readiness, including database connectivity (`200` when ready, `503` otherwise).
 - `GET /metricsz` returns in-memory request metrics snapshot (total requests, 5xx count, slow requests, per-status and per-route aggregates).
 
+### Post-deploy SLO smoke checks
+
+Run smoke against deployed backend with optional SLO thresholds:
+
+```powershell
+./run-smoke.ps1 -BaseUrl https://<your-render-service>.onrender.com -MaxErrorRatePct 5 -MaxSlowRatePct 20
+```
+
+- `MaxErrorRatePct` validates `metrics.totals.errors / metrics.totals.requests`.
+- `MaxSlowRatePct` validates `metrics.totals.slow / metrics.totals.requests`.
+- Leave thresholds at default `-1` to disable SLO assertions and run functional smoke only.
+
 ### API Endpoints
 
 #### Public reference endpoints

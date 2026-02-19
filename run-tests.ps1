@@ -6,7 +6,9 @@ param(
     [switch]$Smoke,
     [string]$CharacterName = "SmokeTestHero",
     [string]$TestTelegramUserId = "123456789",
-    [string]$TelegramInitData = ""
+    [string]$TelegramInitData = "",
+    [double]$MaxErrorRatePct = -1,
+    [double]$MaxSlowRatePct = -1
 )
 
 if ($Smoke) {
@@ -87,6 +89,37 @@ if ($Smoke) {
         Add-SmokeResult "Readiness endpoint" $readyOk "GET /readyz status=$($ready.status)"
     } catch {
         Add-SmokeResult "Readiness endpoint" $false "GET /readyz failed: $($_.Exception.Message)"
+    }
+
+    # 1.3) Metrics check
+    try {
+        $metricsResponse = Invoke-WebRequest -Uri "$BaseUrl/metricsz" -Method Get -UseBasicParsing -ErrorAction Stop
+        $metricsPayload = $metricsResponse.Content | ConvertFrom-Json
+
+        $hasTotals = $null -ne $metricsPayload.metrics -and $null -ne $metricsPayload.metrics.totals
+        $hasRequests = $hasTotals -and $null -ne $metricsPayload.metrics.totals.requests
+        Add-SmokeResult "Metrics endpoint" $hasRequests "GET /metricsz totals.requests=$($metricsPayload.metrics.totals.requests)"
+
+        if ($hasTotals -and $metricsPayload.metrics.totals.requests -gt 0) {
+            $totalRequests = [double]$metricsPayload.metrics.totals.requests
+            $errorCount = [double]$metricsPayload.metrics.totals.errors
+            $slowCount = [double]$metricsPayload.metrics.totals.slow
+
+            $errorRatePct = [math]::Round(($errorCount / $totalRequests) * 100, 2)
+            $slowRatePct = [math]::Round(($slowCount / $totalRequests) * 100, 2)
+
+            if ($MaxErrorRatePct -ge 0) {
+                $errorRatePass = $errorRatePct -le $MaxErrorRatePct
+                Add-SmokeResult "Error rate SLO" $errorRatePass "errors=$errorCount/$totalRequests ($errorRatePct%), threshold=$MaxErrorRatePct%"
+            }
+
+            if ($MaxSlowRatePct -ge 0) {
+                $slowRatePass = $slowRatePct -le $MaxSlowRatePct
+                Add-SmokeResult "Slow rate SLO" $slowRatePass "slow=$slowCount/$totalRequests ($slowRatePct%), threshold=$MaxSlowRatePct%"
+            }
+        }
+    } catch {
+        Add-SmokeResult "Metrics endpoint" $false "GET /metricsz failed: $($_.Exception.Message)"
     }
 
     # 2) Classes endpoint

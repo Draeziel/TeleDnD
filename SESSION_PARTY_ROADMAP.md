@@ -204,8 +204,8 @@ Build a multiplayer session (party) system where:
 
 - [x] Enforce strict Telegram auth in production paths (remove fallback behavior outside dev/test).
 - [x] Add structured request logging with correlation/request IDs.
-- [ ] Add error-rate and latency alerting for backend (Render + external monitor integration).
-- [ ] Define and track basic SLOs (availability, p95 latency, 5xx budget).
+- [~] Add error-rate and latency alerting for backend (Render + external monitor integration).
+- [~] Define and track basic SLOs (availability, p95 latency, 5xx budget).
 - [x] Add CI gate for backend build + miniapp build + smoke checks.
 
 ### P1 — Gameplay and UX robustness
@@ -273,3 +273,4 @@ Build a multiplayer session (party) system where:
    - miniapp `Монстры` page and compact add-monsters flow in session view.
 - Extended monster template fields to stat-block format (type/alignment/speed/abilities/immunities/traits/actions/legendary actions) plus icon/image slots; split monster creation/view areas and added `Мои/Глобальные` tabs with card-style preview.
 - 2026-02-19: Hardened Telegram auth policy (strict in production), added in-memory request metrics endpoint (`/metricsz`), and aligned roadmap statuses for CI gate, session events retention, and monster template update/delete APIs.
+- 2026-02-19: Added SLO smoke baseline (`MaxErrorRatePct`, `MaxSlowRatePct` in smoke scripts), switched Render health check to `/readyz`, and documented operational probe/metrics verification flow.

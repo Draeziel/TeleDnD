@@ -243,11 +243,11 @@ Build a multiplayer session (party) system where:
    - remove session-name max length restriction in UI/API validation
    - compact session header with role + players icons
    - hide non-critical counters/status labels from header
-- [~] B2: Pre-combat character board (3-column tiles)
+- [x] B2: Pre-combat character board (3-column tiles)
    - show only avatar, HP heart, AC shield, status icons
    - grayscale tile when HP is 0
    - open full character card on tile click
-- [ ] B3: Combat block separation and initiative flow
+- [~] B3: Combat block separation and initiative flow
    - separate "Start combat" block when encounter not active
    - lock icon instead of initiative text status
    - add monster initiative roll action
@@ -256,7 +256,7 @@ Build a multiplayer session (party) system where:
 - [ ] B4: In-combat HP/status interaction panel (GM-only edits)
    - tap heart opens HP/status panel
    - HP and status modifications restricted to GM
-- [~] B5: Visibility and attach-flow tightening
+- [x] B5: Visibility and attach-flow tightening
    - events journal visible to GM only, behind explicit toggle
    - attach-character section hidden by default behind "+персонаж"
    - enforce 1 character per player; GM unlimited
@@ -301,3 +301,7 @@ Build a multiplayer session (party) system where:
 - 2026-02-19: Added scheduled production monitor workflow (`.github/workflows/production-monitor.yml`) with probes + SLO smoke checks every 30 minutes and manual dispatch inputs.
 - 2026-02-19: Added scoped Session UX / Combat UX v2 roadmap block (P1.6) and started B1/B5 implementation slice.
 - 2026-02-19: Implemented B1 and partial B2/B5: removed session-name max length limit, compacted session header, added pre-combat character tile board with HP/AC/statuses and tap-to-open detailed card, moved events/attach behind toggles with GM-only journal visibility and player attach limit.
+- 2026-02-19: Reworked combat entry flow: `Начать бой!` opens dedicated combat interface that hides non-combat blocks; encounter starts from `Начать сражение` inside combat block.
+- 2026-02-19: Refined combat UI: compact round label (`Р:x`), renamed controls (`Завершить бой`, `Начать сражение`), compact turn-pass icon button, GM-only monster-add controls, and actor differentiation via background+badge.
+- 2026-02-19: Added pre-start unified actors board (characters + monsters) with 3-column cards and removal actions; added backend+API support for removing session monsters (`DELETE /api/sessions/:id/monsters/:monsterId`).
+- 2026-02-19: During active encounter hidden `Монстры в сессии`; `Порядок ходов` switched to 3-column participant-style cards; fixed monster template stat loss on summary polling by normalizing summary monster shape (`template`).

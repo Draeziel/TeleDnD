@@ -677,6 +677,12 @@ td {
   gap: 8px;
 }
 
+.combat-turn-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .combat-actor-card {
   position: relative;
   border: 1px solid #e5e7eb;
@@ -907,6 +913,10 @@ td {
   }
 
   .combat-actors-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .combat-turn-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 

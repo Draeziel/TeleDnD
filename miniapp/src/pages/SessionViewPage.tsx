@@ -116,7 +116,16 @@ export function SessionViewPage() {
       activeTurnSessionCharacterId: summary.activeTurnSessionCharacterId,
       hasActiveGm: summary.hasActiveGm,
       events: summary.events,
-      monsters: summary.monsters,
+      monsters: summary.monsters.map((monster) => {
+        const normalizedTemplate = (monster as SessionDetails['monsters'][number] & { monsterTemplate?: SessionDetails['monsters'][number]['template'] }).template
+          ?? (monster as SessionDetails['monsters'][number] & { monsterTemplate?: SessionDetails['monsters'][number]['template'] }).monsterTemplate
+          ?? null;
+
+        return {
+          ...monster,
+          template: normalizedTemplate,
+        };
+      }),
       characters: nextCharacters,
     };
   };
@@ -731,7 +740,7 @@ export function SessionViewPage() {
               {initiativeOrder.length === 0 ? (
                 <StatusBox type="info" message="Инициатива пока не выставлена" />
               ) : (
-                <div className="list-grid">
+                <div className="combat-turn-grid">
                   {initiativeOrder.map((entry, index) => (
                     <div className="list-item" key={`initiative-${entry.id}`}>
                       <div>

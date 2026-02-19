@@ -875,7 +875,18 @@ export class SessionService {
         state: entry.state,
         effectsCount: entry._count.effects,
       })),
-      monsters: session.monsters,
+      monsters: session.monsters.map((monster) => ({
+        id: monster.id,
+        monsterTemplateId: monster.monsterTemplateId,
+        nameSnapshot: monster.nameSnapshot,
+        currentHp: monster.currentHp,
+        maxHpSnapshot: monster.maxHpSnapshot,
+        initiative: monster.initiative,
+        notes: monster.notes,
+        createdAt: monster.createdAt,
+        updatedAt: monster.updatedAt,
+        template: monster.monsterTemplate,
+      })),
     };
   }
 

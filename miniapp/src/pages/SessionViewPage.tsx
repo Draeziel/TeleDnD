@@ -492,10 +492,22 @@ export function SessionViewPage() {
             👥 {session.playersCount ?? session.players.length}
           </span>
         </div>
+      </div>
+
+      {!session.hasActiveGm && (
+        <StatusBox
+          type="info"
+          message="В сессии сейчас нет активного ГМа. GM-действия временно недоступны."
+        />
+      )}
+
+      {error && <StatusBox type="error" message={error} />}
+
+      <div className="section-card">
+        <h2>Бой</h2>
         <div className="list-item">
           <div>
-            <strong>Combat</strong>
-            <div className="initiative-controls" style={{ marginTop: '6px' }}>
+            <div className="initiative-controls" style={{ marginTop: '2px' }}>
               <span>Инициатива:</span>
               <button
                 className="btn btn-inline"
@@ -533,7 +545,7 @@ export function SessionViewPage() {
                 🎲✕
               </button>
             </div>
-            <div>
+            <div style={{ marginTop: '8px' }}>
               Раунд: {session.encounterActive ? session.combatRound : '—'}{' '}
               <button
                 className="btn btn-inline"
@@ -594,16 +606,46 @@ export function SessionViewPage() {
             Next turn
           </button>
         </div>
+
+        {session.encounterActive ? (
+          <>
+            <h2>Монстры в сессии</h2>
+            <div className="list-grid">
+              {session.monsters.length === 0 && <StatusBox type="info" message="Монстры пока не добавлены" />}
+              {session.monsters.map((monster) => (
+                <div className="list-item" key={monster.id}>
+                  <div>
+                    <strong>{monster.nameSnapshot}</strong>
+                    <div>{monster.template ? [monster.template.size, monster.template.creatureType, monster.template.alignment].filter(Boolean).join(', ') : 'custom'}</div>
+                    <div>HP: {monster.currentHp} / {monster.maxHpSnapshot}</div>
+                    <div>Инициатива: {monster.initiative ?? '—'}</div>
+                  </div>
+                  <div className="meta-row">AC: {monster.template?.armorClass ?? '—'} • CR: {monster.template?.challengeRating || '—'}</div>
+                </div>
+              ))}
+            </div>
+
+            <h2>Порядок ходов</h2>
+            {initiativeOrder.length === 0 ? (
+              <StatusBox type="info" message="Инициатива пока не выставлена" />
+            ) : (
+              <div className="list-grid">
+                {initiativeOrder.map((entry, index) => (
+                  <div className="list-item" key={`initiative-${entry.id}`}>
+                    <div>
+                      <strong>{session.activeTurnSessionCharacterId === entry.id ? '▶ ' : ''}{index + 1}. {entry.character.name}</strong>
+                      <div>Класс: {entry.character.class?.name || '—'}</div>
+                    </div>
+                    <span>Инициатива: {entry.state?.initiative}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <StatusBox type="info" message="Боевой encounter не активен" />
+        )}
       </div>
-
-      {!session.hasActiveGm && (
-        <StatusBox
-          type="info"
-          message="В сессии сейчас нет активного ГМа. GM-действия временно недоступны."
-        />
-      )}
-
-      {error && <StatusBox type="error" message={error} />}
 
       <div className="section-card">
         <h2>{session.encounterActive ? 'Персонажи в бою' : 'Персонажи группы'}</h2>
@@ -718,47 +760,6 @@ export function SessionViewPage() {
           </div>
         )}
       </div>
-
-      {session.encounterActive && (
-        <>
-          <div className="section-card">
-            <h2>Монстры в сессии</h2>
-            <div className="list-grid">
-              {session.monsters.length === 0 && <StatusBox type="info" message="Монстры пока не добавлены" />}
-              {session.monsters.map((monster) => (
-                <div className="list-item" key={monster.id}>
-                  <div>
-                    <strong>{monster.nameSnapshot}</strong>
-                    <div>{monster.template ? [monster.template.size, monster.template.creatureType, monster.template.alignment].filter(Boolean).join(', ') : 'custom'}</div>
-                    <div>HP: {monster.currentHp} / {monster.maxHpSnapshot}</div>
-                    <div>Инициатива: {monster.initiative ?? '—'}</div>
-                  </div>
-                  <div className="meta-row">AC: {monster.template?.armorClass ?? '—'} • CR: {monster.template?.challengeRating || '—'}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="section-card">
-            <h2>Порядок ходов</h2>
-            {initiativeOrder.length === 0 ? (
-              <StatusBox type="info" message="Инициатива пока не выставлена" />
-            ) : (
-              <div className="list-grid">
-                {initiativeOrder.map((entry, index) => (
-                  <div className="list-item" key={`initiative-${entry.id}`}>
-                    <div>
-                      <strong>{session.activeTurnSessionCharacterId === entry.id ? '▶ ' : ''}{index + 1}. {entry.character.name}</strong>
-                      <div>Класс: {entry.character.class?.name || '—'}</div>
-                    </div>
-                    <span>Инициатива: {entry.state?.initiative}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      )}
 
       <div className="section-card">
         <div className="session-list-header">

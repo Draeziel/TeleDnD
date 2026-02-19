@@ -462,7 +462,7 @@ export function SessionViewPage() {
         </div>
       )}
 
-      <div className="section-card">
+      <div className="section-card session-header-card">
         <div className="session-head-row">
           <div className="session-head-left">
             <button
@@ -492,47 +492,47 @@ export function SessionViewPage() {
             👥 {session.playersCount ?? session.players.length}
           </span>
         </div>
-        <div className="initiative-controls">
-          <span>Инициатива:</span>
-          <button
-            className="btn btn-inline"
-            disabled={!session.hasActiveGm || initiativeActionLoading}
-            aria-label="Переключить lock инициативы"
-            onClick={() => {
-              if (!session.hasActiveGm || initiativeActionLoading) {
-                return;
-              }
-
-              if (session.initiativeLocked) {
-                void onUnlockInitiative();
-                return;
-              }
-
-              void onLockInitiative();
-            }}
-          >
-            {session.initiativeLocked ? '🔒' : '🔓'}
-          </button>
-          <button
-            className="btn btn-compact btn-secondary"
-            disabled={rollingAll || !session.hasActiveGm || session.initiativeLocked}
-            aria-label="Бросок инициативы для всех"
-            onClick={onRollInitiativeAll}
-          >
-            {rollingAll ? '🎲…' : '🎲 всем'}
-          </button>
-          <button
-            className="btn btn-compact btn-secondary"
-            disabled={initiativeActionLoading || !session.hasActiveGm}
-            aria-label="Сбросить инициативу"
-            onClick={onResetInitiative}
-          >
-            🎲✕
-          </button>
-        </div>
         <div className="list-item">
           <div>
             <strong>Combat</strong>
+            <div className="initiative-controls" style={{ marginTop: '6px' }}>
+              <span>Инициатива:</span>
+              <button
+                className="btn btn-inline"
+                disabled={!session.hasActiveGm || initiativeActionLoading}
+                aria-label="Переключить lock инициативы"
+                onClick={() => {
+                  if (!session.hasActiveGm || initiativeActionLoading) {
+                    return;
+                  }
+
+                  if (session.initiativeLocked) {
+                    void onUnlockInitiative();
+                    return;
+                  }
+
+                  void onLockInitiative();
+                }}
+              >
+                {session.initiativeLocked ? '🔒' : '🔓'}
+              </button>
+              <button
+                className="btn btn-compact btn-secondary"
+                disabled={rollingAll || !session.hasActiveGm || session.initiativeLocked}
+                aria-label="Бросок инициативы для всех"
+                onClick={onRollInitiativeAll}
+              >
+                {rollingAll ? '🎲…' : '🎲 всем'}
+              </button>
+              <button
+                className="btn btn-compact btn-secondary"
+                disabled={initiativeActionLoading || !session.hasActiveGm}
+                aria-label="Сбросить инициативу"
+                onClick={onResetInitiative}
+              >
+                🎲✕
+              </button>
+            </div>
             <div>
               Раунд: {session.encounterActive ? session.combatRound : '—'}{' '}
               <button

@@ -472,6 +472,7 @@ td {
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 8px;
+  min-height: 34px;
 }
 
 .session-head-left,
@@ -479,6 +480,16 @@ td {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+.session-header-card {
+  position: relative;
+}
+
+.session-header-card .session-head-right {
+  position: absolute;
+  top: 12px;
+  right: 12px;
 }
 
 .toast-stack {
@@ -775,9 +786,11 @@ td {
   .session-head-row {
     flex-direction: column;
     align-items: flex-start;
+    min-height: 0;
   }
 
-  .session-head-right {
+  .session-header-card .session-head-right {
+    position: static;
     justify-content: flex-start;
   }
 

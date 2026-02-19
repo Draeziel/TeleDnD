@@ -99,60 +99,77 @@ export function SessionsPage() {
     }
   };
 
+  const canCreate = createName.trim().length >= MIN_SESSION_NAME_LENGTH && createName.trim().length <= MAX_SESSION_NAME_LENGTH;
+
   return (
     <div className="page-stack">
-      <div className="toolbar">
-        <input
-          value={createName}
-          onChange={(e) => setCreateName(e.target.value)}
-          maxLength={MAX_SESSION_NAME_LENGTH}
-          placeholder="Название сессии"
-        />
-        <button
-          onClick={onCreate}
-          disabled={createName.trim().length < MIN_SESSION_NAME_LENGTH || createName.trim().length > MAX_SESSION_NAME_LENGTH}
-        >
-          Создать сессию
-        </button>
-      </div>
-
-      <div className="toolbar">
-        <input
-          value={joinCode}
-          onChange={(e) => setJoinCode(e.target.value)}
-          placeholder="Код входа"
-        />
-        <button onClick={onJoin} disabled={!joinCode.trim()}>
-          Войти в сессию
-        </button>
-        <button disabled={refreshing} onClick={load}>{refreshing ? 'Обновление...' : 'Обновить'}</button>
+      <div className="section-card">
+        <h2>Сессии</h2>
+        <div className="grid-2">
+          <div className="form-stack">
+            <div className="meta-row">Создать сессию</div>
+            <input
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              maxLength={MAX_SESSION_NAME_LENGTH}
+              placeholder="Название сессии"
+            />
+            <button className="btn btn-primary" onClick={onCreate} disabled={!canCreate}>
+              Создать сессию
+            </button>
+          </div>
+          <div className="form-stack">
+            <div className="meta-row">Войти по коду</div>
+            <input
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value)}
+              placeholder="Код входа"
+            />
+            <div className="inline-row">
+              <button className="btn btn-primary" onClick={onJoin} disabled={!joinCode.trim()}>
+                Войти
+              </button>
+              <button className="btn btn-secondary" disabled={refreshing} onClick={load}>
+                {refreshing ? 'Обновление...' : 'Обновить'}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {loading && <StatusBox type="info" message="Загрузка сессий..." />}
       {error && <StatusBox type="error" message={error} />}
 
       {!loading && !error && (
-        <div className="list-grid">
+        <div className="section-card">
+          <h2>Список сессий</h2>
           {sessions.length === 0 && <StatusBox type="info" message="Сессий пока нет" />}
-          {sessions.map((session) => (
-            <div className="list-item" key={session.id}>
-              <div>
-                <strong>{session.name}</strong>
-                <div>Роль: {roleLabel(session.role)}</div>
-                <div>Статус ГМа: {session.hasActiveGm ? 'активен' : 'нет активного ГМа'}</div>
-                <div>Код входа: {session.joinCode}</div>
-                <div>Игроки: {session.playersCount} · Персонажи: {session.charactersCount}</div>
-              </div>
-              <div className="inline-row">
-                <button onClick={() => navigate(`/sessions/${session.id}`)}>Открыть</button>
-                {session.role === 'GM' && (
-                  <button disabled={deletingId === session.id} onClick={() => onDelete(session.id)}>
-                    {deletingId === session.id ? 'Удаление...' : 'Удалить'}
-                  </button>
-                )}
-              </div>
+          {sessions.length > 0 && (
+            <div className="entity-list">
+              {sessions.map((session) => (
+                <div className="entity-list-item" key={session.id}>
+                  <div className="entity-list-icon placeholder">S</div>
+                  <div className="entity-list-main">
+                    <div className="entity-details-title">{session.name}</div>
+                    <div className="entity-list-meta">
+                      {roleLabel(session.role)} · ГМ: {session.hasActiveGm ? 'активен' : 'нет'} · Код: {session.joinCode}
+                    </div>
+                    <div className="entity-list-meta">Игроки: {session.playersCount} · Персонажи: {session.charactersCount}</div>
+                  </div>
+                  <div className="entity-list-actions">
+                    <button className="btn btn-secondary btn-compact" onClick={() => navigate(`/sessions/${session.id}`)}>
+                      Открыть
+                    </button>
+                    {session.role === 'GM' && (
+                      <button className="btn btn-danger btn-compact" disabled={deletingId === session.id} onClick={() => onDelete(session.id)}>
+                        {deletingId === session.id ? 'Удаление...' : 'Удалить'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

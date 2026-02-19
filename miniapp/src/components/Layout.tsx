@@ -8,7 +8,6 @@ export function Layout() {
         <nav>
           <Link to="/">Персонажи</Link>
           <Link to="/monsters">Монстры</Link>
-          <Link to="/create">Создать</Link>
           <Link to="/sessions">Сессии</Link>
         </nav>
       </header>

@@ -32,6 +32,8 @@ export function SessionViewPage() {
   const [copyingCode, setCopyingCode] = useState(false);
   const [showAttachCharacters, setShowAttachCharacters] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
+  const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
+  const [characterArmorClass, setCharacterArmorClass] = useState<Record<string, number | null>>({});
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
 
@@ -152,6 +154,55 @@ export function SessionViewPage() {
     const timer = setInterval(() => load(true), 7000);
     return () => clearInterval(timer);
   }, [id]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    const missingAcIds = session.characters
+      .map((entry) => entry.character.id)
+      .filter((characterId) => !(characterId in characterArmorClass));
+
+    if (missingAcIds.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    Promise.all(
+      missingAcIds.map(async (characterId) => {
+        try {
+          const sheet = await characterApi.getCharacterSheet(characterId);
+          return {
+            characterId,
+            armorClass: sheet.derivedStats.armorClass,
+          };
+        } catch {
+          return {
+            characterId,
+            armorClass: null,
+          };
+        }
+      })
+    ).then((items) => {
+      if (cancelled) {
+        return;
+      }
+
+      setCharacterArmorClass((prev) => {
+        const next = { ...prev };
+        items.forEach((item) => {
+          next[item.characterId] = item.armorClass;
+        });
+        return next;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, characterArmorClass]);
 
   const onAttachCharacter = async (characterId: string) => {
     try {
@@ -385,6 +436,20 @@ export function SessionViewPage() {
         : initiativeOrder[0];
   const myRole = session.players.find((player) => player.user.telegramId === userId)?.role || 'PLAYER';
   const isGmViewer = myRole === 'GM';
+  const selectedCharacter = session.characters.find((entry) => entry.character.id === selectedCharacterId) || null;
+
+  const getAvatarInitials = (name: string) => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) {
+      return '?';
+    }
+
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+
+    return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+  };
 
   return (
     <div className="page-stack">
@@ -536,45 +601,117 @@ export function SessionViewPage() {
       {error && <StatusBox type="error" message={error} />}
 
       <div className="section-card">
-        <h2>Персонажи группы</h2>
-        <div className="list-grid">
-          {session.characters.length === 0 && <StatusBox type="info" message="Персонажи пока не добавлены" />}
-          {session.characters.map((entry) => {
-            const currentHp = entry.state?.currentHp ?? 0;
-            const initiative = entry.state?.initiative ?? 0;
+        <h2>{session.encounterActive ? 'Персонажи в бою' : 'Персонажи группы'}</h2>
+        {session.characters.length === 0 && <StatusBox type="info" message="Персонажи пока не добавлены" />}
 
-            return (
-              <div className="list-item" key={entry.id}>
-                <div>
-                  <strong>{entry.character.name}</strong>
-                  <div>Класс: {entry.character.class?.name || '—'}</div>
-                  <div>HP: {currentHp} / {entry.state?.maxHpSnapshot ?? '—'}</div>
-                  <div>Инициатива: {entry.state?.initiative ?? '—'}</div>
-                  <div>Эффекты: {entry.effectsCount ?? entry.effects.length}</div>
-                </div>
+        {!session.encounterActive && session.characters.length > 0 && (
+          <>
+            <div className="character-board-grid">
+              {session.characters.map((entry) => {
+                const currentHp = entry.state?.currentHp ?? 0;
+                const maxHp = entry.state?.maxHpSnapshot ?? 0;
+                const isDown = currentHp <= 0;
+                const isOverheal = maxHp > 0 && currentHp > maxHp;
+                const armorClass = characterArmorClass[entry.character.id];
+                const statusIcons = entry.effects.slice(0, 3);
+
+                return (
+                  <button
+                    key={entry.id}
+                    className={`character-tile ${isDown ? 'is-down' : ''} ${selectedCharacterId === entry.character.id ? 'is-selected' : ''}`}
+                    onClick={() => setSelectedCharacterId((current) => (current === entry.character.id ? null : entry.character.id))}
+                  >
+                    <div className="character-tile-statuses">
+                      {statusIcons.length === 0 ? (
+                        <span className="status-dot muted">•</span>
+                      ) : (
+                        statusIcons.map((effect) => (
+                          <span key={effect.id} className="status-dot" title={effect.effectType}>
+                            {effect.effectType.slice(0, 1).toUpperCase()}
+                          </span>
+                        ))
+                      )}
+                    </div>
+                    <div className="character-tile-avatar">{getAvatarInitials(entry.character.name)}</div>
+                    <div className="character-tile-name">{entry.character.name}</div>
+                    <div className="character-tile-bottom">
+                      <span className={`tile-hp ${isOverheal ? 'overheal' : ''}`}>❤️ {currentHp}/{maxHp || '—'}</span>
+                      <span className="tile-ac">🛡 {armorClass ?? '—'}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {selectedCharacter && (
+              <div className="entity-details-card">
+                <div className="entity-details-title">{selectedCharacter.character.name}</div>
+                <div className="meta-row">Класс: {selectedCharacter.character.class?.name || '—'}</div>
+                <div className="meta-row">HP: {selectedCharacter.state?.currentHp ?? 0} / {selectedCharacter.state?.maxHpSnapshot ?? '—'}</div>
+                <div className="meta-row">Инициатива: {selectedCharacter.state?.initiative ?? '—'}</div>
+                <div className="meta-row">Эффекты: {selectedCharacter.effectsCount ?? selectedCharacter.effects.length}</div>
                 <div className="inline-row">
                   <button
                     className="btn btn-danger"
-                    disabled={removingId === entry.character.id}
-                    onClick={() => onRemoveCharacter(entry.character.id)}
+                    disabled={removingId === selectedCharacter.character.id}
+                    onClick={() => onRemoveCharacter(selectedCharacter.character.id)}
                   >
-                    {removingId === entry.character.id ? 'Открепление...' : 'Открепить'}
+                    {removingId === selectedCharacter.character.id ? 'Открепление...' : 'Открепить'}
                   </button>
                   <button
                     className="btn btn-secondary"
-                    disabled={rollingSelfId === entry.character.id || session.initiativeLocked}
-                    onClick={() => onRollInitiativeSelf(entry.character.id)}
+                    disabled={rollingSelfId === selectedCharacter.character.id || session.initiativeLocked}
+                    onClick={() => onRollInitiativeSelf(selectedCharacter.character.id)}
                   >
-                    {rollingSelfId === entry.character.id ? 'Бросок...' : 'Бросок себе'}
+                    {rollingSelfId === selectedCharacter.character.id ? 'Бросок...' : 'Бросок себе'}
                   </button>
-                  <button className="btn btn-secondary" disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, Math.max(currentHp - 1, 0))}>HP -1</button>
-                  <button className="btn btn-secondary" disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, currentHp + 1)}>HP +1</button>
-                  <button className="btn btn-secondary" disabled={!session.hasActiveGm || session.initiativeLocked} onClick={() => onSetInitiative(entry.character.id, initiative + 1)}>Иниц. +1</button>
+                  <button className="btn btn-secondary" disabled={!session.hasActiveGm} onClick={() => onSetHp(selectedCharacter.character.id, Math.max((selectedCharacter.state?.currentHp ?? 0) - 1, 0))}>HP -1</button>
+                  <button className="btn btn-secondary" disabled={!session.hasActiveGm} onClick={() => onSetHp(selectedCharacter.character.id, (selectedCharacter.state?.currentHp ?? 0) + 1)}>HP +1</button>
                 </div>
               </div>
-            );
-          })}
-        </div>
+            )}
+          </>
+        )}
+
+        {session.encounterActive && (
+          <div className="list-grid">
+            {session.characters.map((entry) => {
+              const currentHp = entry.state?.currentHp ?? 0;
+              const initiative = entry.state?.initiative ?? 0;
+
+              return (
+                <div className="list-item" key={entry.id}>
+                  <div>
+                    <strong>{entry.character.name}</strong>
+                    <div>Класс: {entry.character.class?.name || '—'}</div>
+                    <div>HP: {currentHp} / {entry.state?.maxHpSnapshot ?? '—'}</div>
+                    <div>Инициатива: {entry.state?.initiative ?? '—'}</div>
+                    <div>Эффекты: {entry.effectsCount ?? entry.effects.length}</div>
+                  </div>
+                  <div className="inline-row">
+                    <button
+                      className="btn btn-danger"
+                      disabled={removingId === entry.character.id}
+                      onClick={() => onRemoveCharacter(entry.character.id)}
+                    >
+                      {removingId === entry.character.id ? 'Открепление...' : 'Открепить'}
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={rollingSelfId === entry.character.id || session.initiativeLocked}
+                      onClick={() => onRollInitiativeSelf(entry.character.id)}
+                    >
+                      {rollingSelfId === entry.character.id ? 'Бросок...' : 'Бросок себе'}
+                    </button>
+                    <button className="btn btn-secondary" disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, Math.max(currentHp - 1, 0))}>HP -1</button>
+                    <button className="btn btn-secondary" disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, currentHp + 1)}>HP +1</button>
+                    <button className="btn btn-secondary" disabled={!session.hasActiveGm || session.initiativeLocked} onClick={() => onSetInitiative(entry.character.id, initiative + 1)}>Иниц. +1</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="section-card">

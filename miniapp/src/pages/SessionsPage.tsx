@@ -183,8 +183,6 @@ export function SessionsPage() {
                     <button className="btn btn-inline" onClick={() => onCopyCode(session)} title="Скопировать код входа">
                       {copyingCodeId === session.id ? 'копируем...' : session.joinCode}
                     </button>
-                    <span className="meta-row">Персонажи: {session.charactersCount}</span>
-                    <span className="meta-row">ГМ: {session.hasActiveGm ? 'активен' : 'нет'}</span>
                   </div>
                 </div>
               ))}

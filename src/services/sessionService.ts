@@ -586,7 +586,7 @@ export class SessionService {
     stateInput?: { currentHp?: number; maxHpSnapshot?: number; tempHp?: number | null }
   ) {
     const user = await this.resolveUserByTelegramId(telegramUserId);
-    await this.requireSessionMember(sessionId, user.id);
+    const membership = await this.requireSessionMember(sessionId, user.id);
 
     const character = await this.prisma.character.findUnique({
       where: { id: characterId },
@@ -610,6 +610,21 @@ export class SessionService {
         where: { id: characterId },
         data: { ownerUserId: user.id },
       });
+    }
+
+    if (membership.role !== 'GM') {
+      const ownedAttachedCount = await this.prisma.sessionCharacter.count({
+        where: {
+          sessionId,
+          character: {
+            ownerUserId: user.id,
+          },
+        },
+      });
+
+      if (ownedAttachedCount >= 1) {
+        throw new Error('Forbidden: player can attach only one character to session');
+      }
     }
 
     const currentHp = stateInput?.currentHp ?? 1;

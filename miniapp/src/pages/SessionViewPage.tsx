@@ -5,6 +5,7 @@ import { characterApi } from '../api/characterApi';
 import { monsterApi } from '../api/monsterApi';
 import { StatusBox } from '../components/StatusBox';
 import type { CharacterSummary, MonsterTemplate, SessionDetails, SessionSummary } from '../types/models';
+import { useTelegram } from '../hooks/useTelegram';
 
 type SessionCharacterView = SessionDetails['characters'][number] & { effectsCount?: number };
 type SessionViewModel = Omit<SessionDetails, 'characters'> & {
@@ -14,6 +15,7 @@ type SessionViewModel = Omit<SessionDetails, 'characters'> & {
 
 export function SessionViewPage() {
   const { id = '' } = useParams();
+  const { userId } = useTelegram();
   const [session, setSession] = useState<SessionViewModel | null>(null);
   const [myCharacters, setMyCharacters] = useState<CharacterSummary[]>([]);
   const [monsterTemplates, setMonsterTemplates] = useState<MonsterTemplate[]>([]);
@@ -28,6 +30,8 @@ export function SessionViewPage() {
   const [initiativeActionLoading, setInitiativeActionLoading] = useState(false);
   const [encounterActionLoading, setEncounterActionLoading] = useState(false);
   const [copyingCode, setCopyingCode] = useState(false);
+  const [showAttachCharacters, setShowAttachCharacters] = useState(false);
+  const [showEvents, setShowEvents] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
 
@@ -379,6 +383,8 @@ export function SessionViewPage() {
       : activeTurnIndex >= 0
         ? initiativeOrder[(activeTurnIndex + 1) % initiativeOrder.length]
         : initiativeOrder[0];
+  const myRole = session.players.find((player) => player.user.telegramId === userId)?.role || 'PLAYER';
+  const isGmViewer = myRole === 'GM';
 
   return (
     <div className="page-stack">
@@ -404,8 +410,14 @@ export function SessionViewPage() {
             {copyingCode ? 'копируем...' : session.joinCode}
           </button>
         </div>
-        <div>Игроки: {session.playersCount ?? session.players.length}</div>
-        <div>Персонажи: {session.characters.length}</div>
+        <div className="session-summary-chips">
+          <span className="session-chip session-chip-role" title={isGmViewer ? 'Мастер' : 'Игрок'}>
+            {isGmViewer ? '♛ GM' : '🧑 Игрок'}
+          </span>
+          <span className="session-chip session-chip-players" title={`Игроков: ${session.playersCount ?? session.players.length}`}>
+            👥 {session.playersCount ?? session.players.length}
+          </span>
+        </div>
         <div className="initiative-controls">
           <span>Инициатива:</span>
           <button
@@ -425,7 +437,7 @@ export function SessionViewPage() {
               void onLockInitiative();
             }}
           >
-            {session.initiativeLocked ? 'зафиксирована' : 'открыта'}
+            {session.initiativeLocked ? '🔒' : '🔓'}
           </button>
           <button
             className="btn btn-compact btn-secondary"
@@ -444,7 +456,6 @@ export function SessionViewPage() {
             🎲✕
           </button>
         </div>
-        <div>Encounter: {session.encounterActive ? `активен (раунд ${session.combatRound})` : 'не активен'}</div>
         <div className="list-item">
           <div>
             <strong>Combat</strong>
@@ -604,44 +615,60 @@ export function SessionViewPage() {
       </div>
 
       <div className="section-card">
-        <h2>Добавить своего персонажа</h2>
-        <div className="list-grid">
-          {availableCharacters.length === 0 && (
-            <StatusBox type="info" message="Нет свободных персонажей для добавления" />
-          )}
-          {availableCharacters.map((character) => (
-            <div className="list-item" key={character.id}>
-              <div>
-                <strong>{character.name}</strong>
-                <div>Класс: {character.class?.name || '—'}</div>
-                <div>Уровень: {character.level}</div>
-              </div>
-              <button className="btn btn-primary" disabled={attachingId === character.id} onClick={() => onAttachCharacter(character.id)}>
-                {attachingId === character.id ? 'Добавление...' : 'Добавить'}
-              </button>
-            </div>
-          ))}
+        <div className="session-list-header">
+          <h2>Добавить персонажа</h2>
+          <button className="btn btn-secondary btn-compact" onClick={() => setShowAttachCharacters((current) => !current)}>
+            {showAttachCharacters ? 'Скрыть' : '+персонаж'}
+          </button>
         </div>
-      </div>
-
-      <div className="section-card">
-        <h2>Журнал событий</h2>
-        {session.events.length === 0 ? (
-          <StatusBox type="info" message="Событий пока нет" />
-        ) : (
+        {showAttachCharacters && (
           <div className="list-grid">
-            {session.events.map((event) => (
-              <div className="list-item" key={event.id}>
+            {availableCharacters.length === 0 && (
+              <StatusBox type="info" message="Нет свободных персонажей для добавления" />
+            )}
+            {availableCharacters.map((character) => (
+              <div className="list-item" key={character.id}>
                 <div>
-                  <strong>{event.message}</strong>
-                  <div>Кто: {event.actorTelegramId}</div>
+                  <strong>{character.name}</strong>
+                  <div>Класс: {character.class?.name || '—'}</div>
+                  <div>Уровень: {character.level}</div>
                 </div>
-                <span>{new Date(event.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+                <button className="btn btn-primary" disabled={attachingId === character.id} onClick={() => onAttachCharacter(character.id)}>
+                  {attachingId === character.id ? 'Добавление...' : 'Добавить'}
+                </button>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {isGmViewer && (
+        <div className="section-card">
+          <div className="session-list-header">
+            <h2>Журнал событий</h2>
+            <button className="btn btn-secondary btn-compact" onClick={() => setShowEvents((current) => !current)}>
+              {showEvents ? 'Скрыть журнал' : 'Показать журнал'}
+            </button>
+          </div>
+          {showEvents && (
+            session.events.length === 0 ? (
+              <StatusBox type="info" message="Событий пока нет" />
+            ) : (
+              <div className="list-grid">
+                {session.events.map((event) => (
+                  <div className="list-item" key={event.id}>
+                    <div>
+                      <strong>{event.message}</strong>
+                      <div>Кто: {event.actorTelegramId}</div>
+                    </div>
+                    <span>{new Date(event.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+        </div>
+      )}
     </div>
   );
 }

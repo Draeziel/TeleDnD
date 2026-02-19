@@ -459,6 +459,13 @@ td {
   margin-bottom: 8px;
 }
 
+.session-summary-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .btn-icon {
   width: 32px;
   height: 32px;

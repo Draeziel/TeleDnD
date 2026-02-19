@@ -7,7 +7,6 @@ import { showConfirm } from '../telegram/webApp';
 
 export function SessionsPage() {
   const MIN_SESSION_NAME_LENGTH = 2;
-  const MAX_SESSION_NAME_LENGTH = 80;
 
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<SessionListItem[]>([]);
@@ -56,8 +55,8 @@ export function SessionsPage() {
 
   const onCreate = async () => {
     const trimmedName = createName.trim();
-    if (trimmedName.length < MIN_SESSION_NAME_LENGTH || trimmedName.length > MAX_SESSION_NAME_LENGTH) {
-      setError(`Название сессии должно быть от ${MIN_SESSION_NAME_LENGTH} до ${MAX_SESSION_NAME_LENGTH} символов`);
+    if (trimmedName.length < MIN_SESSION_NAME_LENGTH) {
+      setError(`Название сессии должно быть не короче ${MIN_SESSION_NAME_LENGTH} символов`);
       return;
     }
 
@@ -100,7 +99,7 @@ export function SessionsPage() {
     }
   };
 
-  const canCreate = createName.trim().length >= MIN_SESSION_NAME_LENGTH && createName.trim().length <= MAX_SESSION_NAME_LENGTH;
+  const canCreate = createName.trim().length >= MIN_SESSION_NAME_LENGTH;
 
   const onCopyCode = async (session: SessionListItem) => {
     try {
@@ -123,7 +122,6 @@ export function SessionsPage() {
             <input
               value={createName}
               onChange={(e) => setCreateName(e.target.value)}
-              maxLength={MAX_SESSION_NAME_LENGTH}
               placeholder="Название сессии"
             />
             <button className="btn btn-primary" onClick={onCreate} disabled={!canCreate}>

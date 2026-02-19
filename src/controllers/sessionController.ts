@@ -33,8 +33,8 @@ export class SessionController {
       }
 
       const trimmedName = name.trim();
-      if (trimmedName.length < 2 || trimmedName.length > 80) {
-        res.status(400).json({ message: 'name length must be between 2 and 80 characters' });
+      if (trimmedName.length < 2) {
+        res.status(400).json({ message: 'name length must be at least 2 characters' });
         return;
       }
 

@@ -305,3 +305,4 @@ Build a multiplayer session (party) system where:
 - 2026-02-19: Refined combat UI: compact round label (`Р:x`), renamed controls (`Завершить бой`, `Начать сражение`), compact turn-pass icon button, GM-only monster-add controls, and actor differentiation via background+badge.
 - 2026-02-19: Added pre-start unified actors board (characters + monsters) with 3-column cards and removal actions; added backend+API support for removing session monsters (`DELETE /api/sessions/:id/monsters/:monsterId`).
 - 2026-02-19: During active encounter hidden `Монстры в сессии`; `Порядок ходов` switched to 3-column participant-style cards; fixed monster template stat loss on summary polling by normalizing summary monster shape (`template`).
+- 2026-02-19: Documentation synchronized after Combat UX v2 updates (`PROJECT_SNAPSHOT.md` + roadmap statuses/log).

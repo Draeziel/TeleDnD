@@ -1,7 +1,7 @@
 # RPG Character Service - Project Snapshot
 
-**Last Updated**: 2026-02-19 17:20 UTC  
-**Status**: Beta - Sessions + ownership + no-GM policy + initiative/encounter + monster catalog MVP + contextual inline controls deployed  
+**Last Updated**: 2026-02-19  
+**Status**: Beta - Sessions + ownership + no-GM policy + initiative/encounter + monster catalog MVP + combat interface v2 deployed  
 **Tech Stack**: Node.js + TypeScript, Express, PostgreSQL, Prisma ORM, React + Vite + TypeScript, Cloudflare Pages, Render
 
 ---
@@ -167,11 +167,12 @@ CharacterDraft
 - Initiative automation endpoints: GM roll-all and player self-roll
 - Initiative lock/unlock/reset policy for encounter control
 - Encounter turn flow: start/next/end encounter with active turn marker and round progression
-- Session view combat bar shows current and next turn with quick next-turn action
+- Session view has dedicated combat interface mode with pre-start actor board and in-combat turn queue cards
 - Session UI polish: consistent button hierarchy and improved mobile layout in session screen
-- Contextual controls in session screen: tap name to refresh, tap join code to copy, tap initiative label to toggle lock, and round start/stop icon near round value
+- Contextual controls in session screen: tap name to refresh, tap join code to copy, compact initiative/round controls in combat block
 - Contextual actions now use compact inline buttons (instead of text-link style) for cleaner and more consistent visual UX
 - Session supports quantity-based monster add from templates (`POST /api/sessions/:id/monsters`)
+- Session supports monster removal from session (`DELETE /api/sessions/:id/monsters/:monsterId`)
 - Session journal persisted in database (`session_events`)
 
 ### ✅ Monster Catalog MVP
@@ -269,6 +270,9 @@ CharacterDraft
 | `GET` | `/api/sessions/:id` | Get session details (players/characters/state/effects) |
 | `GET` | `/api/sessions/:id/summary` | Get lightweight session state for polling |
 | `GET` | `/api/sessions/:id/events` | Get lightweight event feed |
+| `GET` | `/api/sessions/:id/monsters` | List session monsters |
+| `POST` | `/api/sessions/:id/monsters` | GM: add monsters from template + quantity |
+| `DELETE` | `/api/sessions/:id/monsters/:monsterId` | GM: remove monster from session |
 | `POST` | `/api/sessions/:id/characters` | Attach owned character to session |
 | `DELETE` | `/api/sessions/:id/characters/:characterId` | Detach character from session |
 | `POST` | `/api/sessions/:id/initiative/roll-all` | GM: roll initiative for all attached characters |
@@ -276,6 +280,9 @@ CharacterDraft
 | `POST` | `/api/sessions/:id/initiative/lock` | GM: lock initiative updates/re-rolls |
 | `POST` | `/api/sessions/:id/initiative/unlock` | GM: unlock initiative updates/re-rolls |
 | `POST` | `/api/sessions/:id/initiative/reset` | GM: reset initiative values and unlock |
+| `POST` | `/api/sessions/:id/encounter/start` | GM: start encounter |
+| `POST` | `/api/sessions/:id/encounter/next-turn` | GM: advance turn order |
+| `POST` | `/api/sessions/:id/encounter/end` | GM: end encounter |
 | `POST` | `/api/sessions/:sessionId/characters/:characterId/set-hp` | GM: set HP |
 | `POST` | `/api/sessions/:sessionId/characters/:characterId/set-initiative` | GM: set initiative |
 | `POST` | `/api/sessions/:sessionId/characters/:characterId/apply-effect` | GM: apply effect |
@@ -324,6 +331,10 @@ The project is functionally complete for MVP usage with:
 - Session event journal and actor-aware remove notifications
 - Initiative roll automation (`roll-self`, `roll-all`) and session timeline logging
 - Initiative lock/unlock/reset controls in miniapp
+- Dedicated combat interface flow: `Начать бой!` opens combat mode, then encounter starts via `Начать сражение`
+- Pre-start combat actor board (3 columns) for characters and monsters with remove actions
+- In-combat turn order rendered as participant-style 3-column cards
+- Active-combat UI now hides session monsters list and focuses on round/queue controls
 - Smoke scripts support real Telegram `initData` (`-TelegramInitData`)
 - Owned-character deletion from miniapp list
 

@@ -179,6 +179,18 @@ npm run import:rules:apply
 - `apply` runs transactional import with idempotent upserts by immutable `sourceRef`/external ID.
 - Importer guard prevents external ID mutation for already bound entities.
 
+Report format includes structured `issues[]` entries:
+- `severity`: `error | warning`
+- `path`: affected node/path in pack
+- `rule`: validation/import rule key
+- `reason`: human-readable explanation
+
+CI-oriented dry-run command (writes report artifact):
+
+```powershell
+npm run import:rules:ci
+```
+
 ### Automated production monitor
 
 - GitHub Actions workflow `.github/workflows/production-monitor.yml` runs every 30 minutes.

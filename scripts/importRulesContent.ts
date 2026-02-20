@@ -2,6 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import { Prisma, PrismaClient } from '@prisma/client';
 
+type ImportIssue = {
+  severity: 'error' | 'warning';
+  path: string;
+  rule: string;
+  reason: string;
+};
+
 type CoreNode = {
   externalId: string;
   name: string;
@@ -71,8 +78,26 @@ type ImportReport = {
   filePath: string;
   contentSource: string;
   counts: Record<string, number>;
-  warnings: string[];
+  issues: ImportIssue[];
 };
+
+class ImportIssueError extends Error {
+  issue: ImportIssue;
+
+  constructor(issue: ImportIssue) {
+    super(issue.reason);
+    this.issue = issue;
+  }
+}
+
+class ImportReportError extends Error {
+  report: ImportReport;
+
+  constructor(report: ImportReport, message: string) {
+    super(message);
+    this.report = report;
+  }
+}
 
 const prisma = new PrismaClient();
 
@@ -80,6 +105,7 @@ function parseArgs() {
   const args = process.argv.slice(2);
   let filePath = path.resolve(process.cwd(), 'content', 'rules-pack.demo.json');
   let dryRun = true;
+  let reportFile: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -99,44 +125,115 @@ function parseArgs() {
       dryRun = true;
       continue;
     }
+
+    if (arg === '--report-file' && args[i + 1]) {
+      reportFile = path.resolve(process.cwd(), args[i + 1]);
+      i++;
+      continue;
+    }
   }
 
-  return { filePath, dryRun };
+  return { filePath, dryRun, reportFile };
 }
 
 function ensureArray<T>(value: T[] | undefined): T[] {
   return Array.isArray(value) ? value : [];
 }
 
-function requireExternalId<T extends { externalId: string }>(nodes: T[], label: string) {
-  for (const node of nodes) {
+function buildCounts(pack: ContentPack): Record<string, number> {
+  return {
+    classes: ensureArray(pack.classes).length,
+    races: ensureArray(pack.races).length,
+    backgrounds: ensureArray(pack.backgrounds).length,
+    features: ensureArray(pack.features).length,
+    items: ensureArray(pack.items).length,
+    classLevelProgressions: ensureArray(pack.classLevelProgressions).length,
+    actions: ensureArray(pack.actions).length,
+    spells: ensureArray(pack.spells).length,
+  };
+}
+
+function validateExternalIds<T extends { externalId: string }>(
+  nodes: T[],
+  listPath: string,
+  issues: ImportIssue[]
+) {
+  nodes.forEach((node, index) => {
     if (!node.externalId || !node.externalId.trim()) {
-      throw new Error(`Invalid ${label}: externalId is required`);
+      issues.push({
+        severity: 'error',
+        path: `${listPath}[${index}].externalId`,
+        rule: 'required_external_id',
+        reason: 'externalId is required',
+      });
     }
-  }
+  });
 }
 
 function loadPack(filePath: string): ContentPack {
   if (!fs.existsSync(filePath)) {
-    throw new Error(`Pack file not found: ${filePath}`);
+    throw new ImportIssueError({
+      severity: 'error',
+      path: '$',
+      rule: 'file_exists',
+      reason: `Pack file not found: ${filePath}`,
+    });
   }
 
-  const raw = fs.readFileSync(filePath, 'utf-8');
-  const parsed = JSON.parse(raw) as ContentPack;
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(raw) as ContentPack;
+  } catch (error) {
+    throw new ImportIssueError({
+      severity: 'error',
+      path: '$',
+      rule: 'json_parse',
+      reason: `Failed to parse pack JSON: ${error instanceof Error ? error.message : String(error)}`,
+    });
+  }
+}
 
-  if (!parsed.contentSource?.name) {
-    throw new Error('Invalid pack: contentSource.name is required');
+function validatePack(pack: ContentPack): ImportIssue[] {
+  const issues: ImportIssue[] = [];
+
+  if (!pack.contentSource?.name) {
+    issues.push({
+      severity: 'error',
+      path: 'contentSource.name',
+      rule: 'required_field',
+      reason: 'contentSource.name is required',
+    });
   }
 
-  requireExternalId(ensureArray(parsed.classes), 'class node');
-  requireExternalId(ensureArray(parsed.races), 'race node');
-  requireExternalId(ensureArray(parsed.backgrounds), 'background node');
-  requireExternalId(ensureArray(parsed.features), 'feature node');
-  requireExternalId(ensureArray(parsed.items), 'item node');
-  requireExternalId(ensureArray(parsed.actions), 'action node');
-  requireExternalId(ensureArray(parsed.spells), 'spell node');
+  validateExternalIds(ensureArray(pack.classes), 'classes', issues);
+  validateExternalIds(ensureArray(pack.races), 'races', issues);
+  validateExternalIds(ensureArray(pack.backgrounds), 'backgrounds', issues);
+  validateExternalIds(ensureArray(pack.features), 'features', issues);
+  validateExternalIds(ensureArray(pack.items), 'items', issues);
+  validateExternalIds(ensureArray(pack.actions), 'actions', issues);
+  validateExternalIds(ensureArray(pack.spells), 'spells', issues);
 
-  return parsed;
+  ensureArray(pack.classLevelProgressions).forEach((node, index) => {
+    if (!node.classExternalId?.trim()) {
+      issues.push({
+        severity: 'error',
+        path: `classLevelProgressions[${index}].classExternalId`,
+        rule: 'required_relation_ref',
+        reason: 'classExternalId is required',
+      });
+    }
+
+    if (!node.featureExternalId?.trim()) {
+      issues.push({
+        severity: 'error',
+        path: `classLevelProgressions[${index}].featureExternalId`,
+        rule: 'required_relation_ref',
+        reason: 'featureExternalId is required',
+      });
+    }
+  });
+
+  return issues;
 }
 
 function defaultRulesVersion(value: string | undefined): string {
@@ -165,7 +262,12 @@ async function upsertCoreNode(
 
   const existingByName = await (tx[model] as any).findUnique({ where: { name: node.name } });
   if (existingByName && existingByName.sourceRef && existingByName.sourceRef !== node.externalId) {
-    throw new Error(`Importer guard: ${model} '${node.name}' already bound to sourceRef '${existingByName.sourceRef}', cannot change to '${node.externalId}'`);
+    throw new ImportIssueError({
+      severity: 'error',
+      path: `${model}.name=${node.name}`,
+      rule: 'immutable_external_id',
+      reason: `${model} '${node.name}' already bound to sourceRef '${existingByName.sourceRef}', cannot change to '${node.externalId}'`,
+    });
   }
 
   if (existingByName) {
@@ -194,7 +296,7 @@ async function upsertCoreNode(
   return created.id;
 }
 
-async function runImport(pack: ContentPack, dryRun: boolean, filePath: string): Promise<ImportReport> {
+async function runImport(pack: ContentPack, dryRun: boolean, filePath: string, initialIssues: ImportIssue[]): Promise<ImportReport> {
   const classes = ensureArray(pack.classes);
   const races = ensureArray(pack.races);
   const backgrounds = ensureArray(pack.backgrounds);
@@ -204,26 +306,17 @@ async function runImport(pack: ContentPack, dryRun: boolean, filePath: string): 
   const actions = ensureArray(pack.actions);
   const spells = ensureArray(pack.spells);
 
-  const counts: Record<string, number> = {
-    classes: classes.length,
-    races: races.length,
-    backgrounds: backgrounds.length,
-    features: features.length,
-    items: items.length,
-    classLevelProgressions: progressions.length,
-    actions: actions.length,
-    spells: spells.length,
-  };
+  const counts = buildCounts(pack);
 
   const report: ImportReport = {
     dryRun,
     filePath,
-    contentSource: pack.contentSource.name,
+    contentSource: pack.contentSource?.name || '<missing>',
     counts,
-    warnings: [],
+    issues: [...initialIssues],
   };
 
-  if (dryRun) {
+  if (dryRun || report.issues.some(issue => issue.severity === 'error')) {
     return report;
   }
 
@@ -269,7 +362,12 @@ async function runImport(pack: ContentPack, dryRun: boolean, filePath: string): 
 
       const existingByName = await tx.feature.findUnique({ where: { name: node.name } });
       if (existingByName && existingByName.sourceRef && existingByName.sourceRef !== node.externalId) {
-        throw new Error(`Importer guard: feature '${node.name}' already bound to sourceRef '${existingByName.sourceRef}', cannot change to '${node.externalId}'`);
+        throw new ImportIssueError({
+          severity: 'error',
+          path: `features.externalId=${node.externalId}`,
+          rule: 'immutable_external_id',
+          reason: `feature '${node.name}' already bound to sourceRef '${existingByName.sourceRef}', cannot change to '${node.externalId}'`,
+        });
       }
 
       if (existingByName) {
@@ -326,7 +424,12 @@ async function runImport(pack: ContentPack, dryRun: boolean, filePath: string): 
 
       const existingByName = await tx.item.findUnique({ where: { name: node.name } });
       if (existingByName && existingByName.sourceRef && existingByName.sourceRef !== node.externalId) {
-        throw new Error(`Importer guard: item '${node.name}' already bound to sourceRef '${existingByName.sourceRef}', cannot change to '${node.externalId}'`);
+        throw new ImportIssueError({
+          severity: 'error',
+          path: `items.externalId=${node.externalId}`,
+          rule: 'immutable_external_id',
+          reason: `item '${node.name}' already bound to sourceRef '${existingByName.sourceRef}', cannot change to '${node.externalId}'`,
+        });
       }
 
       if (existingByName) {
@@ -374,7 +477,12 @@ async function runImport(pack: ContentPack, dryRun: boolean, filePath: string): 
       const featureId = featureIdByExternalId.get(progression.featureExternalId);
 
       if (!classId || !featureId) {
-        report.warnings.push(`Skipping progression class=${progression.classExternalId} feature=${progression.featureExternalId}: unresolved external ID`);
+        report.issues.push({
+          severity: 'warning',
+          path: `classLevelProgressions[classExternalId=${progression.classExternalId},featureExternalId=${progression.featureExternalId}]`,
+          rule: 'unresolved_reference',
+          reason: 'Skipping progression due to unresolved external ID',
+        });
         continue;
       }
 
@@ -398,7 +506,12 @@ async function runImport(pack: ContentPack, dryRun: boolean, filePath: string): 
     for (const action of actions) {
       const featureId = action.featureExternalId ? featureIdByExternalId.get(action.featureExternalId) : null;
       if (action.featureExternalId && !featureId) {
-        report.warnings.push(`Skipping action '${action.externalId}': unresolved feature external ID '${action.featureExternalId}'`);
+        report.issues.push({
+          severity: 'warning',
+          path: `actions.externalId=${action.externalId}`,
+          rule: 'unresolved_reference',
+          reason: `Skipping action due to unresolved feature external ID '${action.featureExternalId}'`,
+        });
         continue;
       }
 
@@ -438,7 +551,12 @@ async function runImport(pack: ContentPack, dryRun: boolean, filePath: string): 
     for (const spell of spells) {
       const itemId = spell.itemExternalId ? itemIdByExternalId.get(spell.itemExternalId) : null;
       if (spell.itemExternalId && !itemId) {
-        report.warnings.push(`Skipping spell '${spell.externalId}': unresolved item external ID '${spell.itemExternalId}'`);
+        report.issues.push({
+          severity: 'warning',
+          path: `spells.externalId=${spell.externalId}`,
+          rule: 'unresolved_reference',
+          reason: `Skipping spell due to unresolved item external ID '${spell.itemExternalId}'`,
+        });
         continue;
       }
 
@@ -482,15 +600,52 @@ async function runImport(pack: ContentPack, dryRun: boolean, filePath: string): 
 }
 
 async function main() {
-  const { filePath, dryRun } = parseArgs();
+  const { filePath, dryRun, reportFile } = parseArgs();
   const pack = loadPack(filePath);
+  const validationIssues = validatePack(pack);
 
-  const report = await runImport(pack, dryRun, filePath);
+  const report = await runImport(pack, dryRun, filePath, validationIssues);
+
+  if (reportFile) {
+    fs.mkdirSync(path.dirname(reportFile), { recursive: true });
+    fs.writeFileSync(reportFile, `${JSON.stringify(report, null, 2)}\n`, 'utf-8');
+  }
+
   console.log(JSON.stringify(report, null, 2));
+
+  if (report.issues.some(issue => issue.severity === 'error')) {
+    throw new ImportReportError(report, 'Import validation failed');
+  }
 }
 
 main()
   .catch((error) => {
+    if (error instanceof ImportIssueError) {
+      const report: ImportReport = {
+        dryRun: true,
+        filePath: '<unknown>',
+        contentSource: '<unknown>',
+        counts: {
+          classes: 0,
+          races: 0,
+          backgrounds: 0,
+          features: 0,
+          items: 0,
+          classLevelProgressions: 0,
+          actions: 0,
+          spells: 0,
+        },
+        issues: [error.issue],
+      };
+
+      console.error(JSON.stringify(report, null, 2));
+      process.exit(1);
+    }
+
+    if (error instanceof ImportReportError) {
+      process.exit(1);
+    }
+
     console.error(error instanceof Error ? error.message : error);
     process.exit(1);
   })

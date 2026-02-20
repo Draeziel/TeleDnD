@@ -60,6 +60,9 @@ jobs:
       - name: Build backend
         run: npm run build
 
+      - name: Import rules dry-run
+        run: npm run import:rules:ci
+
       - name: Build miniapp
         run: npm run build
         working-directory: miniapp
@@ -88,6 +91,14 @@ jobs:
       - name: Print backend log on failure
         if: failure()
         run: cat server.log || true
+
+      - name: Upload importer report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: import-rules-report
+          path: .artifacts/import-rules-report.json
+          if-no-files-found: warn
 
       - name: Upload backend log artifact
         if: failure()

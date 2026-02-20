@@ -391,3 +391,4 @@ Controls:
 4. Prepare first non-destructive migration. ✅
 5. Add initial golden test fixtures (Barbarian level 1, Bard level 1).
 6. Add importer scaffold (`dry-run` + transactional `apply`, immutable external ID guard via `sourceRef`). ✅
+7. Add importer structured issue report (`path/rule/reason`) and CI dry-run guard. ✅

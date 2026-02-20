@@ -790,6 +790,25 @@ td {
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.22);
 }
 
+.combat-hp-toggle {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.combat-interaction-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.combat-interaction-panel input {
+  width: 100%;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
 .session-list {
   display: flex;
   flex-direction: column;

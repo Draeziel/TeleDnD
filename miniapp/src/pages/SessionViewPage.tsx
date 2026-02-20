@@ -37,6 +37,10 @@ export function SessionViewPage() {
   const [showEvents, setShowEvents] = useState(false);
   const [combatInterfaceRequested, setCombatInterfaceRequested] = useState(false);
   const [showMonsterAddControls, setShowMonsterAddControls] = useState(false);
+  const [activeCombatPanelKey, setActiveCombatPanelKey] = useState<string | null>(null);
+  const [effectTypeInput, setEffectTypeInput] = useState('');
+  const [effectDurationInput, setEffectDurationInput] = useState('1 раунд');
+  const [effectApplyingKey, setEffectApplyingKey] = useState<string | null>(null);
   const [toastNotifications, setToastNotifications] = useState<Array<{ id: string; type: 'success' | 'error' | 'info'; message: string }>>([]);
   const [uiJournal, setUiJournal] = useState<Array<{ id: string; message: string; createdAt: string }>>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
@@ -467,6 +471,29 @@ export function SessionViewPage() {
     }
   };
 
+  const onApplyCombatEffect = async (characterId: string, characterName: string, panelKey: string) => {
+    const effectType = effectTypeInput.trim();
+    const duration = effectDurationInput.trim() || '1 раунд';
+
+    if (!effectType) {
+      notify('error', 'Укажите тип эффекта');
+      return;
+    }
+
+    try {
+      setEffectApplyingKey(panelKey);
+      await sessionApi.applyEffect(id, characterId, effectType, duration, {});
+      await load();
+      notify('success', `Эффект ${effectType} применён к ${characterName}`);
+      setEffectTypeInput('');
+      setEffectDurationInput('1 раунд');
+    } catch (unknownError) {
+      notify('error', formatErrorMessage('Не удалось применить эффект (нужна роль GM)', unknownError));
+    } finally {
+      setEffectApplyingKey(null);
+    }
+  };
+
   const onRemoveMonster = async (monsterId: string) => {
     try {
       setRemovingMonsterId(monsterId);
@@ -504,6 +531,7 @@ export function SessionViewPage() {
       .map((entry) => ({
         kind: 'character' as const,
         id: entry.id,
+        characterId: entry.character.id,
         name: entry.character.name,
         initiative: entry.state?.initiative ?? -999,
         currentHp: entry.state?.currentHp ?? 0,
@@ -828,6 +856,12 @@ export function SessionViewPage() {
                 <div className="combat-turn-grid">
                   {initiativeQueue.map((entry, index) => (
                     <div className={`combat-actor-card combat-turn-card ${entry.kind === 'character' ? 'combat-actor-character' : 'combat-actor-monster'} ${entry.isActive ? 'active-turn' : ''}`} key={`initiative-${entry.kind}-${entry.id}`}>
+                      {(() => {
+                        const panelKey = `${entry.kind}:${entry.id}`;
+                        const panelOpen = activeCombatPanelKey === panelKey;
+
+                        return (
+                          <>
                       <span className={`combat-actor-badge ${entry.kind === 'character' ? 'character' : 'monster'}`}>
                         {entry.kind === 'character' ? 'ПЕРС' : 'МОН'}
                       </span>
@@ -839,27 +873,92 @@ export function SessionViewPage() {
                       ) : (
                         <div className="combat-actor-icon">{entry.avatarText}</div>
                       )}
-                      <div className="combat-actor-meta">❤️ {entry.currentHp} / {entry.maxHp ?? '—'}</div>
+                      {isGmViewer ? (
+                        <button
+                          className="btn btn-inline combat-hp-toggle"
+                          onClick={() => {
+                            setActiveCombatPanelKey((current) => (current === panelKey ? null : panelKey));
+                            if (!panelOpen) {
+                              setEffectTypeInput('');
+                              setEffectDurationInput('1 раунд');
+                            }
+                          }}
+                        >
+                          ❤️ {entry.currentHp} / {entry.maxHp ?? '—'}
+                        </button>
+                      ) : (
+                        <div className="combat-actor-meta">❤️ {entry.currentHp} / {entry.maxHp ?? '—'}</div>
+                      )}
                       <div className="combat-actor-meta">🛡 {entry.armorClass ?? '—'}</div>
                       <div className="combat-actor-meta">🎲 {entry.initiative}</div>
-                      {entry.kind === 'monster' && isGmViewer && (
-                        <div className="inline-row">
-                          <button
-                            className="btn btn-secondary"
-                            disabled={!session.hasActiveGm}
-                            onClick={() => onSetMonsterHp(entry.id, Math.max(entry.currentHp - 1, 0))}
-                          >
-                            HP -1
-                          </button>
-                          <button
-                            className="btn btn-secondary"
-                            disabled={!session.hasActiveGm}
-                            onClick={() => onSetMonsterHp(entry.id, entry.currentHp + 1)}
-                          >
-                            HP +1
-                          </button>
+                      {isGmViewer && panelOpen && (
+                        <div className="combat-interaction-panel">
+                          <div className="inline-row">
+                            {entry.kind === 'character' ? (
+                              <>
+                                <button
+                                  className="btn btn-secondary"
+                                  disabled={!session.hasActiveGm || !entry.characterId}
+                                  onClick={() => onSetHp(entry.characterId as string, Math.max(entry.currentHp - 1, 0))}
+                                >
+                                  HP -1
+                                </button>
+                                <button
+                                  className="btn btn-secondary"
+                                  disabled={!session.hasActiveGm || !entry.characterId}
+                                  onClick={() => onSetHp(entry.characterId as string, entry.currentHp + 1)}
+                                >
+                                  HP +1
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  className="btn btn-secondary"
+                                  disabled={!session.hasActiveGm}
+                                  onClick={() => onSetMonsterHp(entry.id, Math.max(entry.currentHp - 1, 0))}
+                                >
+                                  HP -1
+                                </button>
+                                <button
+                                  className="btn btn-secondary"
+                                  disabled={!session.hasActiveGm}
+                                  onClick={() => onSetMonsterHp(entry.id, entry.currentHp + 1)}
+                                >
+                                  HP +1
+                                </button>
+                              </>
+                            )}
+                          </div>
+
+                          {entry.kind === 'character' && entry.characterId && (
+                            <>
+                              <input
+                                value={effectTypeInput}
+                                onChange={(event) => setEffectTypeInput(event.target.value)}
+                                placeholder="Эффект (например, poisoned)"
+                                disabled={effectApplyingKey === panelKey || !session.hasActiveGm}
+                              />
+                              <input
+                                value={effectDurationInput}
+                                onChange={(event) => setEffectDurationInput(event.target.value)}
+                                placeholder="Длительность"
+                                disabled={effectApplyingKey === panelKey || !session.hasActiveGm}
+                              />
+                              <button
+                                className="btn btn-secondary"
+                                disabled={effectApplyingKey === panelKey || !session.hasActiveGm}
+                                onClick={() => onApplyCombatEffect(entry.characterId as string, entry.name, panelKey)}
+                              >
+                                {effectApplyingKey === panelKey ? 'Применение...' : 'Добавить статус'}
+                              </button>
+                            </>
+                          )}
                         </div>
                       )}
+                          </>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>

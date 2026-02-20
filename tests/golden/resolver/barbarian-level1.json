@@ -1,5 +1,32 @@
 {
-  "actions": [],
+  "actions": [
+    {
+      "type": "ACTION",
+      "sourceType": "feature",
+      "sourceRef": "feature:Rage",
+      "scope": "combat",
+      "timing": "runtime",
+      "rulesVersion": "v1",
+      "payloadType": "RUNTIME_EFFECT",
+      "payload": {
+        "sourceRef": "action.rage.activate",
+        "name": "Activate Rage",
+        "description": null,
+        "duration": "1 minute",
+        "effectType": "rage"
+      },
+      "trigger": {
+        "phase": "manual",
+        "targeting": "self",
+        "stackPolicy": "refresh"
+      },
+      "executionIntent": {
+        "kind": "manual",
+        "triggerPhase": "manual"
+      },
+      "lifecycleState": "active"
+    }
+  ],
   "passiveFeatures": [
     {
       "type": "PASSIVE",
@@ -46,27 +73,9 @@
       "rulesVersion": "v1",
       "payloadType": "PASSIVE_TRAIT",
       "payload": {
-        "sourceRef": "feature:858b6477-5946-41c0-b04a-d9f6bca31a8c",
+        "sourceRef": "feature.rage",
         "name": "Rage",
         "description": "You can enter a furious rage as an action on your turn."
-      },
-      "executionIntent": {
-        "kind": "passive"
-      },
-      "lifecycleState": "active"
-    },
-    {
-      "type": "PASSIVE",
-      "sourceType": "feature",
-      "sourceRef": "feature:Unarmored Defense",
-      "scope": "sheet",
-      "timing": "static",
-      "rulesVersion": "v1",
-      "payloadType": "PASSIVE_TRAIT",
-      "payload": {
-        "sourceRef": "feature:88a771ae-22ae-4c9f-8f00-25dff71e4319",
-        "name": "Unarmored Defense",
-        "description": "While not wearing armor, AC equals 10 + Dexterity modifier."
       },
       "executionIntent": {
         "kind": "passive"
@@ -104,7 +113,7 @@
       "rulesVersion": "v1",
       "payloadType": "CUSTOM",
       "payload": {
-        "sourceRef": "feature:858b6477-5946-41c0-b04a-d9f6bca31a8c",
+        "sourceRef": "feature.rage",
         "operation": "add",
         "target": "attack",
         "targetKey": null,

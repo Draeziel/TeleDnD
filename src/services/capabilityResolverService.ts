@@ -136,6 +136,23 @@ export class CapabilityResolverService {
     stages.push({ stage: 'cache-miss', durationMs: Date.now() - cacheLookupStart });
 
     const graphLoadStart = Date.now();
+    const classProgressionsPromise = this.prisma.classLevelProgression.findMany({
+      where: {
+        classId: character.classId,
+        level: {
+          lte: character.level,
+        },
+      },
+      select: {
+        featureId: true,
+        level: true,
+      },
+      orderBy: [
+        { level: 'asc' },
+        { featureId: 'asc' },
+      ],
+    });
+
     const classFeaturesPromise = this.prisma.classFeature.findMany({
       where: {
         classId: character.classId,
@@ -181,13 +198,15 @@ export class CapabilityResolverService {
         })
       : Promise.resolve([] as Array<{ featureId: string }>);
 
-    const [classFeatures, raceFeatures, backgroundFeatures] = await Promise.all([
+    const [classProgressions, classFeatures, raceFeatures, backgroundFeatures] = await Promise.all([
+      classProgressionsPromise,
       classFeaturesPromise,
       raceFeaturesPromise,
       backgroundFeaturesPromise,
     ]);
 
     const featureIds = new Set<string>([
+      ...classProgressions.map((item) => item.featureId),
       ...classFeatures.map((item) => item.featureId),
       ...raceFeatures.map((item) => item.featureId),
       ...backgroundFeatures.map((item) => item.featureId),
@@ -204,6 +223,7 @@ export class CapabilityResolverService {
             id: true,
             name: true,
             description: true,
+            sourceRef: true,
           },
           orderBy: {
             id: 'asc',
@@ -224,9 +244,38 @@ export class CapabilityResolverService {
           },
         })
       : [];
+
+    const actionList = featureIds.size > 0
+      ? await this.prisma.action.findMany({
+          where: {
+            featureId: {
+              in: Array.from(featureIds),
+            },
+          },
+          select: {
+            id: true,
+            featureId: true,
+            name: true,
+            description: true,
+            payloadType: true,
+            payloadJson: true,
+            triggerJson: true,
+            sourceRef: true,
+            rulesVersion: true,
+          },
+          orderBy: {
+            id: 'asc',
+          },
+        })
+      : [];
     stages.push({ stage: 'graph-load', durationMs: Date.now() - graphLoadStart });
 
     const mapStart = Date.now();
+    const featureSourceRefById = new Map<string, string>();
+    featureList.forEach((feature) => {
+      featureSourceRefById.set(feature.id, feature.sourceRef || `feature:${feature.id}`);
+    });
+
     const passiveFeatures: CapabilityBaseDto[] = featureList.map((feature) => this.buildCapability({
       capabilityType: 'PASSIVE',
       sourceType: 'feature',
@@ -236,7 +285,7 @@ export class CapabilityResolverService {
       rulesVersion,
       payloadType: 'PASSIVE_TRAIT',
       payload: {
-        sourceRef: `feature:${feature.id}`,
+        sourceRef: feature.sourceRef || `feature:${feature.id}`,
         name: feature.name,
         description: feature.description || null,
       },
@@ -257,7 +306,7 @@ export class CapabilityResolverService {
         rulesVersion,
         payloadType: modifier.target === 'ability' ? 'MODIFIER_ABILITY_SCORE' : 'CUSTOM',
         payload: {
-          sourceRef: `feature:${modifier.sourceId}`,
+          sourceRef: featureSourceRefById.get(modifier.sourceId) || `feature:${modifier.sourceId}`,
           operation,
           target: modifier.target,
           targetKey: modifier.targetKey || null,
@@ -269,9 +318,43 @@ export class CapabilityResolverService {
         lifecycleState: 'active',
       });
     }).sort((left, right) => left.id.localeCompare(right.id));
+
+    const actions: CapabilityBaseDto[] = actionList.map((action) => {
+      const payloadObject = action.payloadJson && typeof action.payloadJson === 'object' && !Array.isArray(action.payloadJson)
+        ? (action.payloadJson as Record<string, unknown>)
+        : {};
+      const triggerObject = action.triggerJson && typeof action.triggerJson === 'object' && !Array.isArray(action.triggerJson)
+        ? (action.triggerJson as unknown as CapabilityBaseDto['trigger'])
+        : undefined;
+      const payloadType = assertAllowedCapabilityPayloadType(action.payloadType);
+      const sourceRef = action.sourceRef || `action:${action.id}`;
+
+      return this.buildCapability({
+        capabilityType: 'ACTION',
+        sourceType: action.featureId ? 'feature' : 'system',
+        sourceId: action.featureId || action.id,
+        scope: payloadType === 'ACTION_ATTACK' || payloadType === 'RUNTIME_EFFECT' ? 'combat' : 'universal',
+        timing: 'runtime',
+        rulesVersion: action.rulesVersion || rulesVersion,
+        payloadType,
+        payload: {
+          sourceRef,
+          name: action.name,
+          description: action.description || null,
+          ...payloadObject,
+        },
+        trigger: triggerObject,
+        executionIntent: {
+          kind: triggerObject?.phase === 'manual' || !triggerObject ? 'manual' : 'triggered',
+          triggerPhase: triggerObject?.phase,
+        },
+        lifecycleState: 'active',
+      });
+    }).sort((left, right) => left.id.localeCompare(right.id));
     stages.push({ stage: 'capability-map', durationMs: Date.now() - mapStart });
 
     const normalizeStart = Date.now();
+    const normalizedActions = actions.map((capability) => this.normalizeCapability(capability));
     const normalizedPassive = passiveFeatures.map((capability) => this.normalizeCapability(capability));
     const normalizedModifiers = modifiers.map((capability) => this.normalizeCapability(capability));
     stages.push({ stage: 'normalize', durationMs: Date.now() - normalizeStart });
@@ -286,7 +369,7 @@ export class CapabilityResolverService {
     );
 
     const dependencyFiltered = await this.applyDependencyConstraints({
-      actions: [],
+      actions: normalizedActions,
       passiveFeatures: normalizedPassive,
       modifiers: normalizedModifiers,
       choicesRemaining: [],

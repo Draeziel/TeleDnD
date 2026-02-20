@@ -3,22 +3,48 @@
     {
       "type": "ACTION",
       "sourceType": "feature",
-      "sourceRef": "feature:Bardic Inspiration",
+      "sourceRef": "feature:Rage",
       "scope": "combat",
       "timing": "runtime",
       "rulesVersion": "v1",
       "payloadType": "RUNTIME_EFFECT",
       "payload": {
-        "sourceRef": "action.bardic-inspiration.grant",
-        "name": "Grant Bardic Inspiration",
+        "sourceRef": "action.rage.activate",
+        "name": "Activate Rage",
         "description": null,
-        "die": "1d6",
-        "duration": "10 minutes",
-        "effectType": "bardic_inspiration"
+        "duration": "1 minute",
+        "effectType": "rage"
       },
       "trigger": {
         "phase": "manual",
-        "targeting": "ally",
+        "targeting": "self",
+        "stackPolicy": "refresh"
+      },
+      "executionIntent": {
+        "kind": "manual",
+        "triggerPhase": "manual"
+      },
+      "lifecycleState": "active"
+    },
+    {
+      "type": "ACTION",
+      "sourceType": "feature",
+      "sourceRef": "feature:Reckless Attack",
+      "scope": "combat",
+      "timing": "runtime",
+      "rulesVersion": "v1",
+      "payloadType": "ACTION_ATTACK",
+      "payload": {
+        "sourceRef": "action.reckless-attack.use",
+        "name": "Use Reckless Attack",
+        "description": null,
+        "attackMode": "melee",
+        "grantsAdvantage": true,
+        "grantsIncomingAdvantage": true
+      },
+      "trigger": {
+        "phase": "manual",
+        "targeting": "self",
         "stackPolicy": "refresh"
       },
       "executionIntent": {
@@ -68,15 +94,33 @@
     {
       "type": "PASSIVE",
       "sourceType": "feature",
-      "sourceRef": "feature:Bardic Inspiration",
+      "sourceRef": "feature:Rage",
       "scope": "sheet",
       "timing": "static",
       "rulesVersion": "v1",
       "payloadType": "PASSIVE_TRAIT",
       "payload": {
-        "sourceRef": "feature.bardic-inspiration",
-        "name": "Bardic Inspiration",
-        "description": "You can inspire others through music or oration."
+        "sourceRef": "feature.rage",
+        "name": "Rage",
+        "description": "You can enter a furious rage as an action on your turn."
+      },
+      "executionIntent": {
+        "kind": "passive"
+      },
+      "lifecycleState": "active"
+    },
+    {
+      "type": "PASSIVE",
+      "sourceType": "feature",
+      "sourceRef": "feature:Reckless Attack",
+      "scope": "sheet",
+      "timing": "static",
+      "rulesVersion": "v1",
+      "payloadType": "PASSIVE_TRAIT",
+      "payload": {
+        "sourceRef": "feature.reckless-attack",
+        "name": "Reckless Attack",
+        "description": "You can throw aside all concern for defense to attack with fierce desperation."
       },
       "executionIntent": {
         "kind": "passive"
@@ -99,6 +143,26 @@
         "target": "ability",
         "targetKey": "all",
         "value": 1
+      },
+      "executionIntent": {
+        "kind": "passive"
+      },
+      "lifecycleState": "active"
+    },
+    {
+      "type": "MODIFIER",
+      "sourceType": "feature",
+      "sourceRef": "feature:Rage",
+      "scope": "sheet",
+      "timing": "static",
+      "rulesVersion": "v1",
+      "payloadType": "CUSTOM",
+      "payload": {
+        "sourceRef": "feature.rage",
+        "operation": "add",
+        "target": "attack",
+        "targetKey": null,
+        "value": 2
       },
       "executionIntent": {
         "kind": "passive"

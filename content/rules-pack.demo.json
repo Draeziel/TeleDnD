@@ -32,6 +32,18 @@
       "name": "Bardic Inspiration",
       "description": "You can inspire others through music or oration.",
       "rulesVersion": "v1"
+    },
+    {
+      "externalId": "feature.reckless-attack",
+      "name": "Reckless Attack",
+      "description": "You can throw aside all concern for defense to attack with fierce desperation.",
+      "rulesVersion": "v1"
+    },
+    {
+      "externalId": "feature.jack-of-all-trades",
+      "name": "Jack of All Trades",
+      "description": "You can add half your proficiency bonus to any ability check you make that doesn’t already include your proficiency bonus.",
+      "rulesVersion": "v1"
     }
   ],
   "choices": [
@@ -77,7 +89,9 @@
   "classLevelProgressions": [
     { "classExternalId": "class.barbarian", "level": 1, "featureExternalId": "feature.rage" },
     { "classExternalId": "class.barbarian", "level": 1, "featureExternalId": "feature.unarmored-defense" },
-    { "classExternalId": "class.bard", "level": 1, "featureExternalId": "feature.bardic-inspiration" }
+    { "classExternalId": "class.barbarian", "level": 2, "featureExternalId": "feature.reckless-attack" },
+    { "classExternalId": "class.bard", "level": 1, "featureExternalId": "feature.bardic-inspiration" },
+    { "classExternalId": "class.bard", "level": 2, "featureExternalId": "feature.jack-of-all-trades" }
   ],
   "actions": [
     {
@@ -92,6 +106,40 @@
       "trigger": {
         "phase": "manual",
         "targeting": "self",
+        "stackPolicy": "refresh"
+      },
+      "rulesVersion": "v1"
+    },
+    {
+      "externalId": "action.reckless-attack.use",
+      "name": "Use Reckless Attack",
+      "featureExternalId": "feature.reckless-attack",
+      "payloadType": "ACTION_ATTACK",
+      "payload": {
+        "attackMode": "melee",
+        "grantsAdvantage": true,
+        "grantsIncomingAdvantage": true
+      },
+      "trigger": {
+        "phase": "manual",
+        "targeting": "self",
+        "stackPolicy": "refresh"
+      },
+      "rulesVersion": "v1"
+    },
+    {
+      "externalId": "action.bardic-inspiration.grant",
+      "name": "Grant Bardic Inspiration",
+      "featureExternalId": "feature.bardic-inspiration",
+      "payloadType": "RUNTIME_EFFECT",
+      "payload": {
+        "effectType": "bardic_inspiration",
+        "die": "1d6",
+        "duration": "10 minutes"
+      },
+      "trigger": {
+        "phase": "manual",
+        "targeting": "ally",
         "stackPolicy": "refresh"
       },
       "rulesVersion": "v1"
@@ -126,6 +174,22 @@
       "targetRef": "item.longsword",
       "targetType": "item",
       "relationType": "depends_on",
+      "rulesVersion": "v1"
+    },
+    {
+      "sourceRef": "action.reckless-attack.use",
+      "sourceType": "action",
+      "targetRef": "feature.reckless-attack",
+      "targetType": "feature",
+      "relationType": "requires",
+      "rulesVersion": "v1"
+    },
+    {
+      "sourceRef": "action.bardic-inspiration.grant",
+      "sourceType": "action",
+      "targetRef": "feature.bardic-inspiration",
+      "targetType": "feature",
+      "relationType": "requires",
       "rulesVersion": "v1"
     }
   ]

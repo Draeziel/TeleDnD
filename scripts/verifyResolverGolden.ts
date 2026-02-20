@@ -59,6 +59,22 @@ const CASES: GoldenCase[] = [
     level: 1,
     characterName: 'Golden Bard L1',
   },
+  {
+    slug: 'barbarian-level2',
+    className: 'Barbarian',
+    raceName: 'Human',
+    backgroundName: 'Soldier',
+    level: 2,
+    characterName: 'Golden Barbarian L2',
+  },
+  {
+    slug: 'bard-level2',
+    className: 'Bard',
+    raceName: 'Human',
+    backgroundName: 'Soldier',
+    level: 2,
+    characterName: 'Golden Bard L2',
+  },
 ];
 
 const prisma = new PrismaClient();

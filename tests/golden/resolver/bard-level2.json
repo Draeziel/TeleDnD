@@ -50,6 +50,24 @@
     {
       "type": "PASSIVE",
       "sourceType": "feature",
+      "sourceRef": "feature:Jack of All Trades",
+      "scope": "sheet",
+      "timing": "static",
+      "rulesVersion": "v1",
+      "payloadType": "PASSIVE_TRAIT",
+      "payload": {
+        "sourceRef": "feature.jack-of-all-trades",
+        "name": "Jack of All Trades",
+        "description": "You can add half your proficiency bonus to any ability check you make that doesn’t already include your proficiency bonus."
+      },
+      "executionIntent": {
+        "kind": "passive"
+      },
+      "lifecycleState": "active"
+    },
+    {
+      "type": "PASSIVE",
+      "sourceType": "feature",
       "sourceRef": "feature:Ability Score Improvement",
       "scope": "sheet",
       "timing": "static",

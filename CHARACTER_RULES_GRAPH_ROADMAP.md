@@ -440,3 +440,5 @@ Controls:
 20. Harden importer action-definition validation (`payloadType` + trigger schema contract). ✅
 21. Harden importer item-metadata validation contract (`slot/weaponCategory/attackAbility/damageFormula/armorType`). ✅
 22. Add strict importer tooling mode (`--strict-warnings`) and enable it in CI dry-run. ✅
+23. Extend resolver to consume `ClassLevelProgression` and emit action capabilities from `Action` nodes. ✅
+24. Expand vertical slices with level-2 Barbarian/Bard golden fixtures and demo content progression/action coverage. ✅

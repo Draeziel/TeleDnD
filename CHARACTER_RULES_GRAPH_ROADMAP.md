@@ -46,6 +46,7 @@ Spell
 
 Hard rule:
 - UI and sheet endpoints consume resolved capabilities contract, not class/race-specific conditional logic.
+- Architecture line is reserved as: Rules Graph -> Resolver -> Capability -> Execution.
 
 ---
 
@@ -84,7 +85,7 @@ Stable output DTO:
 Determinism requirements:
 - deterministic ordering
 - conflict policy for stacking/overrides
-- explicit priority semantics for modifiers
+- explicit priority semantics for modifiers with fixed operation modes only: `add | set | override | multiply`
 
 ### Capability model (explicit)
 
@@ -104,7 +105,9 @@ Required fields (minimum contract):
 - `scope` (`sheet | combat | exploration | social | universal`)
 - `timing` (`static | runtime`)
 - `rulesVersion`
-- `payload` (typed per capability type)
+- `payloadType` (required discriminator)
+- `payload` (typed strictly by payloadType)
+- `executionIntent` (future placeholder; no runtime implementation in this stream)
 
 Design rule:
 - UI consumes capabilities only; no class/race-specific branches.
@@ -216,6 +219,7 @@ Used by future capability-to-combat action bridge.
 - Freeze capability model contract (`ACTION/PASSIVE/MODIFIER/CHOICE`) and trigger shape.
 - Freeze static/runtime classification rules and validation.
 - Define migration and rollback strategy.
+- ADR-0001 accepted: [docs/adr/0001-rules-graph-capability-contract.md](docs/adr/0001-rules-graph-capability-contract.md)
 
 ### Phase 1: Schema foundation
 - Add/extend Prisma models and relations for graph.
@@ -252,6 +256,8 @@ Required for stream closure:
 - Resolver returns stable DTO with deterministic output.
 - Capability model + trigger model are documented and enforced by schema/validation.
 - Static vs runtime capability distinction is explicit and covered by tests.
+- `payloadType` is mandatory for every capability payload.
+- Modifier operations are validated against fixed modes: `add | set | override | multiply`.
 - Character sheet built from resolver capabilities path.
 - Feature/choice/progression behavior verified by tests.
 - Importer is primary content ingestion path for demo pack.
@@ -276,8 +282,8 @@ Controls:
 
 ## 13) Immediate execution tasks (next 1-2 days)
 
-1. Add ADR draft for rules graph and conflict policy.
-2. Define resolver DTO types in backend and miniapp shared contracts (including capability type + timing + trigger block).
+1. ADR accepted: [docs/adr/0001-rules-graph-capability-contract.md](docs/adr/0001-rules-graph-capability-contract.md).
+2. Define resolver DTO types in backend and miniapp shared contracts (including capability type + timing + trigger block + payloadType + executionIntent).
 3. Draft Prisma model diff for progression/action/spell/item metadata.
 4. Prepare first non-destructive migration.
 5. Add initial golden test fixtures (Barbarian level 1, Bard level 1).

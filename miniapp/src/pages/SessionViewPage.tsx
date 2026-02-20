@@ -5,6 +5,9 @@ import { characterApi } from '../api/characterApi';
 import { monsterApi } from '../api/monsterApi';
 import { StatusBox } from '../components/StatusBox';
 import { CombatJournal } from '../components/CombatJournal';
+import { CombatTurnGrid } from '../components/CombatTurnGrid';
+import { CombatActorModal } from '../components/CombatActorModal';
+import type { CombatActorEntry } from '../components/CombatTypes';
 import type { CharacterSummary, MonsterTemplate, SessionDetails, SessionSummary, SessionEffect, SessionMonsterEffect, CombatSummary, StatusTemplate } from '../types/models';
 import { useTelegram } from '../hooks/useTelegram';
 
@@ -1142,7 +1145,7 @@ export function SessionViewPage() {
     return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
   };
 
-  const initiativeQueue = [
+  const initiativeQueue: CombatActorEntry[] = [
     ...(session?.characters || [])
       .filter((entry) => entry.state?.initiative !== null && entry.state?.initiative !== undefined)
       .map((entry) => ({
@@ -1208,6 +1211,82 @@ export function SessionViewPage() {
     ? initiativeQueue.find((entry) => `${entry.kind}:${entry.id}` === activeCombatPanelKey) || null
     : null;
   const activeCombatPanelKeyValue = activeCombatPanelEntry ? `${activeCombatPanelEntry.kind}:${activeCombatPanelEntry.id}` : '';
+
+  const handleApplyStatusForActiveEntry = () => {
+    if (!activeCombatPanelEntry) {
+      return;
+    }
+
+    if (activeCombatPanelEntry.kind === 'character' && activeCombatPanelEntry.characterId) {
+      void onApplyCombatEffect(
+        { kind: 'character', characterId: activeCombatPanelEntry.characterId, name: activeCombatPanelEntry.name },
+        activeCombatPanelKeyValue
+      );
+      return;
+    }
+
+    void onApplyCombatEffect(
+      { kind: 'monster', monsterId: activeCombatPanelEntry.id, name: activeCombatPanelEntry.name },
+      activeCombatPanelKeyValue
+    );
+  };
+
+  const handleRemoveEffectForActiveEntry = (effectId: string, effectType: string) => {
+    if (!activeCombatPanelEntry) {
+      return;
+    }
+
+    if (activeCombatPanelEntry.kind === 'character' && activeCombatPanelEntry.characterId) {
+      void onRemoveCombatEffect(
+        {
+          kind: 'character',
+          characterId: activeCombatPanelEntry.characterId,
+          name: activeCombatPanelEntry.name,
+        },
+        effectId,
+        effectType,
+        activeCombatPanelKeyValue
+      );
+      return;
+    }
+
+    void onRemoveCombatEffect(
+      {
+        kind: 'monster',
+        monsterId: activeCombatPanelEntry.id,
+        name: activeCombatPanelEntry.name,
+      },
+      effectId,
+      effectType,
+      activeCombatPanelKeyValue
+    );
+  };
+
+  const handleDecreaseHpForActiveEntry = () => {
+    if (!activeCombatPanelEntry) {
+      return;
+    }
+
+    if (activeCombatPanelEntry.kind === 'character' && activeCombatPanelEntry.characterId) {
+      void onSetHp(activeCombatPanelEntry.characterId, Math.max(activeCombatPanelEntry.currentHp - 1, 0));
+      return;
+    }
+
+    void onSetMonsterHp(activeCombatPanelEntry.id, Math.max(activeCombatPanelEntry.currentHp - 1, 0));
+  };
+
+  const handleIncreaseHpForActiveEntry = () => {
+    if (!activeCombatPanelEntry) {
+      return;
+    }
+
+    if (activeCombatPanelEntry.kind === 'character' && activeCombatPanelEntry.characterId) {
+      void onSetHp(activeCombatPanelEntry.characterId, activeCombatPanelEntry.currentHp + 1);
+      return;
+    }
+
+    void onSetMonsterHp(activeCombatPanelEntry.id, activeCombatPanelEntry.currentHp + 1);
+  };
 
   useEffect(() => {
     if (!activeCombatPanelKey) {
@@ -1540,186 +1619,32 @@ export function SessionViewPage() {
               {initiativeQueue.length === 0 ? (
                 <StatusBox type="info" message="Инициатива пока не выставлена" />
               ) : (
-                <div className="combat-turn-grid">
-                  {initiativeQueue.map((entry) => (
-                    <div className={`combat-actor-card combat-turn-card ${entry.kind === 'character' ? 'combat-actor-character' : 'combat-actor-monster'} ${entry.isActive ? 'active-turn' : ''}`} key={`initiative-${entry.kind}-${entry.id}`}>
-                      {(() => {
-                        const panelKey = `${entry.kind}:${entry.id}`;
-
-                        return (
-                          <>
-                      <div className="combat-actor-namebar">{entry.name}</div>
-                      {entry.kind === 'monster' && entry.iconUrl ? (
-                        <img className="combat-actor-image" src={entry.iconUrl} alt={entry.name} />
-                      ) : (
-                        <div className="combat-actor-icon">{entry.avatarText}</div>
-                      )}
-                      <div className="combat-actor-vitals-row">
-                        {isGmViewer ? (
-                          <button
-                            className="btn btn-inline combat-hp-toggle"
-                            onClick={() => {
-                              setActiveCombatPanelKey((current) => (current === panelKey ? null : panelKey));
-                            }}
-                          >
-                            ❤️ {entry.currentHp} / {entry.maxHp ?? '—'}
-                          </button>
-                        ) : (
-                          <div className="combat-actor-stat">❤️ {entry.currentHp} / {entry.maxHp ?? '—'}</div>
-                        )}
-                        <div className="combat-actor-stat">🛡 {entry.armorClass ?? '—'}</div>
-                      </div>
-                      <div className="combat-actor-status-row">
-                        <div className="character-tile-statuses">{renderStatusBadges(entry.effects || [])}</div>
-                        <div className="combat-actor-stat">🎲 {entry.initiative}</div>
-                      </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  ))}
-                </div>
+                <CombatTurnGrid
+                  initiativeQueue={initiativeQueue}
+                  isGmViewer={isGmViewer}
+                  renderStatusBadges={renderStatusBadges}
+                  onToggleHpPanel={(panelKey) => {
+                    setActiveCombatPanelKey((current) => (current === panelKey ? null : panelKey));
+                  }}
+                />
               )}
 
               {isGmViewer && activeCombatPanelEntry && (
-                <div className="combat-modal-backdrop" onClick={() => setActiveCombatPanelKey(null)}>
-                  <div className="combat-modal" onClick={(event) => event.stopPropagation()}>
-                    <div className="combat-modal-head">
-                      <strong>{activeCombatPanelEntry.name}</strong>
-                      <button className="btn btn-secondary btn-icon" onClick={() => setActiveCombatPanelKey(null)} aria-label="Закрыть окно">
-                        ✕
-                      </button>
-                    </div>
-
-                    <div className="combat-modal-meta">
-                      ❤️ {activeCombatPanelEntry.currentHp} / {activeCombatPanelEntry.maxHp ?? '—'}
-                    </div>
-
-                    <div className="inline-row">
-                      {activeCombatPanelEntry.kind === 'character' ? (
-                        <>
-                          <button
-                            className="btn btn-secondary"
-                            disabled={!session.hasActiveGm || !activeCombatPanelEntry.characterId}
-                            onClick={() => onSetHp(activeCombatPanelEntry.characterId as string, Math.max(activeCombatPanelEntry.currentHp - 1, 0))}
-                          >
-                            HP -1
-                          </button>
-                          <button
-                            className="btn btn-secondary"
-                            disabled={!session.hasActiveGm || !activeCombatPanelEntry.characterId}
-                            onClick={() => onSetHp(activeCombatPanelEntry.characterId as string, activeCombatPanelEntry.currentHp + 1)}
-                          >
-                            HP +1
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            className="btn btn-secondary"
-                            disabled={!session.hasActiveGm}
-                            onClick={() => onSetMonsterHp(activeCombatPanelEntry.id, Math.max(activeCombatPanelEntry.currentHp - 1, 0))}
-                          >
-                            HP -1
-                          </button>
-                          <button
-                            className="btn btn-secondary"
-                            disabled={!session.hasActiveGm}
-                            onClick={() => onSetMonsterHp(activeCombatPanelEntry.id, activeCombatPanelEntry.currentHp + 1)}
-                          >
-                            HP +1
-                          </button>
-                        </>
-                      )}
-                    </div>
-
-                    <div className="combat-modal-body">
-                      <div className="status-preset-row">
-                        {(activeCombatPanelEntry.effects || []).length === 0 ? (
-                          <span className="meta-row">Активных статусов нет</span>
-                        ) : (
-                          (activeCombatPanelEntry.effects || []).map((effect) => {
-                            const removeKey = `${activeCombatPanelKeyValue}:${effect.id}`;
-
-                            return (
-                              <button
-                                key={effect.id}
-                                className="btn btn-secondary btn-compact"
-                                disabled={!session.hasActiveGm || effectRemovingKey === removeKey}
-                                title={`Снять ${effect.effectType}`}
-                                onClick={() => {
-                                  if (activeCombatPanelEntry.kind === 'character' && activeCombatPanelEntry.characterId) {
-                                    void onRemoveCombatEffect(
-                                      {
-                                        kind: 'character',
-                                        characterId: activeCombatPanelEntry.characterId,
-                                        name: activeCombatPanelEntry.name,
-                                      },
-                                      effect.id,
-                                      effect.effectType,
-                                      activeCombatPanelKeyValue
-                                    );
-                                    return;
-                                  }
-
-                                  void onRemoveCombatEffect(
-                                    {
-                                      kind: 'monster',
-                                      monsterId: activeCombatPanelEntry.id,
-                                      name: activeCombatPanelEntry.name,
-                                    },
-                                    effect.id,
-                                    effect.effectType,
-                                    activeCombatPanelKeyValue
-                                  );
-                                }}
-                              >
-                                {effectRemovingKey === removeKey ? 'Снимаем...' : `✕ ${effect.effectType}`}
-                              </button>
-                            );
-                          })
-                        )}
-                      </div>
-
-                      <div className="status-preset-row">
-                        <select
-                          value={selectedStatusTemplateId}
-                          disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm}
-                          onChange={(event) => {
-                            setSelectedStatusTemplateId(event.target.value);
-                          }}
-                        >
-                          <option value="">Шаблон статуса</option>
-                          {statusTemplates.map((template) => (
-                            <option key={template.id} value={template.id}>
-                              {template.name} ({template.defaultDuration})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <button
-                        className="btn btn-secondary"
-                        disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm || !selectedStatusTemplateId}
-                        onClick={() => {
-                          if (activeCombatPanelEntry.kind === 'character' && activeCombatPanelEntry.characterId) {
-                            void onApplyCombatEffect(
-                              { kind: 'character', characterId: activeCombatPanelEntry.characterId, name: activeCombatPanelEntry.name },
-                              activeCombatPanelKeyValue
-                            );
-                            return;
-                          }
-
-                          void onApplyCombatEffect(
-                            { kind: 'monster', monsterId: activeCombatPanelEntry.id, name: activeCombatPanelEntry.name },
-                            activeCombatPanelKeyValue
-                          );
-                        }}
-                      >
-                        {effectApplyingKey === activeCombatPanelKeyValue ? 'Наложение...' : 'Наложить'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <CombatActorModal
+                  entry={activeCombatPanelEntry}
+                  activeCombatPanelKeyValue={activeCombatPanelKeyValue}
+                  hasActiveGm={session.hasActiveGm}
+                  statusTemplates={statusTemplates}
+                  selectedStatusTemplateId={selectedStatusTemplateId}
+                  effectApplyingKey={effectApplyingKey}
+                  effectRemovingKey={effectRemovingKey}
+                  onClose={() => setActiveCombatPanelKey(null)}
+                  onSelectStatusTemplate={setSelectedStatusTemplateId}
+                  onDecreaseHp={handleDecreaseHpForActiveEntry}
+                  onIncreaseHp={handleIncreaseHpForActiveEntry}
+                  onApplyStatus={handleApplyStatusForActiveEntry}
+                  onRemoveEffect={handleRemoveEffectForActiveEntry}
+                />
               )}
             </>
           )}

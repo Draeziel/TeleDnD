@@ -348,3 +348,4 @@ Build a multiplayer session (party) system where:
 - 2026-02-20: Completed first TD1 batch: status template `shortLabel` (meta persistence + editor field), combat journal interaction-only filtering, and immutable template snapshot persisted into applied effect payload.
 - 2026-02-20: Started SessionView decomposition by extracting combat journal into dedicated miniapp component (`CombatJournal`), and completed CSS cleanup for stale status-dot/combat-card legacy selectors.
 - 2026-02-20: Added integration smoke script `test-combat-automation.ps1` covering combat-action apply via template, immutable template snapshot, auto-tick decrement/expiry, and combat event payload checks.
+- 2026-02-20: Continued SessionView decomposition by extracting encounter queue rendering (`CombatTurnGrid`) and GM actor interaction modal (`CombatActorModal`) into dedicated miniapp components.

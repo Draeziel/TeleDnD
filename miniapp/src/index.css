@@ -766,6 +766,31 @@ td {
   min-height: 168px;
 }
 
+.combat-actor-card > .combat-actor-namebar {
+  order: 1;
+}
+
+.combat-actor-card > .combat-actor-icon,
+.combat-actor-card > .combat-actor-image {
+  order: 2;
+}
+
+.combat-actor-card > .combat-actor-vitals-row {
+  order: 3;
+}
+
+.combat-actor-card > .combat-actor-status-row {
+  order: 4;
+}
+
+.combat-actor-card > .inline-row {
+  order: 5;
+}
+
+.combat-actor-card > .combat-actor-remove {
+  order: 6;
+}
+
 .combat-actor-character {
   background: #eff6ff;
 }
@@ -827,6 +852,7 @@ td {
   display: grid;
   grid-template-columns: 1.7fr 0.9fr;
   gap: 4px;
+  align-items: center;
 }
 
 .combat-actor-status-row {

@@ -264,11 +264,11 @@ Build a multiplayer session (party) system where:
 
 ### P1.7 — Status rule templates (new)
 
-- [ ] Add status template catalog model (GM-configurable presets with trigger/duration rules).
-- [ ] Add dice-based damage config for templates (e.g., `1d6`, `2d4+1`).
-- [ ] Add save config in template (`die`, `threshold`, `ability`, `half/full/none on success`).
+- [x] Add status template catalog model (GM-configurable presets with trigger/duration rules).
+- [x] Add dice-based damage config for templates (e.g., `1d6`, `2d4+1`).
+- [x] Add save config in template (`die`, `threshold`, `ability`, `half/full/none on success`).
 - [ ] Persist rule snapshot to applied session effect at apply time (immutability for existing effects).
-- [ ] Extend GM Toolkit miniapp with simple status-template editor and picker.
+- [~] Extend GM Toolkit miniapp with simple status-template editor and picker.
 - [ ] Add combat log payload fields for rolled dice and save breakdown from template rules.
 
 ### P2 — Companion product depth
@@ -330,3 +330,6 @@ Build a multiplayer session (party) system where:
 - 2026-02-20: Added MVP poison auto-tick on `NEXT_TURN` with duration decrement and expiry cleanup; extended with CON save + `halfOnSave` behavior.
 - 2026-02-20: Added manual status removal actions (character/monster) before expiration via combat modal and unified combat action API.
 - 2026-02-20: Improved poison auto-tick trigger detection (localized labels + automation kind), and surfaced auto-tick summary in `Next turn` success notifications.
+- 2026-02-20: Added status template foundation (DB model + migration + session status-template endpoint + dice-based automation support in combat engine).
+- 2026-02-20: Extended GM Toolkit (`Монстры`) with status template management CRUD.
+- 2026-02-20: Reworked statuses UX in toolkit: collapsed `Статусы` block (`Просмотр`, `+`, search), modal create/edit form, numeric rounds input, effect-category options, save-condition constructor (`%`, `XdY`, operator, target), configurable status color, and compact colored summary cards with edit/delete icons.

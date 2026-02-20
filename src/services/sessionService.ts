@@ -584,6 +584,26 @@ export class SessionService {
     };
   }
 
+  private evaluateSaveCondition(leftValue: number, operator: string, rightValue: number): boolean {
+    if (operator === '<') {
+      return leftValue < rightValue;
+    }
+
+    if (operator === '<=') {
+      return leftValue <= rightValue;
+    }
+
+    if (operator === '=') {
+      return leftValue === rightValue;
+    }
+
+    if (operator === '>') {
+      return leftValue > rightValue;
+    }
+
+    return leftValue >= rightValue;
+  }
+
   private normalizePoisonEffectPayload(
     effectType: string,
     duration: string,
@@ -649,9 +669,13 @@ export class SessionService {
   ): {
     damage: { mode: 'flat'; value: number } | { mode: 'dice'; count: number; sides: number; bonus: number };
     roundsLeft: number;
-    saveThreshold: number;
-    saveDieSides: number;
-    halfOnSave: boolean;
+    save: {
+      diceCount: number;
+      diceSides: number;
+      operator: '<' | '<=' | '=' | '>=' | '>';
+      target: number;
+      damagePercentOnMatch: number;
+    };
   } | null {
     const payloadRecord = payload && typeof payload === 'object' && !Array.isArray(payload)
       ? payload as Record<string, unknown>
@@ -678,19 +702,36 @@ export class SessionService {
     const saveRecord = automationRecord.save && typeof automationRecord.save === 'object' && !Array.isArray(automationRecord.save)
       ? automationRecord.save as Record<string, unknown>
       : {};
-    const saveThreshold = Math.min(
-      Math.max(this.parsePositiveInteger(saveRecord.threshold ?? saveRecord.dc) ?? 12, 1),
-      30
+    const checkRecord = saveRecord.check && typeof saveRecord.check === 'object' && !Array.isArray(saveRecord.check)
+      ? saveRecord.check as Record<string, unknown>
+      : {};
+
+    const diceCount = Math.min(Math.max(this.parsePositiveInteger(checkRecord.count) ?? 1, 1), 20);
+    const diceSides = Math.min(Math.max(this.parsePositiveInteger(checkRecord.sides ?? saveRecord.dieSides) ?? 20, 2), 100);
+    const operatorRaw = String(checkRecord.operator || '>=').trim();
+    const operator = ['<', '<=', '=', '>=', '>'].includes(operatorRaw)
+      ? operatorRaw as '<' | '<=' | '=' | '>=' | '>'
+      : '>=';
+    const target = Math.min(
+      Math.max(this.parsePositiveInteger(checkRecord.target ?? saveRecord.threshold ?? saveRecord.dc) ?? 12, 1),
+      200
     );
-    const saveDieSides = Math.min(Math.max(this.parsePositiveInteger(saveRecord.dieSides) ?? 20, 2), 100);
-    const halfOnSave = saveRecord.halfOnSave === undefined ? true : Boolean(saveRecord.halfOnSave);
+
+    const legacyPercent = saveRecord.halfOnSave === false ? 0 : 50;
+    const damagePercentOnMatch = [0, 50, 100, 200].includes(Number(saveRecord.damagePercentOnMatch))
+      ? Number(saveRecord.damagePercentOnMatch)
+      : legacyPercent;
 
     return {
       damage,
       roundsLeft,
-      saveThreshold,
-      saveDieSides,
-      halfOnSave,
+      save: {
+        diceCount,
+        diceSides,
+        operator,
+        target,
+        damagePercentOnMatch,
+      },
     };
   }
 
@@ -754,14 +795,14 @@ export class SessionService {
           continue;
         }
 
-        const saveRoll = crypto.randomInt(1, rule.saveDieSides + 1);
+        const saveRolls = Array.from({ length: rule.save.diceCount }).map(() => crypto.randomInt(1, rule.save.diceSides + 1));
+        const saveRoll = saveRolls.reduce((acc, value) => acc + value, 0);
         const saveModifier = this.abilityScoreToModifier(sessionCharacter.character.abilityScores?.con);
         const saveTotal = saveRoll + saveModifier;
-        const savePassed = saveTotal >= rule.saveThreshold;
+        const saveConditionMatched = this.evaluateSaveCondition(saveTotal, rule.save.operator, rule.save.target);
         const damageRoll = this.rollDamage(rule.damage);
-        const adjustedDamage = savePassed
-          ? (rule.halfOnSave ? Math.floor(damageRoll.baseDamage / 2) : 0)
-          : damageRoll.baseDamage;
+        const damagePercent = saveConditionMatched ? rule.save.damagePercentOnMatch : 100;
+        const adjustedDamage = Math.max(Math.floor((damageRoll.baseDamage * damagePercent) / 100), 0);
 
         const nextHp = Math.max(currentHp - adjustedDamage, 0);
         const appliedDamage = Math.max(currentHp - nextHp, 0);
@@ -814,14 +855,17 @@ export class SessionService {
             },
             save: {
               ability: 'con',
-              dieSides: rule.saveDieSides,
-              threshold: rule.saveThreshold,
-              dc: rule.saveThreshold,
+              diceCount: rule.save.diceCount,
+              dieSides: rule.save.diceSides,
+              operator: rule.save.operator,
+              threshold: rule.save.target,
+              dc: rule.save.target,
               roll: saveRoll,
+              rolls: saveRolls,
               modifier: saveModifier,
               total: saveTotal,
-              passed: savePassed,
-              halfOnSave: rule.halfOnSave,
+              conditionMatched: saveConditionMatched,
+              damagePercent,
             },
             hpBefore: currentHp,
             hpAfter: nextHp,
@@ -876,14 +920,14 @@ export class SessionService {
         continue;
       }
 
-      const saveRoll = crypto.randomInt(1, rule.saveDieSides + 1);
+      const saveRolls = Array.from({ length: rule.save.diceCount }).map(() => crypto.randomInt(1, rule.save.diceSides + 1));
+      const saveRoll = saveRolls.reduce((acc, value) => acc + value, 0);
       const saveModifier = this.abilityScoreToModifier(sessionMonster.monsterTemplate?.constitution);
       const saveTotal = saveRoll + saveModifier;
-      const savePassed = saveTotal >= rule.saveThreshold;
+      const saveConditionMatched = this.evaluateSaveCondition(saveTotal, rule.save.operator, rule.save.target);
       const damageRoll = this.rollDamage(rule.damage);
-      const adjustedDamage = savePassed
-        ? (rule.halfOnSave ? Math.floor(damageRoll.baseDamage / 2) : 0)
-        : damageRoll.baseDamage;
+      const damagePercent = saveConditionMatched ? rule.save.damagePercentOnMatch : 100;
+      const adjustedDamage = Math.max(Math.floor((damageRoll.baseDamage * damagePercent) / 100), 0);
 
       const nextHp = Math.max(currentHp - adjustedDamage, 0);
       const appliedDamage = Math.max(currentHp - nextHp, 0);
@@ -936,14 +980,17 @@ export class SessionService {
           },
           save: {
             ability: 'con',
-            dieSides: rule.saveDieSides,
-            threshold: rule.saveThreshold,
-            dc: rule.saveThreshold,
+            diceCount: rule.save.diceCount,
+            dieSides: rule.save.diceSides,
+            operator: rule.save.operator,
+            threshold: rule.save.target,
+            dc: rule.save.target,
             roll: saveRoll,
+            rolls: saveRolls,
             modifier: saveModifier,
             total: saveTotal,
-            passed: savePassed,
-            halfOnSave: rule.halfOnSave,
+            conditionMatched: saveConditionMatched,
+            damagePercent,
           },
           hpBefore: currentHp,
           hpAfter: nextHp,

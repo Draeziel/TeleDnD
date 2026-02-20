@@ -12,13 +12,20 @@ export function MonstersPage() {
   const [selectedMonsterId, setSelectedMonsterId] = useState('');
   const [deletingMonsterId, setDeletingMonsterId] = useState('');
   const [statusTemplates, setStatusTemplates] = useState<StatusTemplate[]>([]);
+  const [statusPanelExpanded, setStatusPanelExpanded] = useState(false);
+  const [statusSearch, setStatusSearch] = useState('');
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [statusName, setStatusName] = useState('');
   const [statusEffectType, setStatusEffectType] = useState('poisoned');
-  const [statusDuration, setStatusDuration] = useState('3 раунд(ов)');
-  const [statusDamageCount, setStatusDamageCount] = useState(1);
-  const [statusDamageSides, setStatusDamageSides] = useState(6);
-  const [statusSaveDieSides, setStatusSaveDieSides] = useState(12);
-  const [statusSaveThreshold, setStatusSaveThreshold] = useState(10);
+  const [statusRounds, setStatusRounds] = useState(3);
+  const [statusDamageDiceCount, setStatusDamageDiceCount] = useState(1);
+  const [statusDamageDiceSides, setStatusDamageDiceSides] = useState(6);
+  const [statusSaveDamagePercent, setStatusSaveDamagePercent] = useState<0 | 50 | 100 | 200>(50);
+  const [statusSaveDiceCount, setStatusSaveDiceCount] = useState(1);
+  const [statusSaveDiceSides, setStatusSaveDiceSides] = useState(12);
+  const [statusSaveOperator, setStatusSaveOperator] = useState<'<' | '<=' | '=' | '>=' | '>'>('>=');
+  const [statusSaveTargetValue, setStatusSaveTargetValue] = useState(10);
+  const [statusColorHex, setStatusColorHex] = useState('#5b9cff');
   const [statusEditingId, setStatusEditingId] = useState('');
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState('');
@@ -53,6 +60,14 @@ export function MonstersPage() {
   const personalItems = useMemo(() => items.filter((item) => item.scope === 'PERSONAL'), [items]);
   const visibleItems = activeTab === 'PERSONAL' ? personalItems : globalItems;
   const selectedMonster = visibleItems.find((monster) => monster.id === selectedMonsterId) || null;
+  const filteredStatusTemplates = useMemo(() => {
+    const query = statusSearch.trim().toLowerCase();
+    if (!query) {
+      return statusTemplates;
+    }
+
+    return statusTemplates.filter((template) => template.name.toLowerCase().includes(query));
+  }, [statusTemplates, statusSearch]);
 
   const onToggleMonsterCard = (monsterId: string) => {
     setSelectedMonsterId((currentId) => (currentId === monsterId ? '' : monsterId));
@@ -81,26 +96,58 @@ export function MonstersPage() {
     setStatusEditingId('');
     setStatusName('');
     setStatusEffectType('poisoned');
-    setStatusDuration('3 раунд(ов)');
-    setStatusDamageCount(1);
-    setStatusDamageSides(6);
-    setStatusSaveDieSides(12);
-    setStatusSaveThreshold(10);
+    setStatusRounds(3);
+    setStatusDamageDiceCount(1);
+    setStatusDamageDiceSides(6);
+    setStatusSaveDamagePercent(50);
+    setStatusSaveDiceCount(1);
+    setStatusSaveDiceSides(12);
+    setStatusSaveOperator('>=');
+    setStatusSaveTargetValue(10);
+    setStatusColorHex('#5b9cff');
+  };
+
+  const resolveCategoryByEffectType = (effectType: string): 'DAMAGE' | 'CONTROL' | 'DEBUFF' => {
+    if (effectType === 'poisoned' || effectType === 'burning') {
+      return 'DAMAGE';
+    }
+
+    if (effectType === 'stunned') {
+      return 'CONTROL';
+    }
+
+    return 'DEBUFF';
+  };
+
+  const openCreateStatusModal = () => {
+    resetStatusForm();
+    setStatusModalOpen(true);
   };
 
   const onEditStatusTemplate = (template: StatusTemplate) => {
     const automation = (template.payload?.automation || {}) as Record<string, unknown>;
     const damage = (automation.damage || {}) as Record<string, unknown>;
     const save = (automation.save || {}) as Record<string, unknown>;
+    const check = (save.check || {}) as Record<string, unknown>;
+    const meta = (template.payload?.meta || {}) as Record<string, unknown>;
 
     setStatusEditingId(template.id);
     setStatusName(template.name);
     setStatusEffectType(template.effectType);
-    setStatusDuration(template.defaultDuration);
-    setStatusDamageCount(Number(damage.count || 1));
-    setStatusDamageSides(Number(damage.sides || 6));
-    setStatusSaveDieSides(Number(save.dieSides || 12));
-    setStatusSaveThreshold(Number(save.threshold || save.dc || 10));
+    setStatusRounds(Number(automation.roundsLeft || template.defaultDuration || 3));
+    setStatusDamageDiceCount(Number(damage.count || 1));
+    setStatusDamageDiceSides(Number(damage.sides || 6));
+    setStatusSaveDamagePercent(([0, 50, 100, 200].includes(Number(save.damagePercentOnMatch))
+      ? Number(save.damagePercentOnMatch)
+      : 50) as 0 | 50 | 100 | 200);
+    setStatusSaveDiceCount(Number(check.count || 1));
+    setStatusSaveDiceSides(Number(check.sides || save.dieSides || 12));
+    setStatusSaveOperator((['<', '<=', '=', '>=', '>'].includes(String(check.operator))
+      ? String(check.operator)
+      : '>=') as '<' | '<=' | '=' | '>=' | '>');
+    setStatusSaveTargetValue(Number(check.target || save.threshold || save.dc || 10));
+    setStatusColorHex(String(meta.colorHex || '#5b9cff'));
+    setStatusModalOpen(true);
   };
 
   const onSubmitStatusTemplate = async () => {
@@ -115,15 +162,16 @@ export function MonstersPage() {
       const payload = {
         name: statusName.trim(),
         effectType: statusEffectType.trim() || 'poisoned',
-        defaultDuration: statusDuration.trim() || '3 раунд(ов)',
-        damageMode: 'dice',
-        damageCount: statusDamageCount,
-        damageSides: statusDamageSides,
-        damageBonus: 0,
-        rounds: Number((statusDuration.match(/(\d+)/) || [])[1]) || 3,
-        saveDieSides: statusSaveDieSides,
-        saveThreshold: statusSaveThreshold,
-        halfOnSave: true,
+        effectCategory: resolveCategoryByEffectType(statusEffectType),
+        rounds: statusRounds,
+        damageDiceCount: statusDamageDiceCount,
+        damageDiceSides: statusDamageDiceSides,
+        saveDamagePercent: statusSaveDamagePercent,
+        saveDiceCount: statusSaveDiceCount,
+        saveDiceSides: statusSaveDiceSides,
+        saveOperator: statusSaveOperator,
+        saveTargetValue: statusSaveTargetValue,
+        colorHex: statusColorHex,
       } as const;
 
       if (!statusEditingId) {
@@ -138,6 +186,7 @@ export function MonstersPage() {
       }
 
       resetStatusForm();
+      setStatusModalOpen(false);
     } catch {
       setError(statusEditingId ? 'Не удалось обновить шаблон статуса' : 'Не удалось создать шаблон статуса');
     } finally {
@@ -289,99 +338,61 @@ export function MonstersPage() {
       )}
 
       <div className="section-card">
-        <h2>Шаблоны статусов</h2>
-        <p className="meta-row">Управление шаблонами для боевых эффектов (используются в модалке статусов в сессии).</p>
-
-        <div className="grid-3">
-          <input
-            placeholder="Название шаблона"
-            value={statusName}
-            onChange={(event) => setStatusName(event.target.value)}
-          />
-          <input
-            placeholder="effectType"
-            value={statusEffectType}
-            onChange={(event) => setStatusEffectType(event.target.value)}
-          />
-          <input
-            placeholder="Длительность"
-            value={statusDuration}
-            onChange={(event) => setStatusDuration(event.target.value)}
-          />
-        </div>
-
-        <div className="grid-3" style={{ marginTop: 8 }}>
-          <input
-            type="number"
-            min={1}
-            max={20}
-            value={statusDamageCount}
-            onChange={(event) => setStatusDamageCount(Number(event.target.value) || 1)}
-          />
-          <input
-            type="number"
-            min={2}
-            max={100}
-            value={statusDamageSides}
-            onChange={(event) => setStatusDamageSides(Number(event.target.value) || 6)}
-          />
-          <button className="btn btn-primary" onClick={onSubmitStatusTemplate} disabled={statusSaving}>
-            {statusSaving ? 'Сохраняем...' : (statusEditingId ? 'Сохранить изменения' : 'Создать шаблон')}
+        <h2>Статусы</h2>
+        <div className="inline-row" style={{ alignItems: 'center' }}>
+          <button
+            className={`btn ${statusPanelExpanded ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setStatusPanelExpanded((current) => !current)}
+          >
+            Просмотр
           </button>
+          <button className="btn btn-secondary btn-icon" title="Добавить статус" onClick={openCreateStatusModal}>
+            +
+          </button>
+          <input
+            placeholder="Поиск по названию"
+            value={statusSearch}
+            onChange={(event) => setStatusSearch(event.target.value)}
+          />
         </div>
 
-        <div className="grid-3" style={{ marginTop: 8 }}>
-          <input
-            type="number"
-            min={2}
-            max={100}
-            value={statusSaveDieSides}
-            onChange={(event) => setStatusSaveDieSides(Number(event.target.value) || 12)}
-          />
-          <input
-            type="number"
-            min={1}
-            max={100}
-            value={statusSaveThreshold}
-            onChange={(event) => setStatusSaveThreshold(Number(event.target.value) || 10)}
-          />
-          <div className="inline-row">
-            <div className="meta-row">Save: d{statusSaveDieSides} + CON vs {statusSaveThreshold}</div>
-            {statusEditingId && (
-              <button className="btn btn-secondary btn-compact" onClick={resetStatusForm}>
-                Отмена
-              </button>
-            )}
-          </div>
-        </div>
-
-        {statusTemplates.length === 0 ? (
-          <StatusBox type="info" message="Шаблоны статусов пока не созданы" />
+        {statusPanelExpanded && (filteredStatusTemplates.length === 0 ? (
+          <StatusBox type="info" message="Шаблоны статусов пока не найдены" />
         ) : (
           <div className="monster-list" style={{ marginTop: 8 }}>
-            {statusTemplates.map((template) => {
+            {filteredStatusTemplates.map((template) => {
               const automation = (template.payload?.automation || {}) as Record<string, unknown>;
               const damage = (automation.damage || {}) as Record<string, unknown>;
               const save = (automation.save || {}) as Record<string, unknown>;
+              const check = (save.check || {}) as Record<string, unknown>;
+              const meta = (template.payload?.meta || {}) as Record<string, unknown>;
+              const rounds = Number(automation.roundsLeft || template.defaultDuration || 0);
+              const category = String(meta.category || (automation.kind ? 'DAMAGE' : 'CONTROL'));
               const damageText = damage.mode === 'dice'
-                ? `${damage.count || 1}d${damage.sides || 6}${Number(damage.bonus || 0) >= 0 ? '+' : ''}${damage.bonus || 0}`
+                ? `${damage.count || 1}d${damage.sides || 6}`
                 : `${automation.damagePerTick || 1}`;
-              const saveDieSides = Number(save.dieSides || 12);
-              const saveThreshold = Number(save.threshold || save.dc || 10);
+              const saveDamagePercent = Number(save.damagePercentOnMatch ?? 50);
+              const saveDiceCount = Number(check.count || 1);
+              const saveDiceSides = Number(check.sides || save.dieSides || 12);
+              const saveOperator = String(check.operator || '>=');
+              const saveTarget = Number(check.target || save.threshold || save.dc || 10);
+              const colorHex = String(meta.colorHex || '#5b9cff');
 
               return (
-                <div className="monster-list-item" key={template.id}>
+                <div className="monster-list-item" key={template.id} style={{ borderLeft: `4px solid ${colorHex}` }}>
                   <div>
                     <strong>{template.name}</strong>
-                    <div className="meta-row">{template.effectType} • {template.defaultDuration}</div>
-                    <div className="meta-row">Урон: {damageText} • Save: d{saveDieSides}+CON vs {saveThreshold}</div>
+                    <div className="meta-row">{category} • {rounds} раунд(ов)</div>
+                    <div className="meta-row">Урон: {damageText}</div>
+                    <div className="meta-row">Спасбросок: получает {saveDamagePercent}% урона, если результат {saveDiceCount}д{saveDiceSides} + CON {saveOperator} {saveTarget}</div>
                   </div>
                   <div className="inline-row">
                     <button
                       className="btn btn-secondary btn-compact"
                       onClick={() => onEditStatusTemplate(template)}
+                      title="Редактировать"
                     >
-                      Редактировать
+                      ✎
                     </button>
                     <button
                       className="btn btn-secondary btn-compact"
@@ -394,16 +405,128 @@ export function MonstersPage() {
                       className="btn btn-secondary btn-compact"
                       onClick={() => onDeleteStatusTemplate(template)}
                       disabled={statusDeletingId === template.id}
+                      title="Удалить"
                     >
-                      {statusDeletingId === template.id ? 'Удаляем...' : 'Удалить'}
+                      {statusDeletingId === template.id ? '...' : '🗑'}
                     </button>
                   </div>
                 </div>
               );
             })}
           </div>
-        )}
+        ))}
       </div>
+
+      {statusModalOpen && (
+        <div className="combat-modal-backdrop" onClick={() => setStatusModalOpen(false)}>
+          <div className="combat-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="combat-modal-head">
+              <strong>{statusEditingId ? 'Редактирование статуса' : 'Создание статуса'}</strong>
+              <button className="btn btn-inline" onClick={() => setStatusModalOpen(false)}>✕</button>
+            </div>
+
+            <div className="combat-modal-body">
+              <input
+                placeholder="Название"
+                value={statusName}
+                onChange={(event) => setStatusName(event.target.value)}
+              />
+
+              <select value={statusEffectType} onChange={(event) => setStatusEffectType(event.target.value)}>
+                <option value="poisoned">Урон: яд</option>
+                <option value="burning">Урон: ожог</option>
+                <option value="stunned">Контроль: оглушение</option>
+                <option value="cursed">Дебафф: проклятие</option>
+                <option value="slowed">Дебафф: замедление</option>
+              </select>
+
+              <label className="meta-row">Количество раундов</label>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={statusRounds}
+                onChange={(event) => setStatusRounds(Number(event.target.value) || 1)}
+              />
+
+              <div className="meta-row">Наносит [количество дайсов] d [количество граней] урона</div>
+              <div className="grid-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={statusDamageDiceCount}
+                  onChange={(event) => setStatusDamageDiceCount(Number(event.target.value) || 1)}
+                />
+                <input
+                  type="number"
+                  min={2}
+                  max={100}
+                  value={statusDamageDiceSides}
+                  onChange={(event) => setStatusDamageDiceSides(Number(event.target.value) || 6)}
+                />
+              </div>
+
+              <div className="meta-row">Спасбросок: получает [% урона], если результат [XdY + CON] [оператор] [значение]</div>
+              <div className="grid-2">
+                <select
+                  value={statusSaveDamagePercent}
+                  onChange={(event) => setStatusSaveDamagePercent(Number(event.target.value) as 0 | 50 | 100 | 200)}
+                >
+                  <option value={0}>0%</option>
+                  <option value={50}>50%</option>
+                  <option value={100}>100%</option>
+                  <option value={200}>200%</option>
+                </select>
+                <div className="meta-row">% урона при выполнении условия</div>
+              </div>
+
+              <div className="grid-3">
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={statusSaveDiceCount}
+                  onChange={(event) => setStatusSaveDiceCount(Number(event.target.value) || 1)}
+                />
+                <input
+                  type="number"
+                  min={2}
+                  max={100}
+                  value={statusSaveDiceSides}
+                  onChange={(event) => setStatusSaveDiceSides(Number(event.target.value) || 12)}
+                />
+                <select value={statusSaveOperator} onChange={(event) => setStatusSaveOperator(event.target.value as '<' | '<=' | '=' | '>=' | '>')}>
+                  <option value="<">&lt;</option>
+                  <option value="<=">&lt;=</option>
+                  <option value="=">=</option>
+                  <option value=">=">&gt;=</option>
+                  <option value=">">&gt;</option>
+                </select>
+              </div>
+
+              <input
+                type="number"
+                min={1}
+                max={200}
+                value={statusSaveTargetValue}
+                onChange={(event) => setStatusSaveTargetValue(Number(event.target.value) || 10)}
+                placeholder="Значение для прохождения"
+              />
+
+              <label className="meta-row">Цвет текста/рамки статуса</label>
+              <input type="color" value={statusColorHex} onChange={(event) => setStatusColorHex(event.target.value)} />
+
+              <div className="inline-row" style={{ justifyContent: 'flex-end' }}>
+                <button className="btn btn-secondary" onClick={() => setStatusModalOpen(false)}>Отмена</button>
+                <button className="btn btn-primary" onClick={onSubmitStatusTemplate} disabled={statusSaving}>
+                  {statusSaving ? 'Сохраняем...' : 'Сохранить'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

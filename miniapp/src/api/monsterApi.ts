@@ -34,16 +34,16 @@ type MonsterTemplateUpsertInput = {
 type StatusTemplateUpsertInput = {
   name: string;
   effectType: string;
-  defaultDuration: string;
-  damageMode?: 'flat' | 'dice';
-  damageFlat?: number;
-  damageCount?: number;
-  damageSides?: number;
-  damageBonus?: number;
+  effectCategory?: 'DAMAGE' | 'CONTROL' | 'DEBUFF';
   rounds?: number;
-  saveDieSides?: number;
-  saveThreshold?: number;
-  halfOnSave?: boolean;
+  damageDiceCount?: number;
+  damageDiceSides?: number;
+  saveDiceCount?: number;
+  saveDiceSides?: number;
+  saveOperator?: '<' | '<=' | '=' | '>=' | '>';
+  saveTargetValue?: number;
+  saveDamagePercent?: 0 | 50 | 100 | 200;
+  colorHex?: string;
   isActive?: boolean;
 };
 

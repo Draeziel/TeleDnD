@@ -131,6 +131,7 @@ CharacterDraft
 
 ### ✅ Character Sheet Computation
 - Resolver-driven feature/modifier projection (resolver-only path)
+- Resolver now consumes `ClassLevelProgression` and `Action` nodes for capability output
 - Choice requirement computation from all sources (class + race + background)
 - Track selected vs. missing choices
 - Include ability scores in sheet response
@@ -181,6 +182,7 @@ CharacterDraft
 - Session supports quantity-based monster add from templates (`POST /api/sessions/:id/monsters`)
 - Session supports monster removal from session (`DELETE /api/sessions/:id/monsters/:monsterId`)
 - Session journal persisted in database (`session_events`)
+- Session exposes resolver-backed combat capabilities feed (`GET /api/sessions/:id/combat/capabilities`)
 
 ### ✅ Monster Catalog MVP
 - Monster template catalog with scopes: `GLOBAL` (admin-managed) and `PERSONAL` (owner-managed)
@@ -278,6 +280,7 @@ CharacterDraft
 | `GET` | `/api/sessions/:id` | Get session details (players/characters/state/effects) |
 | `GET` | `/api/sessions/:id/summary` | Get lightweight session state for polling |
 | `GET` | `/api/sessions/:id/events` | Get lightweight event feed |
+| `GET` | `/api/sessions/:id/combat/capabilities` | Get resolver-driven combat capability actions per attached character |
 | `GET` | `/api/sessions/:id/monsters` | List session monsters |
 | `POST` | `/api/sessions/:id/monsters` | GM: add monsters from template + quantity |
 | `DELETE` | `/api/sessions/:id/monsters/:monsterId` | GM: remove monster from session |

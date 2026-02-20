@@ -442,3 +442,4 @@ Controls:
 22. Add strict importer tooling mode (`--strict-warnings`) and enable it in CI dry-run. ✅
 23. Extend resolver to consume `ClassLevelProgression` and emit action capabilities from `Action` nodes. ✅
 24. Expand vertical slices with level-2 Barbarian/Bard golden fixtures and demo content progression/action coverage. ✅
+25. Add smoke regression check for session combat capabilities endpoint (`GET /api/sessions/:id/combat/capabilities`). ✅

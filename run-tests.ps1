@@ -305,6 +305,20 @@ if ($Smoke) {
             }
 
             try {
+                $combatCapabilitiesResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/combat/capabilities" -Method Get -Headers $smokeHeaders -UseBasicParsing -ErrorAction Stop
+                $combatCapabilities = $combatCapabilitiesResponse.Content | ConvertFrom-Json
+
+                $hasActors = $combatCapabilities.actors -is [System.Array]
+                $hasAttachedCharacter = $hasActors -and (($combatCapabilities.actors | Where-Object { $_.characterId -eq $characterId } | Select-Object -First 1) -ne $null)
+                $hasActionsArray = $hasAttachedCharacter -and ((($combatCapabilities.actors | Where-Object { $_.characterId -eq $characterId } | Select-Object -First 1).actions) -is [System.Array])
+                $combatCapabilitiesOk = $combatCapabilities.sessionId -eq $sessionId -and $hasActors -and $hasAttachedCharacter -and $hasActionsArray
+
+                Add-SmokeResult "Session combat capabilities" $combatCapabilitiesOk "GET /api/sessions/:id/combat/capabilities session=$($combatCapabilities.sessionId -eq $sessionId), actors=$hasActors, attachedCharacter=$hasAttachedCharacter, actionsArray=$hasActionsArray"
+            } catch {
+                Add-SmokeResult "Session combat capabilities" $false "GET /api/sessions/:id/combat/capabilities failed: $($_.Exception.Message)"
+            }
+
+            try {
                 $rollSelfPayload = ConvertTo-Json @{ characterId = $characterId }
                 $rollSelfResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/initiative/roll-self" `
                     -Method Post `
@@ -419,6 +433,7 @@ if ($Smoke) {
             }
         } else {
             Add-SmokeResult "Session attach character" $true "Skipped: no characterId available (likely auth-gated create)"
+            Add-SmokeResult "Session combat capabilities" $true "Skipped: no characterId available (likely auth-gated create)"
             Add-SmokeResult "Initiative roll self" $true "Skipped: no characterId available (likely auth-gated create)"
             Add-SmokeResult "Initiative roll all" $true "Skipped: no characterId available (likely auth-gated create)"
             Add-SmokeResult "Encounter start" $true "Skipped: no characterId available (likely auth-gated create)"
@@ -441,6 +456,7 @@ if ($Smoke) {
         Add-SmokeResult "Session summary" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Session events" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Session attach character" $true "Skipped: no sessionId available (likely auth-gated create)"
+        Add-SmokeResult "Session combat capabilities" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Initiative roll self" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Initiative roll all" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Encounter start" $true "Skipped: no sessionId available (likely auth-gated create)"

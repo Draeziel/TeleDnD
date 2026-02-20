@@ -1399,7 +1399,7 @@ export function SessionViewPage() {
               </button>
             )}
           </div>
-          <div className="list-item">
+          <div className="list-item combat-controls-card">
             <div>
               <div className="initiative-controls" style={{ marginTop: '2px' }}>
                 <span>Инициатива:</span>
@@ -1464,7 +1464,7 @@ export function SessionViewPage() {
                   </button>
                 )}
               </div>
-              <div className="inline-row" style={{ marginTop: '8px' }}>
+              <div className="inline-row combat-top-actions" style={{ marginTop: '8px' }}>
                 {isGmViewer && (
                   <button
                     className="btn btn-secondary btn-icon"
@@ -1479,7 +1479,7 @@ export function SessionViewPage() {
               </div>
 
               {isGmViewer && showMonsterAddControls && (
-                <div className="monster-add-row" style={{ marginTop: '8px' }}>
+                <div className="monster-add-row combat-monster-add-row" style={{ marginTop: '8px' }}>
                   <select
                     value={selectedMonsterTemplateId}
                     onChange={(event) => setSelectedMonsterTemplateId(event.target.value)}
@@ -1545,7 +1545,7 @@ export function SessionViewPage() {
               <div className="combat-turn-head">
                 <strong>Р:{session.combatRound}</strong>
                 <h2>Порядок ходов</h2>
-                <div className="inline-row">
+                <div className="inline-row combat-turn-actions">
                   <button
                     className="btn btn-secondary btn-icon"
                     disabled={undoActionLoading || !session.hasActiveGm}

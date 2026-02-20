@@ -213,7 +213,7 @@ Build a multiplayer session (party) system where:
 - [x] Add encounter flow primitives: start encounter, active turn marker, next turn, finish encounter.
 - [x] Add safe “undo last combat action” for GM (HP/initiative/effect mutations).
 - [x] Add network resilience UX in miniapp (retry/backoff and clearer offline recovery).
-- [ ] Improve small-screen ergonomics (tap targets, dense combat layout, minimal scroll friction).
+- [x] Improve small-screen ergonomics (tap targets, dense combat layout, minimal scroll friction).
 - [x] Define and implement retention policy for `session_events` (TTL/archive + cleanup task).
 
 ### P1.5 — Monster Catalog & GM Toolkit (new)
@@ -353,3 +353,4 @@ Build a multiplayer session (party) system where:
 - 2026-02-20: Completed SessionView combat-section decomposition by extracting pre-encounter actors board into dedicated component (`PrecombatActorsGrid`), reducing inline page complexity and isolating combat UI blocks.
 - 2026-02-20: Hardened `test-combat-automation.ps1` for auth-gated smoke runs: protected-path preflight now treats 401 without Telegram `initData` as explicit skip/pass, enabling stable `run-smoke.ps1 -RunCombatAutomation` in production probe mode.
 - 2026-02-20: Added idempotent schema-repair migration `20260220170000_repair_sessions_initiative_locked` to backfill missing `sessions.initiative_locked` in drifted local databases and stabilize local smoke/combat test setup.
+- 2026-02-20: Completed mobile ergonomics pass for combat UI (`SessionView`): larger touch targets for control clusters, 2-column combat/precombat grids on small screens, and compact mobile action layouts for monster add and in-card HP controls.

@@ -99,7 +99,7 @@ export function PrecombatActorsGrid({
             <div className="combat-actor-stat">🎲 {monster.initiative ?? '—'}</div>
           </div>
           {isGmViewer && (
-            <div className="inline-row">
+            <div className="inline-row combat-inline-actions">
               <button
                 className="btn btn-secondary"
                 disabled={!hasActiveGm}

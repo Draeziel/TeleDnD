@@ -687,6 +687,10 @@ td {
   gap: 10px;
 }
 
+.combat-controls-card {
+  align-items: stretch;
+}
+
 .combat-head-row h2 {
   margin: 0;
 }
@@ -1061,12 +1065,98 @@ td {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .combat-head-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .combat-head-row .btn-inline {
+    width: 100%;
+    min-height: 38px;
+  }
+
+  .combat-controls-card {
+    padding: 10px;
+  }
+
+  .initiative-controls {
+    gap: 8px;
+  }
+
+  .initiative-controls > span {
+    width: 100%;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .initiative-controls .btn {
+    min-height: 38px;
+  }
+
+  .combat-top-actions .btn {
+    min-height: 38px;
+  }
+
+  .combat-monster-add-row {
+    grid-template-columns: minmax(0, 1fr) 72px 40px;
+    gap: 6px;
+  }
+
+  .combat-monster-add-row select,
+  .combat-monster-add-row input {
+    min-height: 38px;
+  }
+
+  .combat-monster-add-row .btn-icon {
+    width: 40px;
+    height: 40px;
+  }
+
   .combat-actors-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .combat-turn-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .combat-turn-actions {
+    justify-content: flex-end;
+  }
+
+  .combat-turn-actions .btn-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .combat-inline-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .combat-inline-actions .btn {
+    min-height: 36px;
+    padding: 6px 8px;
+  }
+
+  .combat-hp-toggle {
+    min-height: 34px;
+    font-size: 13px;
+  }
+
+  .combat-actor-stat {
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .combat-actor-remove {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
   }
 
   .session-head-row {

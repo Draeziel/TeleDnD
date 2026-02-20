@@ -33,6 +33,33 @@
       "rulesVersion": "v1"
     }
   ],
+  "choices": [
+    {
+      "externalId": "choice.class.barbarian.skill",
+      "sourceType": "class",
+      "sourceExternalId": "class.barbarian",
+      "chooseCount": 1,
+      "options": [
+        { "id": "acrobatics", "name": "Acrobatics" },
+        { "id": "animal_handling", "name": "Animal Handling" },
+        { "id": "athletics", "name": "Athletics" },
+        { "id": "survival", "name": "Survival" }
+      ],
+      "rulesVersion": "v1"
+    },
+    {
+      "externalId": "choice.background.soldier.weapon",
+      "sourceType": "background",
+      "sourceExternalId": "background.soldier",
+      "chooseCount": 1,
+      "options": [
+        { "id": "longsword", "name": "Longsword" },
+        { "id": "battleaxe", "name": "Battleaxe" },
+        { "id": "crossbow", "name": "Crossbow" }
+      ],
+      "rulesVersion": "v1"
+    }
+  ],
   "items": [
     {
       "externalId": "item.longsword",

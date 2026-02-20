@@ -396,3 +396,4 @@ Controls:
 9. Wire dependency constraints into resolver capability output filtering. ✅
 10. Move draft required choice resolution to progression + dependency-aware domain helpers. ✅
 11. Enforce chooseCount and selectedOption consistency in draft domain validation/finalization. ✅
+12. Add importer validation/ingestion for choice nodes with chooseCount constraints. ✅

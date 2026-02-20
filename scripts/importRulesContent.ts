@@ -19,6 +19,23 @@ type FeatureNode = CoreNode & {
   description?: string;
 };
 
+type ChoiceOptionNode =
+  | string
+  | {
+      id: string;
+      name?: string;
+      description?: string;
+    };
+
+type ChoiceNode = {
+  externalId: string;
+  sourceType: 'class' | 'race' | 'background' | 'feature' | 'item' | 'spell';
+  sourceExternalId: string;
+  chooseCount: number;
+  options: ChoiceOptionNode[];
+  rulesVersion?: string;
+};
+
 type ItemNode = CoreNode & {
   description?: string;
   slot?: string;
@@ -78,6 +95,7 @@ type ContentPack = {
   races?: CoreNode[];
   backgrounds?: CoreNode[];
   features?: FeatureNode[];
+  choices?: ChoiceNode[];
   items?: ItemNode[];
   classLevelProgressions?: ClassLevelProgressionNode[];
   actions?: ActionNode[];
@@ -158,6 +176,7 @@ function buildCounts(pack: ContentPack): Record<string, number> {
     races: ensureArray(pack.races).length,
     backgrounds: ensureArray(pack.backgrounds).length,
     features: ensureArray(pack.features).length,
+    choices: ensureArray(pack.choices).length,
     items: ensureArray(pack.items).length,
     classLevelProgressions: ensureArray(pack.classLevelProgressions).length,
     actions: ensureArray(pack.actions).length,
@@ -223,6 +242,7 @@ function validatePack(pack: ContentPack): ImportIssue[] {
   validateExternalIds(ensureArray(pack.races), 'races', issues);
   validateExternalIds(ensureArray(pack.backgrounds), 'backgrounds', issues);
   validateExternalIds(ensureArray(pack.features), 'features', issues);
+  validateExternalIds(ensureArray(pack.choices), 'choices', issues);
   validateExternalIds(ensureArray(pack.items), 'items', issues);
   validateExternalIds(ensureArray(pack.actions), 'actions', issues);
   validateExternalIds(ensureArray(pack.spells), 'spells', issues);
@@ -243,6 +263,68 @@ function validatePack(pack: ContentPack): ImportIssue[] {
         path: `classLevelProgressions[${index}].featureExternalId`,
         rule: 'required_relation_ref',
         reason: 'featureExternalId is required',
+      });
+    }
+  });
+
+  ensureArray(pack.choices).forEach((node, index) => {
+    if (!node.sourceExternalId?.trim()) {
+      issues.push({
+        severity: 'error',
+        path: `choices[${index}].sourceExternalId`,
+        rule: 'required_relation_ref',
+        reason: 'sourceExternalId is required',
+      });
+    }
+
+    if (!Number.isInteger(node.chooseCount) || node.chooseCount <= 0) {
+      issues.push({
+        severity: 'error',
+        path: `choices[${index}].chooseCount`,
+        rule: 'choose_count_positive_int',
+        reason: 'chooseCount must be a positive integer',
+      });
+    }
+
+    if (!Array.isArray(node.options) || node.options.length === 0) {
+      issues.push({
+        severity: 'error',
+        path: `choices[${index}].options`,
+        rule: 'choice_options_non_empty',
+        reason: 'options must be a non-empty array',
+      });
+      return;
+    }
+
+    if (node.chooseCount > node.options.length) {
+      issues.push({
+        severity: 'error',
+        path: `choices[${index}].chooseCount`,
+        rule: 'choose_count_le_options',
+        reason: `chooseCount (${node.chooseCount}) cannot exceed options length (${node.options.length})`,
+      });
+    }
+
+    const optionIds = node.options
+      .map((option) => (typeof option === 'string' ? option : option?.id))
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+
+    if (optionIds.length !== node.options.length) {
+      issues.push({
+        severity: 'error',
+        path: `choices[${index}].options`,
+        rule: 'choice_option_id_required',
+        reason: 'each option must provide a non-empty id (string option or object.id)',
+      });
+      return;
+    }
+
+    if (new Set(optionIds).size !== optionIds.length) {
+      issues.push({
+        severity: 'error',
+        path: `choices[${index}].options`,
+        rule: 'choice_option_id_unique',
+        reason: 'choice option ids must be unique within a choice node',
       });
     }
   });
@@ -291,6 +373,40 @@ async function referenceExists(tx: Prisma.TransactionClient, sourceRef: string):
   ]);
 
   return checks.some((entry) => Boolean(entry));
+}
+
+async function resolveEntityIdBySourceRef(
+  tx: Prisma.TransactionClient,
+  sourceType: ChoiceNode['sourceType'],
+  sourceExternalId: string
+): Promise<string | null> {
+  if (sourceType === 'class') {
+    const row = await tx.class.findFirst({ where: { sourceRef: sourceExternalId }, select: { id: true } });
+    return row?.id || null;
+  }
+
+  if (sourceType === 'race') {
+    const row = await tx.race.findFirst({ where: { sourceRef: sourceExternalId }, select: { id: true } });
+    return row?.id || null;
+  }
+
+  if (sourceType === 'background') {
+    const row = await tx.background.findFirst({ where: { sourceRef: sourceExternalId }, select: { id: true } });
+    return row?.id || null;
+  }
+
+  if (sourceType === 'feature') {
+    const row = await tx.feature.findFirst({ where: { sourceRef: sourceExternalId }, select: { id: true } });
+    return row?.id || null;
+  }
+
+  if (sourceType === 'item') {
+    const row = await tx.item.findFirst({ where: { sourceRef: sourceExternalId }, select: { id: true } });
+    return row?.id || null;
+  }
+
+  const row = await tx.spell.findFirst({ where: { sourceRef: sourceExternalId }, select: { id: true } });
+  return row?.id || null;
 }
 
 function defaultRulesVersion(value: string | undefined): string {
@@ -358,6 +474,7 @@ async function runImport(pack: ContentPack, dryRun: boolean, filePath: string, i
   const races = ensureArray(pack.races);
   const backgrounds = ensureArray(pack.backgrounds);
   const features = ensureArray(pack.features);
+  const choices = ensureArray(pack.choices);
   const items = ensureArray(pack.items);
   const progressions = ensureArray(pack.classLevelProgressions);
   const actions = ensureArray(pack.actions);
@@ -454,6 +571,55 @@ async function runImport(pack: ContentPack, dryRun: boolean, filePath: string, i
         select: { id: true },
       });
       featureIdByExternalId.set(node.externalId, created.id);
+    }
+
+    for (const node of choices) {
+      const sourceId = await resolveEntityIdBySourceRef(tx, node.sourceType, node.sourceExternalId);
+      if (!sourceId) {
+        throw new ImportIssueError({
+          severity: 'error',
+          path: `choices.externalId=${node.externalId}`,
+          rule: 'choice_source_ref_exists',
+          reason: `Unable to resolve sourceExternalId '${node.sourceExternalId}' for sourceType '${node.sourceType}'`,
+        });
+      }
+
+      const optionsJson = node.options as Prisma.InputJsonValue;
+      const existingByRef = await tx.choice.findFirst({ where: { sourceRef: node.externalId } });
+
+      if (existingByRef) {
+        if (existingByRef.sourceType !== node.sourceType || existingByRef.sourceId !== sourceId) {
+          throw new ImportIssueError({
+            severity: 'error',
+            path: `choices.externalId=${node.externalId}`,
+            rule: 'immutable_choice_binding',
+            reason: `Choice '${node.externalId}' is already bound to sourceType='${existingByRef.sourceType}', sourceId='${existingByRef.sourceId}'`,
+          });
+        }
+
+        await tx.choice.update({
+          where: { id: existingByRef.id },
+          data: {
+            chooseCount: node.chooseCount,
+            optionsJson,
+            rulesVersion: defaultRulesVersion(node.rulesVersion),
+            contentSourceId: contentSource.id,
+          },
+        });
+        continue;
+      }
+
+      await tx.choice.create({
+        data: {
+          contentSourceId: contentSource.id,
+          sourceType: node.sourceType,
+          sourceId,
+          chooseCount: node.chooseCount,
+          optionsJson,
+          sourceRef: node.externalId,
+          rulesVersion: defaultRulesVersion(node.rulesVersion),
+        },
+      });
     }
 
     const itemIdByExternalId = new Map<string, string>();
@@ -743,6 +909,7 @@ main()
           races: 0,
           backgrounds: 0,
           features: 0,
+          choices: 0,
           items: 0,
           classLevelProgressions: 0,
           actions: 0,

@@ -14,6 +14,7 @@
     "test:integration:draft": "ts-node tests/integration/draftFinalizeAssemble.test.ts",
     "test:sheet:contract": "ts-node tests/unit/sheetContract.test.ts",
     "test:equipment": "ts-node tests/unit/equipmentProficiency.test.ts",
+    "test:sheet:golden": "ts-node scripts/verifySheetGolden.ts",
     "test:resolver:golden:update": "ts-node scripts/verifyResolverGolden.ts --update",
     "import:rules:dry-run": "ts-node scripts/importRulesContent.ts --dry-run --file content/rules-pack.demo.json",
     "import:rules:ci": "ts-node scripts/importRulesContent.ts --dry-run --strict-warnings --file content/rules-pack.demo.json --report-file .artifacts/import-rules-report.json",

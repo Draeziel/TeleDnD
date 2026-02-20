@@ -377,6 +377,19 @@ if ($Smoke) {
                 Add-SmokeResult "Initiative roll all" $false "POST /api/sessions/:id/initiative/roll-all failed: $($_.Exception.Message)"
             }
 
+            # 9) Golden sheet verification (runs local JS script)
+            try {
+                Write-Host "Running sheet golden verification..." -ForegroundColor Cyan
+                $goldenResult = npm run test:sheet:golden 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                    Add-SmokeResult "Sheet golden verification" $true "npm run test:sheet:golden passed"
+                } else {
+                    Add-SmokeResult "Sheet golden verification" $false "npm run test:sheet:golden failed: $goldenResult"
+                }
+            } catch {
+                Add-SmokeResult "Sheet golden verification" $false "npm run test:sheet:golden execution failed: $($_.Exception.Message)"
+            }
+
             try {
                 $startEncounterResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/encounter/start" `
                     -Method Post `

@@ -158,3 +158,5 @@ export interface DraftResponse {
         options: any;
     }>;
 }
+
+export * from './capabilities';

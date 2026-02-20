@@ -350,7 +350,6 @@ export interface CombatSummary {
   initiativeOrder: string[];
   actors: CombatSummaryActor[];
   snapshotUpdatedAt: string | null;
-  lastEventSeq: string | null;
   pendingReactions: Array<{
     id: string;
     targetType: string;
@@ -359,4 +358,7 @@ export interface CombatSummary {
     status: string;
     deadlineAt: string;
   }>;
+  lastEventSeq: string | null;
 }
+
+export * from './capabilities';

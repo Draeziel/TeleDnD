@@ -76,6 +76,8 @@ export function telegramAuthMiddleware() {
     const isProduction = nodeEnv === 'production';
     const requireAuthEnv = process.env.REQUIRE_TELEGRAM_AUTH;
     const requireAuth = isProduction ? true : (requireAuthEnv ? requireAuthEnv === 'true' : false);
+    const bypassEnabled = process.env.TELEGRAM_BYPASS === 'true';
+    const bypassUserIdEnv = process.env.TELEGRAM_BYPASS_USER_ID || '123456789';
 
     const fallbackEnv = process.env.ALLOW_TELEGRAM_USER_ID_FALLBACK;
     const allowFallback = !isProduction && !requireAuth && fallbackEnv === 'true';
@@ -83,6 +85,21 @@ export function telegramAuthMiddleware() {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const initDataHeader = req.header('x-telegram-init-data');
     const fallbackTelegramUserId = req.header('x-telegram-user-id');
+
+    if (!isProduction && bypassEnabled) {
+      const bypassUserId = fallbackTelegramUserId && /^\d+$/.test(fallbackTelegramUserId)
+        ? fallbackTelegramUserId
+        : bypassUserIdEnv;
+
+      if (!/^\d+$/.test(bypassUserId)) {
+        res.status(500).json({ message: 'TELEGRAM_BYPASS_USER_ID must be numeric when TELEGRAM_BYPASS=true' });
+        return;
+      }
+
+      res.locals.telegramUserId = bypassUserId;
+      next();
+      return;
+    }
 
     const applyFallbackUser = () => {
       if (!requireAuth && allowFallback && fallbackTelegramUserId && /^\d+$/.test(fallbackTelegramUserId)) {

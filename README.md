@@ -91,6 +91,8 @@ Configure environment variables:
 TELEGRAM_BOT_TOKEN=<your_bot_token>
 REQUIRE_TELEGRAM_AUTH=true
 ALLOW_TELEGRAM_USER_ID_FALLBACK=false
+TELEGRAM_BYPASS=false
+TELEGRAM_BYPASS_USER_ID=123456789
 TELEGRAM_INITDATA_MAX_AGE_SEC=86400
 TELEGRAM_ADMIN_IDS=111111111,222222222
 API_RATE_LIMIT_WINDOW_MS=60000
@@ -104,6 +106,8 @@ SESSION_EVENTS_CLEANUP_INTERVAL_MIN=60
 - `TELEGRAM_BOT_TOKEN` – Telegram bot token used for signature verification.
 - `REQUIRE_TELEGRAM_AUTH` – when `true`, protected endpoints reject requests without valid `x-telegram-init-data`. In production, auth is always enforced regardless of this flag.
 - `ALLOW_TELEGRAM_USER_ID_FALLBACK` – allows `x-telegram-user-id` fallback only in non-production mode when `REQUIRE_TELEGRAM_AUTH=false` and this flag is explicitly set to `true`.
+- `TELEGRAM_BYPASS` – dev-only bypass. When `true` and `NODE_ENV!=production`, middleware bypasses Telegram signature validation and sets `telegramUserId` from `x-telegram-user-id` (or fallback `TELEGRAM_BYPASS_USER_ID`).
+- `TELEGRAM_BYPASS_USER_ID` – numeric fallback user id used by `TELEGRAM_BYPASS` when header is absent.
 - `TELEGRAM_INITDATA_MAX_AGE_SEC` – maximum allowed age of `auth_date` in seconds.
 - `TELEGRAM_ADMIN_IDS` – comma-separated Telegram IDs with admin rights for GLOBAL monster catalog management.
 - `API_RATE_LIMIT_WINDOW_MS` – rate-limit window for all `/api/*` routes in milliseconds (default: `60000`).
@@ -122,6 +126,8 @@ Protected groups:
   - `GET /api/characters/backgrounds`
 
 In local/dev mode, set `REQUIRE_TELEGRAM_AUTH=false` and `ALLOW_TELEGRAM_USER_ID_FALLBACK=true` to emulate Telegram user context via `x-telegram-user-id`.
+
+Alternative local/dev mode: set `TELEGRAM_BYPASS=true` (and optional `TELEGRAM_BYPASS_USER_ID`) to bypass signature checks completely outside production.
 
 ### Health Check
 

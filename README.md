@@ -185,6 +185,7 @@ Run smoke against deployed backend with optional SLO thresholds:
 - `GET /api/sessions/:id/summary`: Lightweight polling payload.
 - `GET /api/sessions/:id/events`: Lightweight event feed (supports `?limit=` and cursor `?after=` by `eventSeq`).
 - `GET /api/sessions/:id/combat-summary`: Persisted combat snapshot (initiative order, actors, pending reactions, `lastEventSeq`).
+- `GET /api/sessions/:id/status-templates`: List active status templates available for session GM workflow.
 - `POST /api/sessions/:id/characters`: Attach owned character to session.
 - `DELETE /api/sessions/:id/characters/:characterId`: Remove character from session (owner or GM).
 - `POST /api/sessions/:sessionId/characters/:characterId/set-hp`: GM only.
@@ -279,6 +280,8 @@ Payload expectations by type:
 - `ROLL_INITIATIVE_SELF`: `characterId`
 - `APPLY_CHARACTER_EFFECT`: `characterId`, `effectType`, `duration`, optional `effectPayload`
 - `APPLY_MONSTER_EFFECT`: `monsterId`, `effectType`, `duration`, optional `effectPayload`
+- `APPLY_CHARACTER_EFFECT`: alternatively supports `templateId` (effect type/duration/payload resolved server-side).
+- `APPLY_MONSTER_EFFECT`: alternatively supports `templateId` (effect type/duration/payload resolved server-side).
 - `REMOVE_CHARACTER_EFFECT`: `characterId`, `effectId`
 - `REMOVE_MONSTER_EFFECT`: `monsterId`, `effectId`
 - `OPEN_REACTION_WINDOW`: `targetType` (`character|monster`), `targetRefId`, `reactionType`, optional `ttlSeconds`
@@ -296,6 +299,30 @@ MVP automation: for `effectType = poisoned` backend supports turn-start auto tic
     "save": {
       "ability": "con",
       "dc": 12,
+      "halfOnSave": true
+    }
+  }
+}
+```
+
+Dice-based variant is also supported:
+
+```json
+{
+  "automation": {
+    "kind": "POISON_TICK",
+    "trigger": "TURN_START",
+    "damage": {
+      "mode": "dice",
+      "count": 1,
+      "sides": 6,
+      "bonus": 0
+    },
+    "roundsLeft": 3,
+    "save": {
+      "ability": "con",
+      "dieSides": 12,
+      "threshold": 10,
       "halfOnSave": true
     }
   }

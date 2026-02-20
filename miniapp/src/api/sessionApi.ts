@@ -9,6 +9,7 @@ import type {
   SessionEvent,
   SessionMonster,
   SessionMonsterEffect,
+  StatusTemplate,
 } from '../types/models';
 
 export const sessionApi = {
@@ -45,6 +46,11 @@ export const sessionApi = {
   async getCombatSummary(sessionId: string): Promise<CombatSummary> {
     const { data } = await http.get<CombatSummary>(`/sessions/${sessionId}/combat-summary`);
     return data;
+  },
+
+  async getStatusTemplates(sessionId: string): Promise<StatusTemplate[]> {
+    const { data } = await http.get<{ items: StatusTemplate[] }>(`/sessions/${sessionId}/status-templates`);
+    return Array.isArray(data?.items) ? data.items : [];
   },
 
   async getSessionEvents(sessionId: string, limit = 30, afterEventSeq?: string): Promise<SessionEvent[]> {

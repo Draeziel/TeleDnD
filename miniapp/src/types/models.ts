@@ -197,6 +197,18 @@ export interface SessionMonsterEffect {
   updatedAt: string;
 }
 
+export interface StatusTemplate {
+  id: string;
+  key: string;
+  name: string;
+  effectType: string;
+  defaultDuration: string;
+  payload: Record<string, unknown>;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SessionEvent {
   id: string;
   eventSeq?: string;

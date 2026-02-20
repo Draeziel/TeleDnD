@@ -4,7 +4,7 @@ import { sessionApi } from '../api/sessionApi';
 import { characterApi } from '../api/characterApi';
 import { monsterApi } from '../api/monsterApi';
 import { StatusBox } from '../components/StatusBox';
-import type { CharacterSummary, MonsterTemplate, SessionDetails, SessionSummary, SessionEffect, SessionMonsterEffect, CombatSummary } from '../types/models';
+import type { CharacterSummary, MonsterTemplate, SessionDetails, SessionSummary, SessionEffect, SessionMonsterEffect, CombatSummary, StatusTemplate } from '../types/models';
 import { useTelegram } from '../hooks/useTelegram';
 
 type SessionCharacterView = SessionDetails['characters'][number] & { effectsCount?: number };
@@ -39,7 +39,9 @@ export function SessionViewPage() {
   const [session, setSession] = useState<SessionViewModel | null>(null);
   const [myCharacters, setMyCharacters] = useState<CharacterSummary[]>([]);
   const [monsterTemplates, setMonsterTemplates] = useState<MonsterTemplate[]>([]);
+  const [statusTemplates, setStatusTemplates] = useState<StatusTemplate[]>([]);
   const [selectedMonsterTemplateId, setSelectedMonsterTemplateId] = useState('');
+  const [selectedStatusTemplateId, setSelectedStatusTemplateId] = useState('');
   const [monsterQuantity, setMonsterQuantity] = useState(1);
   const [addingMonsters, setAddingMonsters] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -133,7 +135,35 @@ export function SessionViewPage() {
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
   };
 
-  const buildEffectPayload = (effectType: string, duration: string): Record<string, unknown> => {
+  const applyDurationToPayload = (payload: Record<string, unknown>, duration: string): Record<string, unknown> => {
+    const rounds = parseRoundsFromDuration(duration);
+    if (!rounds) {
+      return payload;
+    }
+
+    const automation = payload.automation;
+    if (!automation || typeof automation !== 'object' || Array.isArray(automation)) {
+      return payload;
+    }
+
+    return {
+      ...payload,
+      automation: {
+        ...(automation as Record<string, unknown>),
+        roundsLeft: rounds,
+      },
+    };
+  };
+
+  const buildEffectPayload = (
+    effectType: string,
+    duration: string,
+    selectedTemplate?: StatusTemplate | null
+  ): Record<string, unknown> => {
+    if (selectedTemplate?.payload && typeof selectedTemplate.payload === 'object') {
+      return applyDurationToPayload({ ...selectedTemplate.payload }, duration);
+    }
+
     const normalized = normalizeStatusKey(effectType);
     const isPoison = normalized === 'poisoned'
       || normalized === 'poisoneded'
@@ -147,19 +177,25 @@ export function SessionViewPage() {
 
     const roundsLeft = parseRoundsFromDuration(duration) ?? 3;
 
-    return {
+    return applyDurationToPayload({
       automation: {
         kind: 'POISON_TICK',
         trigger: 'TURN_START',
-        damagePerTick: 1,
+        damage: {
+          mode: 'dice',
+          count: 1,
+          sides: 6,
+          bonus: 0,
+        },
         roundsLeft,
         save: {
           ability: 'con',
-          dc: 12,
+          dieSides: 12,
+          threshold: 10,
           halfOnSave: true,
         },
       },
-    };
+    }, duration);
   };
 
   const renderStatusDots = (effects: Array<SessionEffect | SessionMonsterEffect>) => {
@@ -470,6 +506,22 @@ export function SessionViewPage() {
     }
   };
 
+  const loadStatusTemplates = async () => {
+    try {
+      const items = await sessionApi.getStatusTemplates(id);
+      setStatusTemplates(items);
+      setSelectedStatusTemplateId((prev) => {
+        if (prev && items.some((item) => item.id === prev)) {
+          return prev;
+        }
+
+        return items[0]?.id || '';
+      });
+    } catch (unknownError) {
+      setError(formatErrorMessage('Не удалось загрузить шаблоны статусов', unknownError));
+    }
+  };
+
   const createIdempotencyKey = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
   const shouldFallbackToLegacy = (unknownError: unknown) => {
@@ -526,6 +578,7 @@ export function SessionViewPage() {
     load();
     loadMyCharacters();
     loadMonsterTemplates();
+    loadStatusTemplates();
   }, [id]);
 
   useEffect(() => {
@@ -913,9 +966,10 @@ export function SessionViewPage() {
       | { kind: 'monster'; monsterId: string; name: string },
     panelKey: string
   ) => {
-    const effectType = effectTypeInput.trim();
-    const duration = effectDurationInput.trim() || '1 раунд';
-    const effectPayload = buildEffectPayload(effectType, duration);
+    const selectedTemplate = statusTemplates.find((item) => item.id === selectedStatusTemplateId) || null;
+    const effectType = (effectTypeInput.trim() || selectedTemplate?.effectType || '').trim();
+    const duration = (effectDurationInput.trim() || selectedTemplate?.defaultDuration || '1 раунд').trim();
+    const effectPayload = buildEffectPayload(effectType, duration, selectedTemplate);
 
     if (!effectType) {
       notify('error', 'Укажите тип эффекта');
@@ -929,6 +983,7 @@ export function SessionViewPage() {
           'APPLY_CHARACTER_EFFECT',
           {
             characterId: target.characterId,
+            ...(selectedTemplate ? { templateId: selectedTemplate.id } : {}),
             effectType,
             duration,
             effectPayload,
@@ -940,6 +995,7 @@ export function SessionViewPage() {
           'APPLY_MONSTER_EFFECT',
           {
             monsterId: target.monsterId,
+            ...(selectedTemplate ? { templateId: selectedTemplate.id } : {}),
             effectType,
             duration,
             effectPayload,
@@ -950,7 +1006,7 @@ export function SessionViewPage() {
       await load();
       notify('success', `Эффект ${effectType} применён к ${target.name}`);
       setEffectTypeInput('');
-      setEffectDurationInput('1 раунд');
+      setEffectDurationInput(selectedTemplate?.defaultDuration || '1 раунд');
     } catch (unknownError) {
       notify('error', formatErrorMessage('Не удалось применить эффект (нужна роль GM)', unknownError));
     } finally {
@@ -1550,12 +1606,53 @@ export function SessionViewPage() {
                       </div>
 
                       <div className="status-preset-row">
+                        <select
+                          value={selectedStatusTemplateId}
+                          disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm}
+                          onChange={(event) => {
+                            const nextId = event.target.value;
+                            setSelectedStatusTemplateId(nextId);
+                            const selectedTemplate = statusTemplates.find((item) => item.id === nextId);
+                            if (selectedTemplate) {
+                              setEffectTypeInput(selectedTemplate.effectType);
+                              setEffectDurationInput(selectedTemplate.defaultDuration);
+                            }
+                          }}
+                        >
+                          <option value="">Шаблон статуса</option>
+                          {statusTemplates.map((template) => (
+                            <option key={template.id} value={template.id}>
+                              {template.name}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedStatusTemplateId && (
+                          <button
+                            className="btn btn-secondary btn-compact"
+                            disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm}
+                            onClick={() => {
+                              const selectedTemplate = statusTemplates.find((item) => item.id === selectedStatusTemplateId);
+                              if (!selectedTemplate) {
+                                return;
+                              }
+
+                              setEffectTypeInput(selectedTemplate.effectType);
+                              setEffectDurationInput(selectedTemplate.defaultDuration);
+                            }}
+                          >
+                            Применить шаблон
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="status-preset-row">
                         {STATUS_PRESETS.map((preset) => (
                           <button
                             key={preset.key}
                             className={`btn btn-secondary btn-compact status-preset-btn ${STATUS_COLOR_BY_KEY[preset.key] || ''}`}
                             disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm}
                             onClick={() => {
+                              setSelectedStatusTemplateId('');
                               setEffectTypeInput(preset.key);
                               setEffectDurationInput((current) => current.trim() ? current : preset.defaultDuration);
                             }}

@@ -30,6 +30,7 @@ type CombatActionPayload = {
   tempHp?: number | null;
   effectType?: string;
   effectId?: string;
+  templateId?: string;
   duration?: string;
   effectPayload?: Record<string, unknown>;
   reactionId?: string;
@@ -528,6 +529,61 @@ export class SessionService {
       || normalized === 'яд';
   }
 
+  private resolvePoisonDamageConfig(automationRecord: Record<string, unknown>) {
+    const rawDamage = automationRecord.damage && typeof automationRecord.damage === 'object' && !Array.isArray(automationRecord.damage)
+      ? automationRecord.damage as Record<string, unknown>
+      : null;
+
+    const mode = String(rawDamage?.mode || '').toLowerCase();
+    if (mode === 'dice') {
+      const count = Math.min(Math.max(this.parsePositiveInteger(rawDamage?.count) ?? 1, 1), 20);
+      const sides = Math.min(Math.max(this.parsePositiveInteger(rawDamage?.sides) ?? 6, 2), 100);
+      const parsedBonus = Number(rawDamage?.bonus ?? 0);
+      const bonus = Number.isInteger(parsedBonus) ? Math.min(Math.max(parsedBonus, -100), 100) : 0;
+
+      return {
+        mode: 'dice' as const,
+        count,
+        sides,
+        bonus,
+      };
+    }
+
+    const flat = Math.min(Math.max(this.parsePositiveInteger(automationRecord.damagePerTick) ?? 1, 1), 50);
+    return {
+      mode: 'flat' as const,
+      value: flat,
+    };
+  }
+
+  private rollDamage(config: { mode: 'flat'; value: number } | { mode: 'dice'; count: number; sides: number; bonus: number }) {
+    if (config.mode === 'flat') {
+      return {
+        baseDamage: config.value,
+        details: {
+          mode: 'flat',
+          value: config.value,
+        },
+      };
+    }
+
+    const rolls = Array.from({ length: config.count }).map(() => crypto.randomInt(1, config.sides + 1));
+    const sum = rolls.reduce((acc, item) => acc + item, 0);
+    const baseDamage = Math.max(sum + config.bonus, 0);
+
+    return {
+      baseDamage,
+      details: {
+        mode: 'dice',
+        count: config.count,
+        sides: config.sides,
+        bonus: config.bonus,
+        rolls,
+        totalBeforeClamp: sum + config.bonus,
+      },
+    };
+  }
+
   private normalizePoisonEffectPayload(
     effectType: string,
     duration: string,
@@ -546,22 +602,39 @@ export class SessionService {
       : {};
 
     const defaultRounds = this.parseDurationRounds(duration) ?? 3;
-    const damagePerTick = Math.min(Math.max(this.parsePositiveInteger(automationRecord.damagePerTick) ?? 1, 1), 50);
+    const damageConfig = this.resolvePoisonDamageConfig(automationRecord);
     const roundsLeft = Math.min(Math.max(this.parsePositiveInteger(automationRecord.roundsLeft) ?? defaultRounds, 1), 20);
     const saveRecord = automationRecord.save && typeof automationRecord.save === 'object' && !Array.isArray(automationRecord.save)
       ? automationRecord.save as Record<string, unknown>
       : {};
-    const saveDc = Math.min(Math.max(this.parsePositiveInteger(saveRecord.dc) ?? 12, 1), 30);
+    const saveThreshold = Math.min(
+      Math.max(this.parsePositiveInteger(saveRecord.threshold ?? saveRecord.dc) ?? 12, 1),
+      30
+    );
+    const saveDieSides = Math.min(Math.max(this.parsePositiveInteger(saveRecord.dieSides) ?? 20, 2), 100);
     const halfOnSave = saveRecord.halfOnSave === undefined ? true : Boolean(saveRecord.halfOnSave);
 
     payloadRecord.automation = {
       kind: 'POISON_TICK',
       trigger: 'TURN_START',
-      damagePerTick,
+      ...(damageConfig.mode === 'dice'
+        ? {
+            damage: {
+              mode: 'dice',
+              count: damageConfig.count,
+              sides: damageConfig.sides,
+              bonus: damageConfig.bonus,
+            },
+          }
+        : {
+            damagePerTick: damageConfig.value,
+          }),
       roundsLeft,
       save: {
         ability: 'con',
-        dc: saveDc,
+        dieSides: saveDieSides,
+        threshold: saveThreshold,
+        dc: saveThreshold,
         halfOnSave,
       },
     };
@@ -573,7 +646,13 @@ export class SessionService {
     effectType: string,
     duration: string,
     payload: Prisma.JsonValue
-  ): { damagePerTick: number; roundsLeft: number; saveDc: number; halfOnSave: boolean } | null {
+  ): {
+    damage: { mode: 'flat'; value: number } | { mode: 'dice'; count: number; sides: number; bonus: number };
+    roundsLeft: number;
+    saveThreshold: number;
+    saveDieSides: number;
+    halfOnSave: boolean;
+  } | null {
     const payloadRecord = payload && typeof payload === 'object' && !Array.isArray(payload)
       ? payload as Record<string, unknown>
       : {};
@@ -594,18 +673,23 @@ export class SessionService {
     }
 
     const defaultRounds = this.parseDurationRounds(duration) ?? 1;
-    const damagePerTick = Math.min(Math.max(this.parsePositiveInteger(automationRecord.damagePerTick) ?? 1, 1), 50);
+    const damage = this.resolvePoisonDamageConfig(automationRecord);
     const roundsLeft = Math.min(Math.max(this.parsePositiveInteger(automationRecord.roundsLeft) ?? defaultRounds, 1), 20);
     const saveRecord = automationRecord.save && typeof automationRecord.save === 'object' && !Array.isArray(automationRecord.save)
       ? automationRecord.save as Record<string, unknown>
       : {};
-    const saveDc = Math.min(Math.max(this.parsePositiveInteger(saveRecord.dc) ?? 12, 1), 30);
+    const saveThreshold = Math.min(
+      Math.max(this.parsePositiveInteger(saveRecord.threshold ?? saveRecord.dc) ?? 12, 1),
+      30
+    );
+    const saveDieSides = Math.min(Math.max(this.parsePositiveInteger(saveRecord.dieSides) ?? 20, 2), 100);
     const halfOnSave = saveRecord.halfOnSave === undefined ? true : Boolean(saveRecord.halfOnSave);
 
     return {
-      damagePerTick,
+      damage,
       roundsLeft,
-      saveDc,
+      saveThreshold,
+      saveDieSides,
       halfOnSave,
     };
   }
@@ -670,13 +754,14 @@ export class SessionService {
           continue;
         }
 
-        const saveRoll = this.rollD20();
+        const saveRoll = crypto.randomInt(1, rule.saveDieSides + 1);
         const saveModifier = this.abilityScoreToModifier(sessionCharacter.character.abilityScores?.con);
         const saveTotal = saveRoll + saveModifier;
-        const savePassed = saveTotal >= rule.saveDc;
+        const savePassed = saveTotal >= rule.saveThreshold;
+        const damageRoll = this.rollDamage(rule.damage);
         const adjustedDamage = savePassed
-          ? (rule.halfOnSave ? Math.floor(rule.damagePerTick / 2) : 0)
-          : rule.damagePerTick;
+          ? (rule.halfOnSave ? Math.floor(damageRoll.baseDamage / 2) : 0)
+          : damageRoll.baseDamage;
 
         const nextHp = Math.max(currentHp - adjustedDamage, 0);
         const appliedDamage = Math.max(currentHp - nextHp, 0);
@@ -723,9 +808,15 @@ export class SessionService {
             effectId: effect.id,
             effectType: effect.effectType,
             appliedDamage,
+            damage: {
+              ...damageRoll.details,
+              baseDamage: damageRoll.baseDamage,
+            },
             save: {
               ability: 'con',
-              dc: rule.saveDc,
+              dieSides: rule.saveDieSides,
+              threshold: rule.saveThreshold,
+              dc: rule.saveThreshold,
               roll: saveRoll,
               modifier: saveModifier,
               total: saveTotal,
@@ -785,13 +876,14 @@ export class SessionService {
         continue;
       }
 
-      const saveRoll = this.rollD20();
+      const saveRoll = crypto.randomInt(1, rule.saveDieSides + 1);
       const saveModifier = this.abilityScoreToModifier(sessionMonster.monsterTemplate?.constitution);
       const saveTotal = saveRoll + saveModifier;
-      const savePassed = saveTotal >= rule.saveDc;
+      const savePassed = saveTotal >= rule.saveThreshold;
+      const damageRoll = this.rollDamage(rule.damage);
       const adjustedDamage = savePassed
-        ? (rule.halfOnSave ? Math.floor(rule.damagePerTick / 2) : 0)
-        : rule.damagePerTick;
+        ? (rule.halfOnSave ? Math.floor(damageRoll.baseDamage / 2) : 0)
+        : damageRoll.baseDamage;
 
       const nextHp = Math.max(currentHp - adjustedDamage, 0);
       const appliedDamage = Math.max(currentHp - nextHp, 0);
@@ -838,9 +930,15 @@ export class SessionService {
           effectId: effect.id,
           effectType: effect.effectType,
           appliedDamage,
+          damage: {
+            ...damageRoll.details,
+            baseDamage: damageRoll.baseDamage,
+          },
           save: {
             ability: 'con',
-            dc: rule.saveDc,
+            dieSides: rule.saveDieSides,
+            threshold: rule.saveThreshold,
+            dc: rule.saveThreshold,
             roll: saveRoll,
             modifier: saveModifier,
             total: saveTotal,
@@ -905,6 +1003,44 @@ export class SessionService {
     }
 
     return sessionMonster;
+  }
+
+  private async resolveEffectInput(
+    templateId: string | undefined,
+    effectType: string | undefined,
+    duration: string | undefined,
+    effectPayload: Prisma.InputJsonValue
+  ) {
+    if (templateId && templateId.trim()) {
+      const template = await this.prisma.statusTemplate.findFirst({
+        where: {
+          id: templateId.trim(),
+          isActive: true,
+        },
+      });
+
+      if (!template) {
+        throw new Error('Validation: status template not found');
+      }
+
+      return {
+        effectType: template.effectType,
+        duration: duration && duration.trim() ? duration : template.defaultDuration,
+        payload: (effectPayload && typeof effectPayload === 'object' && !Array.isArray(effectPayload) && Object.keys(effectPayload as Record<string, unknown>).length > 0)
+          ? effectPayload
+          : (template.payload as Prisma.InputJsonValue),
+      };
+    }
+
+    if (!effectType || !duration) {
+      throw new Error('Validation: effectType and duration are required');
+    }
+
+    return {
+      effectType,
+      duration,
+      payload: effectPayload,
+    };
   }
 
   private normalizeJoinCode(joinCode: string): string {
@@ -1629,6 +1765,32 @@ export class SessionService {
     }
 
     return this.getSessionEvents(sessionId, safeLimit, parsedAfter);
+  }
+
+  async getStatusTemplates(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionMember(sessionId, user.id);
+
+    const templates = await this.prisma.statusTemplate.findMany({
+      where: {
+        isActive: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    return templates.map((template) => ({
+      id: template.id,
+      key: template.key,
+      name: template.name,
+      effectType: template.effectType,
+      defaultDuration: template.defaultDuration,
+      payload: template.payload,
+      isActive: template.isActive,
+      createdAt: template.createdAt,
+      updatedAt: template.updatedAt,
+    }));
   }
 
   async getCombatSummary(sessionId: string, telegramUserId: string) {
@@ -2945,30 +3107,44 @@ export class SessionService {
       } else if (actionType === 'RESET_INITIATIVE') {
         result = await this.resetSessionInitiative(sessionId, telegramUserId);
       } else if (actionType === 'APPLY_CHARACTER_EFFECT') {
-        if (!payload.characterId || !payload.effectType || !payload.duration) {
-          throw new Error('Validation: characterId, effectType, duration are required');
+        if (!payload.characterId) {
+          throw new Error('Validation: characterId is required');
         }
+
+        const resolvedEffect = await this.resolveEffectInput(
+          payload.templateId,
+          payload.effectType,
+          payload.duration,
+          (payload.effectPayload || {}) as Prisma.InputJsonValue
+        );
 
         result = await this.applySessionCharacterEffect(
           sessionId,
           payload.characterId,
           telegramUserId,
+          resolvedEffect.effectType,
+          resolvedEffect.duration,
+          resolvedEffect.payload
+        );
+      } else if (actionType === 'APPLY_MONSTER_EFFECT') {
+        if (!payload.monsterId) {
+          throw new Error('Validation: monsterId is required');
+        }
+
+        const resolvedEffect = await this.resolveEffectInput(
+          payload.templateId,
           payload.effectType,
           payload.duration,
           (payload.effectPayload || {}) as Prisma.InputJsonValue
         );
-      } else if (actionType === 'APPLY_MONSTER_EFFECT') {
-        if (!payload.monsterId || !payload.effectType || !payload.duration) {
-          throw new Error('Validation: monsterId, effectType, duration are required');
-        }
 
         result = await this.applySessionMonsterEffect(
           sessionId,
           payload.monsterId,
           telegramUserId,
-          payload.effectType,
-          payload.duration,
-          (payload.effectPayload || {}) as Prisma.InputJsonValue
+          resolvedEffect.effectType,
+          resolvedEffect.duration,
+          resolvedEffect.payload
         );
       } else if (actionType === 'REMOVE_CHARACTER_EFFECT') {
         if (!payload.characterId || !payload.effectId) {

@@ -17,6 +17,8 @@ model ContentSource {
   backgrounds Background[]
   items    Item[]
   skills   Skill[]
+  actions  Action[]
+  spells   Spell[]
 
   @@map("content_sources")
 }
@@ -27,6 +29,7 @@ model Class {
   contentSourceId String
   contentSource   ContentSource       @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
   classFeatures   ClassFeature[]
+  levelProgressions ClassLevelProgression[]
   savingThrowProficiencies ClassSavingThrowProficiency[]
   characters      Character[]
   drafts          CharacterDraft[]
@@ -53,10 +56,14 @@ model Feature {
   name               String             @unique
   description        String?
   contentSourceId    String
+  rulesVersion       String             @default("v1")
+  sourceRef          String?
   contentSource      ContentSource      @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
   classFeatures      ClassFeature[]
+  classLevelProgressions ClassLevelProgression[]
   raceFeatures       RaceFeature[]
   backgroundFeatures BackgroundFeature[]
+  actions            Action[]
 
   @@map("features")
 }
@@ -73,9 +80,43 @@ model ClassFeature {
   @@map("class_features")
 }
 
+model ClassLevelProgression {
+  id        String  @id @default(uuid())
+  classId   String
+  level     Int
+  featureId String
+  class     Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  feature   Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, level, featureId])
+  @@index([classId, level])
+  @@map("class_level_progressions")
+}
+
+model Action {
+  id              String        @id @default(uuid())
+  name            String
+  description     String?
+  contentSourceId String
+  featureId       String?
+  rulesVersion    String        @default("v1")
+  sourceRef       String?
+  payloadType     String
+  payloadJson     Json
+  triggerJson     Json?
+  contentSource   ContentSource @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  feature         Feature?      @relation(fields: [featureId], references: [id], onDelete: SetNull)
+
+  @@index([featureId])
+  @@index([payloadType])
+  @@map("actions")
+}
+
 model Choice {
   id                    String                @id @default(uuid())
   contentSourceId       String
+  rulesVersion          String                @default("v1")
+  sourceRef             String?
   contentSource         ContentSource         @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
   sourceType            String
   sourceId              String
@@ -104,8 +145,16 @@ model Item {
   name            String         @unique
   description     String?
   slot            String?
+  weaponCategory  String?
+  attackAbility   String?
+  damageFormula   String?
+  proficiencyRequirements Json?
+  armorType       String?
+  rulesVersion    String         @default("v1")
+  sourceRef       String?
   contentSourceId String
   contentSource   ContentSource  @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  spells          Spell[]
   characterItems  CharacterItem[]
 
   @@map("items")
@@ -185,10 +234,31 @@ model Modifier {
   targetKey  String?
   operation  String
   value      Int?
+  rulesVersion String @default("v1")
+  sourceRef  String?
   createdAt  DateTime @default(now())
 
   @@index([sourceType, sourceId], name: "modifiers_source_idx")
   @@map("modifiers")
+}
+
+model Spell {
+  id              String        @id @default(uuid())
+  name            String        @unique
+  description     String?
+  level           Int?
+  school          String?
+  itemId          String?
+  contentSourceId String
+  rulesVersion    String        @default("v1")
+  sourceRef       String?
+  payloadType     String        @default("CUSTOM")
+  payloadJson     Json?
+  contentSource   ContentSource @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  item            Item?         @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@index([itemId])
+  @@map("spells")
 }
 
 model BackgroundFeature {

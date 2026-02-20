@@ -1,7 +1,7 @@
 # Character Rules Graph Overhaul Roadmap
 
 **Last Updated**: 2026-02-20  
-**Status**: Planned, execution-ready  
+**Status**: In progress (Phase 1 foundation started)  
 **Scope**: Backend/domain architecture and data pipeline only (no UI redesign in this stream)
 
 ---
@@ -387,6 +387,6 @@ Controls:
 
 1. ADR accepted: [docs/adr/0001-rules-graph-capability-contract.md](docs/adr/0001-rules-graph-capability-contract.md).
 2. Define resolver DTO types in backend and miniapp shared contracts (including capability type + timing + trigger block + payloadType + executionIntent).
-3. Draft Prisma model diff for progression/action/spell/item metadata.
-4. Prepare first non-destructive migration.
+3. Draft Prisma model diff for progression/action/spell/item metadata. ✅
+4. Prepare first non-destructive migration. ✅
 5. Add initial golden test fixtures (Barbarian level 1, Bard level 1).

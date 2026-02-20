@@ -26,7 +26,8 @@ export function SessionViewPage() {
   const [attachingId, setAttachingId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removingMonsterId, setRemovingMonsterId] = useState<string | null>(null);
-  const [rollingAll, setRollingAll] = useState(false);
+  const [rollingCharacters, setRollingCharacters] = useState(false);
+  const [rollingMonsters, setRollingMonsters] = useState(false);
   const [rollingSelfId, setRollingSelfId] = useState<string | null>(null);
   const [initiativeActionLoading, setInitiativeActionLoading] = useState(false);
   const [encounterActionLoading, setEncounterActionLoading] = useState(false);
@@ -292,16 +293,29 @@ export function SessionViewPage() {
     }
   };
 
+  const onRollInitiativeCharacters = async () => {
+    try {
+      setRollingCharacters(true);
+      const result = await sessionApi.rollInitiativeCharacters(id);
+      await load();
+      notify('success', `Инициатива брошена для ${result.rolledCount} персонажей`);
+    } catch (unknownError) {
+      notify('error', formatErrorMessage('Не удалось выполнить бросок инициативы для персонажей (нужна роль GM)', unknownError));
+    } finally {
+      setRollingCharacters(false);
+    }
+  };
+
   const onRollInitiativeMonsters = async () => {
     try {
-      setRollingAll(true);
+      setRollingMonsters(true);
       const result = await sessionApi.rollInitiativeMonsters(id);
       await load();
       notify('success', `Инициатива брошена для ${result.rolledCount} монстров`);
     } catch (unknownError) {
       notify('error', formatErrorMessage('Не удалось выполнить бросок инициативы для монстров (нужна роль GM)', unknownError));
     } finally {
-      setRollingAll(false);
+      setRollingMonsters(false);
     }
   };
 
@@ -600,11 +614,19 @@ export function SessionViewPage() {
                 </button>
                 <button
                   className="btn btn-compact btn-secondary"
-                  disabled={rollingAll || !session.hasActiveGm || session.initiativeLocked}
+                  disabled={rollingCharacters || rollingMonsters || !session.hasActiveGm || session.initiativeLocked}
+                  aria-label="Бросок инициативы для персонажей"
+                  onClick={onRollInitiativeCharacters}
+                >
+                  {rollingCharacters ? '🎲…' : '🎲🧑'}
+                </button>
+                <button
+                  className="btn btn-compact btn-secondary"
+                  disabled={rollingCharacters || rollingMonsters || !session.hasActiveGm || session.initiativeLocked}
                   aria-label="Бросок инициативы для монстров"
                   onClick={onRollInitiativeMonsters}
                 >
-                  {rollingAll ? '🎲…' : '🎲👾'}
+                  {rollingMonsters ? '🎲…' : '🎲👾'}
                 </button>
                 <button
                   className="btn btn-compact btn-secondary"

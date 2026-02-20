@@ -1168,6 +1168,73 @@ export class SessionService {
     };
   }
 
+  async rollInitiativeForCharacters(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+    await this.ensureInitiativeUnlocked(sessionId);
+
+    const sessionCharacters = await this.prisma.sessionCharacter.findMany({
+      where: { sessionId },
+      include: {
+        character: {
+          select: {
+            id: true,
+            name: true,
+            abilityScores: {
+              select: {
+                dex: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    const updates = await Promise.all(
+      sessionCharacters.map(async (sessionCharacter) => {
+        const roll = this.rollD20();
+        const dexModifier = this.dexScoreToModifier(sessionCharacter.character.abilityScores?.dex);
+        const initiative = roll + dexModifier;
+        this.validateInitiative(initiative);
+
+        await this.prisma.sessionCharacterState.upsert({
+          where: {
+            sessionCharacterId: sessionCharacter.id,
+          },
+          update: {
+            initiative,
+          },
+          create: {
+            sessionCharacterId: sessionCharacter.id,
+            currentHp: 1,
+            maxHpSnapshot: 1,
+            initiative,
+          },
+        });
+
+        return {
+          sessionCharacterId: sessionCharacter.id,
+          characterId: sessionCharacter.character.id,
+          characterName: sessionCharacter.character.name,
+          roll,
+          dexModifier,
+          initiative,
+        };
+      })
+    );
+
+    await this.addSessionEvent(sessionId, 'initiative_rolled_characters', 'ГМ выполнил бросок инициативы только для персонажей', telegramUserId);
+    await this.syncEncounterTurnPointer(sessionId);
+
+    return {
+      updates,
+      rolledCount: updates.length,
+    };
+  }
+
   async rollInitiativeForMonsters(sessionId: string, telegramUserId: string) {
     const user = await this.resolveUserByTelegramId(telegramUserId);
     await this.requireSessionGM(sessionId, user.id);

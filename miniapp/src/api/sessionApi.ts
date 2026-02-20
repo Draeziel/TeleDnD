@@ -154,6 +154,31 @@ export const sessionApi = {
     };
   },
 
+  async rollInitiativeCharacters(sessionId: string): Promise<{
+    updates: Array<{
+      sessionCharacterId: string;
+      characterId: string;
+      characterName: string;
+      roll: number;
+      dexModifier: number;
+      initiative: number;
+    }>;
+    rolledCount: number;
+  }> {
+    const { data } = await http.post(`/sessions/${sessionId}/initiative/roll-characters`);
+    return data as {
+      updates: Array<{
+        sessionCharacterId: string;
+        characterId: string;
+        characterName: string;
+        roll: number;
+        dexModifier: number;
+        initiative: number;
+      }>;
+      rolledCount: number;
+    };
+  },
+
   async rollInitiativeSelf(sessionId: string, characterId: string): Promise<{
     sessionCharacterId: string;
     characterId: string;

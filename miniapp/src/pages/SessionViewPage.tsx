@@ -14,10 +14,10 @@ type SessionViewModel = Omit<SessionDetails, 'characters'> & {
 };
 
 const STATUS_COLOR_BY_KEY: Record<string, string> = {
-  poisoned: 'status-dot-poisoned',
-  poisoneded: 'status-dot-poisoned',
-  cursed: 'status-dot-cursed',
-  stunned: 'status-dot-stunned',
+  poisoned: 'status-badge-poisoned',
+  poisoneded: 'status-badge-poisoned',
+  cursed: 'status-badge-cursed',
+  stunned: 'status-badge-stunned',
 };
 
 export function SessionViewPage() {
@@ -105,10 +105,40 @@ export function SessionViewPage() {
 
   const normalizeStatusKey = (effectType: string) => effectType.trim().toLowerCase();
 
-  const getStatusDotClassName = (effectType: string) => {
+  const getStatusBadgeClassName = (effectType: string) => {
     const normalized = normalizeStatusKey(effectType);
     const colorClass = STATUS_COLOR_BY_KEY[normalized] || '';
-    return colorClass ? `status-dot ${colorClass}` : 'status-dot';
+    return colorClass ? `status-badge ${colorClass}` : 'status-badge';
+  };
+
+  const getStatusShortLabel = (effect: SessionEffect | SessionMonsterEffect) => {
+    const payload = effect.payload && typeof effect.payload === 'object'
+      ? effect.payload as Record<string, unknown>
+      : null;
+    const meta = payload?.meta && typeof payload.meta === 'object'
+      ? payload.meta as Record<string, unknown>
+      : null;
+    const templateLabel = String(meta?.shortLabel || '').trim();
+    if (templateLabel) {
+      return templateLabel.slice(0, 6).toUpperCase();
+    }
+
+    const normalized = normalizeStatusKey(effect.effectType);
+    if (normalized.includes('poison') || normalized.includes('отрав') || normalized === 'яд') return 'ЯД';
+    if (normalized.includes('burn') || normalized.includes('огон') || normalized.includes('ожог') || normalized.includes('fire')) return 'ОГН';
+    if (normalized.includes('curse') || normalized.includes('прокл')) return 'ПРК';
+    if (normalized.includes('stun') || normalized.includes('оглуш')) return 'ОГЛ';
+    if (normalized.includes('slow') || normalized.includes('замед')) return 'ЗАМ';
+
+    const words = effect.effectType
+      .replace(/[_-]+/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean);
+    if (words.length >= 2) {
+      return `${words[0][0] || ''}${words[1][0] || ''}`.toUpperCase();
+    }
+
+    return (effect.effectType.slice(0, 3) || 'СТ').toUpperCase();
   };
 
   const parseRoundsFromDuration = (duration: string) => {
@@ -209,16 +239,16 @@ export function SessionViewPage() {
     return details;
   };
 
-  const renderStatusDots = (effects: Array<SessionEffect | SessionMonsterEffect>) => {
+  const renderStatusBadges = (effects: Array<SessionEffect | SessionMonsterEffect>) => {
     const visible = effects.slice(0, 3);
 
     if (visible.length === 0) {
-      return <span className="status-dot muted">•</span>;
+      return <span className="status-badge muted">—</span>;
     }
 
     return visible.map((effect) => (
-      <span key={effect.id} className={getStatusDotClassName(effect.effectType)} title={`${effect.effectType} (${effect.duration})`}>
-        {effect.effectType.slice(0, 1).toUpperCase()}
+      <span key={effect.id} className={getStatusBadgeClassName(effect.effectType)} title={`${effect.effectType} (${effect.duration})`}>
+        {getStatusShortLabel(effect)}
       </span>
     ));
   };
@@ -1381,13 +1411,14 @@ export function SessionViewPage() {
               <div className="combat-actors-grid">
                 {session.characters.map((entry) => (
                   <div className="combat-actor-card combat-actor-character" key={`precombat-character-${entry.id}`}>
-                    <span className="combat-actor-badge character">ПЕРС</span>
-                    <div className="combat-actor-title">{entry.character.name}</div>
-                    <div className="character-tile-statuses">{renderStatusDots(entry.effects || [])}</div>
+                    <div className="combat-actor-namebar">{entry.character.name}</div>
                     <div className="combat-actor-icon">{getAvatarInitials(entry.character.name)}</div>
-                    <div className="combat-actor-meta">❤️ {entry.state?.currentHp ?? 0} / {entry.state?.maxHpSnapshot ?? '—'}</div>
-                    <div className="combat-actor-meta">🛡 {characterArmorClass[entry.character.id] ?? '—'}</div>
-                    <div className="combat-actor-meta">🎲 {entry.state?.initiative ?? '—'}</div>
+                    <div className="character-tile-statuses">{renderStatusBadges(entry.effects || [])}</div>
+                    <div className="combat-actor-stats-row">
+                      <div className="combat-actor-stat">❤️ {entry.state?.currentHp ?? 0} / {entry.state?.maxHpSnapshot ?? '—'}</div>
+                      <div className="combat-actor-stat">🎲 {entry.state?.initiative ?? '—'}</div>
+                      <div className="combat-actor-stat">🛡 {characterArmorClass[entry.character.id] ?? '—'}</div>
+                    </div>
                     <button
                       className="btn btn-danger btn-icon combat-actor-remove"
                       aria-label={`Удалить ${entry.character.name}`}
@@ -1401,17 +1432,18 @@ export function SessionViewPage() {
 
                 {session.monsters.map((monster) => (
                   <div className="combat-actor-card combat-actor-monster" key={`precombat-monster-${monster.id}`}>
-                    <span className="combat-actor-badge monster">МОН</span>
-                    <div className="combat-actor-title">{monster.nameSnapshot}</div>
-                    <div className="character-tile-statuses">{renderStatusDots(monster.effects || [])}</div>
+                    <div className="combat-actor-namebar">{monster.nameSnapshot}</div>
                     {monster.template?.iconUrl ? (
                       <img className="combat-actor-image" src={monster.template.iconUrl} alt={monster.nameSnapshot} />
                     ) : (
                       <div className="combat-actor-icon">👾</div>
                     )}
-                    <div className="combat-actor-meta">❤️ {monster.currentHp} / {monster.maxHpSnapshot}</div>
-                    <div className="combat-actor-meta">🛡 {monster.template?.armorClass ?? '—'}</div>
-                    <div className="combat-actor-meta">🎲 {monster.initiative ?? '—'}</div>
+                    <div className="character-tile-statuses">{renderStatusBadges(monster.effects || [])}</div>
+                    <div className="combat-actor-stats-row">
+                      <div className="combat-actor-stat">❤️ {monster.currentHp} / {monster.maxHpSnapshot}</div>
+                      <div className="combat-actor-stat">🎲 {monster.initiative ?? '—'}</div>
+                      <div className="combat-actor-stat">🛡 {monster.template?.armorClass ?? '—'}</div>
+                    </div>
                     {isGmViewer && (
                       <div className="inline-row">
                         <button
@@ -1476,39 +1508,36 @@ export function SessionViewPage() {
                 <StatusBox type="info" message="Инициатива пока не выставлена" />
               ) : (
                 <div className="combat-turn-grid">
-                  {initiativeQueue.map((entry, index) => (
+                  {initiativeQueue.map((entry) => (
                     <div className={`combat-actor-card combat-turn-card ${entry.kind === 'character' ? 'combat-actor-character' : 'combat-actor-monster'} ${entry.isActive ? 'active-turn' : ''}`} key={`initiative-${entry.kind}-${entry.id}`}>
                       {(() => {
                         const panelKey = `${entry.kind}:${entry.id}`;
 
                         return (
                           <>
-                      <span className={`combat-actor-badge ${entry.kind === 'character' ? 'character' : 'monster'}`}>
-                        {entry.kind === 'character' ? 'ПЕРС' : 'МОН'}
-                      </span>
-                      <div className="combat-actor-title">
-                        {entry.isActive ? '▶ ' : ''}{index + 1}. {entry.name}
-                      </div>
+                      <div className="combat-actor-namebar">{entry.name}</div>
                       {entry.kind === 'monster' && entry.iconUrl ? (
                         <img className="combat-actor-image" src={entry.iconUrl} alt={entry.name} />
                       ) : (
                         <div className="combat-actor-icon">{entry.avatarText}</div>
                       )}
-                      {isGmViewer ? (
-                        <button
-                          className="btn btn-inline combat-hp-toggle"
-                          onClick={() => {
-                            setActiveCombatPanelKey((current) => (current === panelKey ? null : panelKey));
-                          }}
-                        >
-                          ❤️ {entry.currentHp} / {entry.maxHp ?? '—'}
-                        </button>
-                      ) : (
-                        <div className="combat-actor-meta">❤️ {entry.currentHp} / {entry.maxHp ?? '—'}</div>
-                      )}
-                      <div className="combat-actor-meta">🛡 {entry.armorClass ?? '—'}</div>
-                      <div className="combat-actor-meta">🎲 {entry.initiative}</div>
-                      <div className="character-tile-statuses">{renderStatusDots(entry.effects || [])}</div>
+                      <div className="character-tile-statuses">{renderStatusBadges(entry.effects || [])}</div>
+                      <div className="combat-actor-stats-row">
+                        {isGmViewer ? (
+                          <button
+                            className="btn btn-inline combat-hp-toggle"
+                            onClick={() => {
+                              setActiveCombatPanelKey((current) => (current === panelKey ? null : panelKey));
+                            }}
+                          >
+                            ❤️ {entry.currentHp} / {entry.maxHp ?? '—'}
+                          </button>
+                        ) : (
+                          <div className="combat-actor-stat">❤️ {entry.currentHp} / {entry.maxHp ?? '—'}</div>
+                        )}
+                        <div className="combat-actor-stat">🎲 {entry.initiative}</div>
+                        <div className="combat-actor-stat">🛡 {entry.armorClass ?? '—'}</div>
+                      </div>
                           </>
                         );
                       })()}
@@ -1699,7 +1728,7 @@ export function SessionViewPage() {
                     onClick={() => setSelectedCharacterId((current) => (current === entry.character.id ? null : entry.character.id))}
                   >
                     <div className="character-tile-statuses">
-                      {renderStatusDots(entry.effects || [])}
+                      {renderStatusBadges(entry.effects || [])}
                     </div>
                     <div className="character-tile-avatar">{getAvatarInitials(entry.character.name)}</div>
                     <div className="character-tile-name">{entry.character.name}</div>

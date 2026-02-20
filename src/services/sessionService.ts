@@ -41,6 +41,8 @@ type CombatActionPayload = {
   responsePayload?: Record<string, unknown>;
 };
 
+type SaveAbility = 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
+
 type UndoActionSnapshot =
   | {
       kind: 'character_hp';
@@ -487,6 +489,42 @@ export class SessionService {
     return Math.floor((score - 10) / 2);
   }
 
+  private normalizeSaveAbility(raw: unknown): SaveAbility {
+    const normalized = String(raw || 'con').trim().toLowerCase();
+    if (normalized === 'str' || normalized === 'dex' || normalized === 'con' || normalized === 'int' || normalized === 'wis' || normalized === 'cha') {
+      return normalized;
+    }
+
+    return 'con';
+  }
+
+  private pickCharacterAbilityScore(
+    abilityScores: { str: number; dex: number; con: number; int: number; wis: number; cha: number } | null | undefined,
+    ability: SaveAbility
+  ): number | null {
+    if (!abilityScores) {
+      return null;
+    }
+
+    return abilityScores[ability] ?? null;
+  }
+
+  private pickMonsterAbilityScore(
+    abilityScores: { strength: number; dexterity: number; constitution: number; intelligence: number; wisdom: number; charisma: number } | null | undefined,
+    ability: SaveAbility
+  ): number | null {
+    if (!abilityScores) {
+      return null;
+    }
+
+    if (ability === 'str') return abilityScores.strength;
+    if (ability === 'dex') return abilityScores.dexterity;
+    if (ability === 'con') return abilityScores.constitution;
+    if (ability === 'int') return abilityScores.intelligence;
+    if (ability === 'wis') return abilityScores.wisdom;
+    return abilityScores.charisma;
+  }
+
   private rollD20(): number {
     return crypto.randomInt(1, 21);
   }
@@ -631,6 +669,7 @@ export class SessionService {
       Math.max(this.parsePositiveInteger(saveRecord.threshold ?? saveRecord.dc) ?? 12, 1),
       30
     );
+    const saveAbility = this.normalizeSaveAbility(saveRecord.ability);
     const saveDieSides = Math.min(Math.max(this.parsePositiveInteger(saveRecord.dieSides) ?? 20, 2), 100);
     const halfOnSave = saveRecord.halfOnSave === undefined ? true : Boolean(saveRecord.halfOnSave);
 
@@ -651,7 +690,7 @@ export class SessionService {
           }),
       roundsLeft,
       save: {
-        ability: 'con',
+        ability: saveAbility,
         dieSides: saveDieSides,
         threshold: saveThreshold,
         dc: saveThreshold,
@@ -670,6 +709,7 @@ export class SessionService {
     damage: { mode: 'flat'; value: number } | { mode: 'dice'; count: number; sides: number; bonus: number };
     roundsLeft: number;
     save: {
+      ability: SaveAbility;
       diceCount: number;
       diceSides: number;
       operator: '<' | '<=' | '=' | '>=' | '>';
@@ -716,6 +756,7 @@ export class SessionService {
       Math.max(this.parsePositiveInteger(checkRecord.target ?? saveRecord.threshold ?? saveRecord.dc) ?? 12, 1),
       200
     );
+    const ability = this.normalizeSaveAbility(saveRecord.ability);
 
     const legacyPercent = saveRecord.halfOnSave === false ? 0 : 50;
     const damagePercentOnMatch = [0, 50, 100, 200].includes(Number(saveRecord.damagePercentOnMatch))
@@ -726,6 +767,7 @@ export class SessionService {
       damage,
       roundsLeft,
       save: {
+        ability,
         diceCount,
         diceSides,
         operator,
@@ -770,7 +812,12 @@ export class SessionService {
             name: true,
             abilityScores: {
               select: {
+                str: true,
+                dex: true,
                 con: true,
+                int: true,
+                wis: true,
+                cha: true,
               },
             },
           },
@@ -797,7 +844,8 @@ export class SessionService {
 
         const saveRolls = Array.from({ length: rule.save.diceCount }).map(() => crypto.randomInt(1, rule.save.diceSides + 1));
         const saveRoll = saveRolls.reduce((acc, value) => acc + value, 0);
-        const saveModifier = this.abilityScoreToModifier(sessionCharacter.character.abilityScores?.con);
+        const saveAbilityScore = this.pickCharacterAbilityScore(sessionCharacter.character.abilityScores, rule.save.ability);
+        const saveModifier = this.abilityScoreToModifier(saveAbilityScore);
         const saveTotal = saveRoll + saveModifier;
         const saveConditionMatched = this.evaluateSaveCondition(saveTotal, rule.save.operator, rule.save.target);
         const damageRoll = this.rollDamage(rule.damage);
@@ -854,7 +902,7 @@ export class SessionService {
               baseDamage: damageRoll.baseDamage,
             },
             save: {
-              ability: 'con',
+              ability: rule.save.ability,
               diceCount: rule.save.diceCount,
               dieSides: rule.save.diceSides,
               operator: rule.save.operator,
@@ -892,7 +940,12 @@ export class SessionService {
       include: {
         monsterTemplate: {
           select: {
+            strength: true,
+            dexterity: true,
             constitution: true,
+            intelligence: true,
+            wisdom: true,
+            charisma: true,
           },
         },
         effects: {
@@ -922,7 +975,8 @@ export class SessionService {
 
       const saveRolls = Array.from({ length: rule.save.diceCount }).map(() => crypto.randomInt(1, rule.save.diceSides + 1));
       const saveRoll = saveRolls.reduce((acc, value) => acc + value, 0);
-      const saveModifier = this.abilityScoreToModifier(sessionMonster.monsterTemplate?.constitution);
+      const saveAbilityScore = this.pickMonsterAbilityScore(sessionMonster.monsterTemplate, rule.save.ability);
+      const saveModifier = this.abilityScoreToModifier(saveAbilityScore);
       const saveTotal = saveRoll + saveModifier;
       const saveConditionMatched = this.evaluateSaveCondition(saveTotal, rule.save.operator, rule.save.target);
       const damageRoll = this.rollDamage(rule.damage);
@@ -979,7 +1033,7 @@ export class SessionService {
             baseDamage: damageRoll.baseDamage,
           },
           save: {
-            ability: 'con',
+            ability: rule.save.ability,
             diceCount: rule.save.diceCount,
             dieSides: rule.save.diceSides,
             operator: rule.save.operator,

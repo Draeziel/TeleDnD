@@ -221,6 +221,7 @@ export class CapabilityResolverService {
       rulesVersion,
       payloadType: 'PASSIVE_TRAIT',
       payload: {
+        sourceRef: `feature:${feature.id}`,
         name: feature.name,
         description: feature.description || null,
       },
@@ -241,6 +242,7 @@ export class CapabilityResolverService {
         rulesVersion,
         payloadType: modifier.target === 'ability' ? 'MODIFIER_ABILITY_SCORE' : 'CUSTOM',
         payload: {
+          sourceRef: `feature:${modifier.sourceId}`,
           operation,
           target: modifier.target,
           targetKey: modifier.targetKey || null,

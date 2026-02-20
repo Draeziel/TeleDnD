@@ -10,6 +10,7 @@
       "rulesVersion": "v1",
       "payloadType": "PASSIVE_TRAIT",
       "payload": {
+        "sourceRef": "feature:17462cbc-de45-4dbd-8d83-25bd0dd3ed20",
         "name": "Military Rank",
         "description": "You have a military rank from your years of service."
       },
@@ -27,6 +28,7 @@
       "rulesVersion": "v1",
       "payloadType": "PASSIVE_TRAIT",
       "payload": {
+        "sourceRef": "feature:80a9fb3e-3796-4643-acd8-7eab477a8656",
         "name": "Ability Score Improvement",
         "description": "Your ability scores each increase by 1."
       },
@@ -44,6 +46,7 @@
       "rulesVersion": "v1",
       "payloadType": "PASSIVE_TRAIT",
       "payload": {
+        "sourceRef": "feature:c1542631-0bf2-4e46-895e-f5104cd3c9fd",
         "name": "Bardic Inspiration",
         "description": "You can inspire others through music or oration."
       },
@@ -63,6 +66,7 @@
       "rulesVersion": "v1",
       "payloadType": "MODIFIER_ABILITY_SCORE",
       "payload": {
+        "sourceRef": "feature:80a9fb3e-3796-4643-acd8-7eab477a8656",
         "operation": "add",
         "target": "ability",
         "targetKey": "all",

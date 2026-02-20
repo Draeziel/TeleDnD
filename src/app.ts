@@ -173,11 +173,13 @@ const startServer = async () => {
         const requireAuth = isProduction ? true : (requireAuthEnv ? requireAuthEnv === 'true' : false);
         const fallbackEnv = process.env.ALLOW_TELEGRAM_USER_ID_FALLBACK;
         const allowFallback = !isProduction && !requireAuth && fallbackEnv === 'true';
+        const sheetResolverAdapterEnabled = process.env.SHEET_RESOLVER_ADAPTER_ENABLED === 'true';
 
         logger.info('startup_ready', {
             env: nodeEnv,
             requireTelegramAuth: requireAuth,
             allowTelegramUserIdFallback: allowFallback,
+            sheetResolverAdapterEnabled,
         });
 
         if (!isProduction && allowFallback) {

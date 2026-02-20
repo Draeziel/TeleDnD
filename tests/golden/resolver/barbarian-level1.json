@@ -10,6 +10,7 @@
       "rulesVersion": "v1",
       "payloadType": "PASSIVE_TRAIT",
       "payload": {
+        "sourceRef": "feature:17462cbc-de45-4dbd-8d83-25bd0dd3ed20",
         "name": "Military Rank",
         "description": "You have a military rank from your years of service."
       },
@@ -27,6 +28,7 @@
       "rulesVersion": "v1",
       "payloadType": "PASSIVE_TRAIT",
       "payload": {
+        "sourceRef": "feature:80a9fb3e-3796-4643-acd8-7eab477a8656",
         "name": "Ability Score Improvement",
         "description": "Your ability scores each increase by 1."
       },
@@ -44,6 +46,7 @@
       "rulesVersion": "v1",
       "payloadType": "PASSIVE_TRAIT",
       "payload": {
+        "sourceRef": "feature:858b6477-5946-41c0-b04a-d9f6bca31a8c",
         "name": "Rage",
         "description": "You can enter a furious rage as an action on your turn."
       },
@@ -61,6 +64,7 @@
       "rulesVersion": "v1",
       "payloadType": "PASSIVE_TRAIT",
       "payload": {
+        "sourceRef": "feature:88a771ae-22ae-4c9f-8f00-25dff71e4319",
         "name": "Unarmored Defense",
         "description": "While you are not wearing any armor, your AC equals 10 + your Dexterity modifier."
       },
@@ -80,6 +84,7 @@
       "rulesVersion": "v1",
       "payloadType": "MODIFIER_ABILITY_SCORE",
       "payload": {
+        "sourceRef": "feature:80a9fb3e-3796-4643-acd8-7eab477a8656",
         "operation": "add",
         "target": "ability",
         "targetKey": "all",
@@ -99,6 +104,7 @@
       "rulesVersion": "v1",
       "payloadType": "CUSTOM",
       "payload": {
+        "sourceRef": "feature:858b6477-5946-41c0-b04a-d9f6bca31a8c",
         "operation": "add",
         "target": "attack",
         "targetKey": null,

@@ -101,6 +101,7 @@ REQUEST_SLOW_MS=1200
 SESSION_EVENTS_CLEANUP_ENABLED=true
 SESSION_EVENTS_RETENTION_DAYS=30
 SESSION_EVENTS_CLEANUP_INTERVAL_MIN=60
+SHEET_RESOLVER_ADAPTER_ENABLED=false
 ```
 
 - `TELEGRAM_BOT_TOKEN` – Telegram bot token used for signature verification.
@@ -116,6 +117,7 @@ SESSION_EVENTS_CLEANUP_INTERVAL_MIN=60
 - `SESSION_EVENTS_CLEANUP_ENABLED` – enables scheduled cleanup of old session events (defaults to `true`, except `test`).
 - `SESSION_EVENTS_RETENTION_DAYS` – keep session events for this many days before deletion (default: `30`).
 - `SESSION_EVENTS_CLEANUP_INTERVAL_MIN` – cleanup task interval in minutes (default: `60`).
+- `SHEET_RESOLVER_ADAPTER_ENABLED` – when `true`, `GET /api/characters/:id/sheet` uses capability resolver adapter for feature/modifier projection; keep `false` until parity rollout is approved.
 
 Protected groups:
 - `/api/drafts/*`
@@ -159,6 +161,13 @@ If local drift is only `sessions.initiative_locked`, run auto-fix:
 npm run verify:localdb:fix
 ```
 
+Resolver golden snapshots (determinism checks):
+
+```powershell
+npm run test:resolver:golden:update
+npm run test:resolver:golden
+```
+
 ### Automated production monitor
 
 - GitHub Actions workflow `.github/workflows/production-monitor.yml` runs every 30 minutes.
@@ -178,6 +187,7 @@ npm run verify:localdb:fix
 - `GET /api/characters/:id`: Retrieve owned character by ID.
 - `DELETE /api/characters/:id`: Delete owned character.
 - `GET /api/characters/:id/sheet`: Retrieve owned complete character sheet.
+- `GET /api/characters/:id/capabilities`: Retrieve resolved capabilities contract (`actions`, `passiveFeatures`, `modifiers`, `choicesRemaining`, `metadata`).
 - `POST /api/characters/:id/choices`: Save choices for owned character.
 - `POST /api/characters/:id/items`: Add item to owned character inventory.
 - `POST /api/characters/:id/items/:itemId/equip`: Equip item on owned character.

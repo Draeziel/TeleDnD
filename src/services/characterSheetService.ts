@@ -2,18 +2,22 @@ import { PrismaClient, AbilityScoreSet, Modifier } from '@prisma/client';
 import { ModifierService } from './modifierService';
 import { InventoryService } from './inventoryService';
 import { SkillService } from './skillService';
+import { CapabilityResolverService } from './capabilityResolverService';
+import type { CapabilityBaseDto, ResolveCapabilitiesDto } from '../types';
 
 export class CharacterSheetService {
   private prisma: PrismaClient;
   private modifierService: ModifierService;
   private inventoryService: InventoryService;
   private skillService: SkillService;
+  private capabilityResolverService: CapabilityResolverService;
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
     this.modifierService = new ModifierService(prisma);
     this.inventoryService = new InventoryService(prisma);
     this.skillService = new SkillService(prisma);
+    this.capabilityResolverService = new CapabilityResolverService(prisma);
   }
 
   private static readonly abilityKeys = ['str', 'dex', 'con', 'int', 'wis', 'cha'] as const;
@@ -99,6 +103,56 @@ export class CharacterSheetService {
     return 2;
   }
 
+  private static isResolverSheetAdapterEnabled(): boolean {
+    return process.env.SHEET_RESOLVER_ADAPTER_ENABLED === 'true';
+  }
+
+  private static mapResolverPassiveFeatures(passiveFeatures: CapabilityBaseDto[]) {
+    return passiveFeatures.map((capability) => {
+      const payloadName = capability.payload.name;
+      const payloadDescription = capability.payload.description;
+
+      return {
+        id: capability.id,
+        name: typeof payloadName === 'string' ? payloadName : `Feature ${capability.sourceId}`,
+        description: typeof payloadDescription === 'string' ? payloadDescription : undefined,
+        source: capability.sourceType,
+      };
+    });
+  }
+
+  private static mapResolverModifierCapability(capability: CapabilityBaseDto): Modifier {
+    const target = typeof capability.payload.target === 'string' ? capability.payload.target : 'custom';
+    const targetKey = capability.payload.targetKey;
+    const operation = typeof capability.payload.operation === 'string' ? capability.payload.operation : 'add';
+    const value = capability.payload.value;
+
+    return {
+      id: capability.id,
+      sourceType: capability.sourceType,
+      sourceId: capability.sourceId,
+      target,
+      targetKey: typeof targetKey === 'string' ? targetKey : null,
+      operation,
+      value: typeof value === 'number' ? value : null,
+      createdAt: new Date(0),
+    };
+  }
+
+  private async resolveSheetCapabilities(characterId: string, ownerTelegramId?: string | null): Promise<ResolveCapabilitiesDto | null> {
+    if (!CharacterSheetService.isResolverSheetAdapterEnabled()) {
+      return null;
+    }
+
+    if (!ownerTelegramId) {
+      return null;
+    }
+
+    return this.capabilityResolverService.resolveCharacterCapabilities(characterId, ownerTelegramId, {
+      dirtyNodeIds: ['sheet:build'],
+    });
+  }
+
   /**
    * Build a complete character sheet with computed features, choices, and selections.
    * This is a data-driven approach where all game rules are resolved from the database.
@@ -108,6 +162,11 @@ export class CharacterSheetService {
     const character = await this.prisma.character.findUnique({
       where: { id: characterId },
       include: {
+        owner: {
+          select: {
+            telegramId: true,
+          },
+        },
         class: {
           include: {
             contentSource: true,
@@ -131,66 +190,70 @@ export class CharacterSheetService {
       throw new Error(`Character with ID ${characterId} not found`);
     }
 
+    const resolvedCapabilities = await this.resolveSheetCapabilities(characterId, character.owner?.telegramId);
+
     // 2. Fetch granted class features (features unlocked for this character's level)
-    const classFeatures = await this.prisma.classFeature.findMany({
-      where: {
-        classId: character.classId,
-        levelRequired: {
-          lte: character.level,
-        },
-      },
-      include: {
-        feature: true,
-      },
-      orderBy: {
-        levelRequired: 'asc',
-      },
-    });
-
-    // 3. Fetch race features (if race selected)
-    let raceFeatures: any[] = [];
-    if (character.raceId) {
-      raceFeatures = await this.prisma.raceFeature.findMany({
+    let allGrantedFeatures: Array<{ id: string; name: string; description?: string; source: string }> = [];
+    if (resolvedCapabilities) {
+      allGrantedFeatures = CharacterSheetService.mapResolverPassiveFeatures(resolvedCapabilities.passiveFeatures);
+    } else {
+      const classFeatures = await this.prisma.classFeature.findMany({
         where: {
-          raceId: character.raceId,
+          classId: character.classId,
+          levelRequired: {
+            lte: character.level,
+          },
         },
         include: {
           feature: true,
         },
-      });
-    }
-
-    // 4. Fetch background features (if background selected)
-    let backgroundFeatures: any[] = [];
-    if (character.backgroundId) {
-      backgroundFeatures = await this.prisma.backgroundFeature.findMany({
-        where: {
-          backgroundId: character.backgroundId,
-        },
-        include: {
-          feature: true,
+        orderBy: {
+          levelRequired: 'asc',
         },
       });
-    }
 
-    // Combine all features
-    const allGrantedFeatures = [
-      ...classFeatures,
-      ...raceFeatures,
-      ...backgroundFeatures,
-    ].map(f => {
-      const feature = f.feature || (f as any);
-      return {
-        id: feature.id,
-        name: feature.name,
-        description: feature.description,
-        source: classFeatures.find(cf => cf.feature.id === feature.id)
-          ? 'class'
-          : raceFeatures.find(rf => rf.feature.id === feature.id)
-          ? 'race'
-          : 'background',
-      };
-    });
+      let raceFeatures: any[] = [];
+      if (character.raceId) {
+        raceFeatures = await this.prisma.raceFeature.findMany({
+          where: {
+            raceId: character.raceId,
+          },
+          include: {
+            feature: true,
+          },
+        });
+      }
+
+      let backgroundFeatures: any[] = [];
+      if (character.backgroundId) {
+        backgroundFeatures = await this.prisma.backgroundFeature.findMany({
+          where: {
+            backgroundId: character.backgroundId,
+          },
+          include: {
+            feature: true,
+          },
+        });
+      }
+
+      allGrantedFeatures = [
+        ...classFeatures,
+        ...raceFeatures,
+        ...backgroundFeatures,
+      ].map(f => {
+        const feature = f.feature || (f as any);
+        return {
+          id: feature.id,
+          name: feature.name,
+          description: feature.description,
+          source: classFeatures.find(cf => cf.feature.id === feature.id)
+            ? 'class'
+            : raceFeatures.find(rf => rf.feature.id === feature.id)
+            ? 'race'
+            : 'background',
+        };
+      });
+    }
 
     // 5. Fetch required choices for class, race, and background
     const choiceFilters = [
@@ -229,7 +292,9 @@ export class CharacterSheetService {
     );
 
     // 8. Aggregate raw modifiers available to the character and compute effective ability scores.
-    const modifiers = await this.modifierService.getCharacterModifiers(characterId);
+    const modifiers = resolvedCapabilities
+      ? resolvedCapabilities.modifiers.map(capability => CharacterSheetService.mapResolverModifierCapability(capability))
+      : await this.modifierService.getCharacterModifiers(characterId);
 
     const mapAbilityScores = (scores: AbilityScoreSet | null) =>
       scores

@@ -292,14 +292,14 @@ export function SessionViewPage() {
     }
   };
 
-  const onRollInitiativeAll = async () => {
+  const onRollInitiativeMonsters = async () => {
     try {
       setRollingAll(true);
-      const result = await sessionApi.rollInitiativeAll(id);
+      const result = await sessionApi.rollInitiativeMonsters(id);
       await load();
-      notify('success', `Инициатива брошена для ${result.rolledCount} персонажей`);
+      notify('success', `Инициатива брошена для ${result.rolledCount} монстров`);
     } catch (unknownError) {
-      notify('error', formatErrorMessage('Не удалось выполнить массовый бросок инициативы (нужна роль GM)', unknownError));
+      notify('error', formatErrorMessage('Не удалось выполнить бросок инициативы для монстров (нужна роль GM)', unknownError));
     } finally {
       setRollingAll(false);
     }
@@ -601,10 +601,10 @@ export function SessionViewPage() {
                 <button
                   className="btn btn-compact btn-secondary"
                   disabled={rollingAll || !session.hasActiveGm || session.initiativeLocked}
-                  aria-label="Бросок инициативы для всех"
-                  onClick={onRollInitiativeAll}
+                  aria-label="Бросок инициативы для монстров"
+                  onClick={onRollInitiativeMonsters}
                 >
-                  {rollingAll ? '🎲…' : '🎲 всем'}
+                  {rollingAll ? '🎲…' : '🎲👾'}
                 </button>
                 <button
                   className="btn btn-compact btn-secondary"
@@ -693,6 +693,7 @@ export function SessionViewPage() {
                     <div className="combat-actor-icon">{getAvatarInitials(entry.character.name)}</div>
                     <div className="combat-actor-meta">❤️ {entry.state?.currentHp ?? 0} / {entry.state?.maxHpSnapshot ?? '—'}</div>
                     <div className="combat-actor-meta">🛡 {characterArmorClass[entry.character.id] ?? '—'}</div>
+                    <div className="combat-actor-meta">🎲 {entry.state?.initiative ?? '—'}</div>
                     <button
                       className="btn btn-danger btn-icon combat-actor-remove"
                       aria-label={`Удалить ${entry.character.name}`}
@@ -715,6 +716,7 @@ export function SessionViewPage() {
                     )}
                     <div className="combat-actor-meta">❤️ {monster.currentHp} / {monster.maxHpSnapshot}</div>
                     <div className="combat-actor-meta">🛡 {monster.template?.armorClass ?? '—'}</div>
+                    <div className="combat-actor-meta">🎲 {monster.initiative ?? '—'}</div>
                     {isGmViewer && (
                       <button
                         className="btn btn-danger btn-icon combat-actor-remove"

@@ -133,6 +133,27 @@ export const sessionApi = {
     };
   },
 
+  async rollInitiativeMonsters(sessionId: string): Promise<{
+    updates: Array<{
+      sessionMonsterId: string;
+      roll: number;
+      initiativeModifier: number;
+      initiative: number;
+    }>;
+    rolledCount: number;
+  }> {
+    const { data } = await http.post(`/sessions/${sessionId}/initiative/roll-monsters`);
+    return data as {
+      updates: Array<{
+        sessionMonsterId: string;
+        roll: number;
+        initiativeModifier: number;
+        initiative: number;
+      }>;
+      rolledCount: number;
+    };
+  },
+
   async rollInitiativeSelf(sessionId: string, characterId: string): Promise<{
     sessionCharacterId: string;
     characterId: string;

@@ -1168,6 +1168,59 @@ export class SessionService {
     };
   }
 
+  async rollInitiativeForMonsters(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+    await this.ensureInitiativeUnlocked(sessionId);
+
+    const sessionMonsters = await this.prisma.sessionMonster.findMany({
+      where: { sessionId },
+      include: {
+        monsterTemplate: {
+          select: {
+            initiativeModifier: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    const updates = await Promise.all(
+      sessionMonsters.map(async (monster) => {
+        const roll = this.rollD20();
+        const initiativeModifier = monster.monsterTemplate?.initiativeModifier ?? 0;
+        const initiative = roll + initiativeModifier;
+        this.validateInitiative(initiative);
+
+        await this.prisma.sessionMonster.update({
+          where: {
+            id: monster.id,
+          },
+          data: {
+            initiative,
+          },
+        });
+
+        return {
+          sessionMonsterId: monster.id,
+          roll,
+          initiativeModifier,
+          initiative,
+        };
+      })
+    );
+
+    await this.addSessionEvent(sessionId, 'initiative_rolled_monsters', 'ГМ выполнил бросок инициативы только для монстров', telegramUserId);
+    await this.syncEncounterTurnPointer(sessionId);
+
+    return {
+      updates,
+      rolledCount: updates.length,
+    };
+  }
+
   async rollInitiativeForOwnedCharacter(sessionId: string, characterId: string, telegramUserId: string) {
     const user = await this.resolveUserByTelegramId(telegramUserId);
     await this.requireSessionMember(sessionId, user.id);

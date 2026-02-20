@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { CharacterSheetService } from './characterSheetService';
+import { CharacterAssemblerService } from './characterAssemblerService';
 
 export class DraftService {
   private prisma: PrismaClient;
@@ -694,92 +695,53 @@ export class DraftService {
       throw new Error(`Draft with ID ${draftId} not found`);
     }
 
-    const requiredChoices = await this.resolveRequiredChoicesForDraft({
-      ...draft,
-      class: draftWithSources.class,
-      race: draftWithSources.race,
-      background: draftWithSources.background,
-    });
+    // Create the character and validate assembly inside a transaction.
+    const createdCharacter = await this.prisma.$transaction(async (tx) => {
+      const character = await tx.character.create({
+        data: {
+          name: draft.name,
+          level: draft.level,
+          ownerUserId: user.id,
+          classId: draft.classId,
+          raceId: draft.raceId || undefined,
+          backgroundId: draft.backgroundId || undefined,
+          abilityScoreSetId: draft.abilityScoreSetId || undefined,
+        },
+      });
 
-    const selectedChoiceById = new Map(
-      draft.characterDraftChoices.map(dc => [dc.choiceId, dc])
-    );
-
-    const missingChoiceIds = requiredChoices
-      .filter(choice => {
-        const selected = selectedChoiceById.get(choice.id);
-        if (!selected) {
-          return true;
-        }
-
-        const validation = this.validateChoiceSelection(choice, selected.selectedOption, false);
-        return !validation.isComplete;
-      })
-      .map(choice => choice.id);
-
-    if (missingChoiceIds.length > 0) {
-      throw new Error(
-        `Cannot finalize draft: missing ${missingChoiceIds.length} required choices`
-      );
-    }
-
-    // Validate that all selected choices have selectedOption values
-    const incompleteChoices = draft.characterDraftChoices.filter(
-      dc => !dc.selectedOption
-    );
-
-    if (incompleteChoices.length > 0) {
-      throw new Error(
-        `Cannot finalize draft: ${incompleteChoices.length} choices do not have selected options`
-      );
-    }
-
-    for (const requiredChoice of requiredChoices) {
-      const selected = selectedChoiceById.get(requiredChoice.id);
-      if (!selected) {
-        continue;
+      // Create character choices from draft choices
+      if (draft.characterDraftChoices && draft.characterDraftChoices.length > 0) {
+        await tx.characterChoice.createMany({
+          data: draft.characterDraftChoices.map((dc: any) => ({
+            characterId: character.id,
+            choiceId: dc.choiceId,
+            selectedOption: dc.selectedOption!,
+          })),
+        });
       }
 
-      this.validateChoiceSelection(requiredChoice, selected.selectedOption, false);
-    }
+      // Validate assembly using CharacterAssemblerService (uses tx client)
+      const assembler = new CharacterAssemblerService(tx as any);
+      await assembler.assembleCharacter(character.id);
 
-    // Create the character with class, race, and background
-    const character = await this.prisma.character.create({
-      data: {
-        name: draft.name,
-        level: draft.level,
-        ownerUserId: user.id,
-        classId: draft.classId,
-        raceId: draft.raceId || undefined,
-        backgroundId: draft.backgroundId || undefined,
-        abilityScoreSetId: draft.abilityScoreSetId || undefined,
-      },
+      return character;
     });
 
-    // Create character choices from draft choices
-    await this.prisma.characterChoice.createMany({
-      data: draft.characterDraftChoices.map(dc => ({
-        characterId: character.id,
-        choiceId: dc.choiceId,
-        selectedOption: dc.selectedOption!,
-      })),
-    });
-
-    // Delete the draft
+    // Delete the draft now that assembly validation passed
     await this.prisma.characterDraft.delete({
       where: { id: draftId },
     });
 
     return {
       message: 'Character created successfully',
-      characterId: character.id,
+      characterId: createdCharacter.id,
       character: {
-        id: character.id,
-        name: character.name,
-        level: character.level,
-        classId: character.classId,
-        raceId: character.raceId,
-        backgroundId: character.backgroundId,
+        id: createdCharacter.id,
+        name: createdCharacter.name,
+        level: createdCharacter.level,
+        classId: createdCharacter.classId,
+        raceId: createdCharacter.raceId,
+        backgroundId: createdCharacter.backgroundId,
       },
     };
   }

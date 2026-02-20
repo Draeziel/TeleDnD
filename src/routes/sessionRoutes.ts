@@ -12,6 +12,7 @@ export default function sessionRoutes(prisma: PrismaClient) {
   router.post('/:id/leave', sessionController.leaveSession.bind(sessionController));
   router.delete('/:id', sessionController.deleteSession.bind(sessionController));
   router.get('/:id/summary', sessionController.getSessionSummary.bind(sessionController));
+  router.get('/:id/combat-summary', sessionController.getCombatSummary.bind(sessionController));
   router.get('/:id/events', sessionController.getSessionEvents.bind(sessionController));
   router.get('/:id/monsters', sessionController.getSessionMonsters.bind(sessionController));
   router.post('/:id/monsters', sessionController.addSessionMonsters.bind(sessionController));
@@ -26,6 +27,9 @@ export default function sessionRoutes(prisma: PrismaClient) {
   router.post('/:id/encounter/start', sessionController.startEncounter.bind(sessionController));
   router.post('/:id/encounter/next-turn', sessionController.nextEncounterTurn.bind(sessionController));
   router.post('/:id/combat/undo-last', sessionController.undoLastCombatAction.bind(sessionController));
+  router.post('/:id/combat/action', sessionController.executeCombatAction.bind(sessionController));
+  router.post('/:id/combat/reactions', sessionController.openReactionWindow.bind(sessionController));
+  router.post('/:id/combat/reactions/:reactionId/respond', sessionController.respondReactionWindow.bind(sessionController));
   router.post('/:id/encounter/end', sessionController.endEncounter.bind(sessionController));
   router.get('/:id', sessionController.getSession.bind(sessionController));
   router.post('/:id/characters', sessionController.attachCharacter.bind(sessionController));

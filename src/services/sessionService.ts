@@ -1,6 +1,34 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import crypto from 'crypto';
 
+type CombatActionType =
+  | 'START_ENCOUNTER'
+  | 'NEXT_TURN'
+  | 'END_ENCOUNTER'
+  | 'UNDO_LAST'
+  | 'SET_CHARACTER_HP'
+  | 'SET_MONSTER_HP'
+  | 'APPLY_CHARACTER_EFFECT'
+  | 'APPLY_MONSTER_EFFECT'
+  | 'OPEN_REACTION_WINDOW'
+  | 'RESPOND_REACTION_WINDOW';
+
+type CombatActionPayload = {
+  characterId?: string;
+  monsterId?: string;
+  currentHp?: number;
+  tempHp?: number | null;
+  effectType?: string;
+  duration?: string;
+  effectPayload?: Record<string, unknown>;
+  reactionId?: string;
+  reactionType?: string;
+  targetType?: 'character' | 'monster';
+  targetRefId?: string;
+  ttlSeconds?: number;
+  responsePayload?: Record<string, unknown>;
+};
+
 type UndoActionSnapshot =
   | {
       kind: 'character_hp';
@@ -52,15 +80,138 @@ export class SessionService {
     this.prisma = prisma;
   }
 
-  private async addSessionEvent(sessionId: string, type: string, message: string, actorTelegramId: string) {
+  private async getLatestEventSeq(sessionId: string): Promise<bigint | null> {
+    const latest = await this.prisma.sessionEvent.findFirst({
+      where: { sessionId },
+      select: { eventSeq: true },
+      orderBy: { eventSeq: 'desc' },
+    });
+
+    return latest?.eventSeq ?? null;
+  }
+
+  private async refreshCombatSnapshot(sessionId: string): Promise<void> {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: {
+        id: true,
+        encounterActive: true,
+        combatRound: true,
+        activeTurnSessionCharacterId: true,
+        characters: {
+          select: {
+            id: true,
+            character: {
+              select: {
+                name: true,
+              },
+            },
+            state: {
+              select: {
+                currentHp: true,
+                maxHpSnapshot: true,
+                initiative: true,
+              },
+            },
+            _count: {
+              select: {
+                effects: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+        monsters: {
+          select: {
+            id: true,
+            nameSnapshot: true,
+            currentHp: true,
+            maxHpSnapshot: true,
+            initiative: true,
+            _count: {
+              select: {
+                effects: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      return;
+    }
+
+    const initiativeOrder = await this.getEncounterOrder(sessionId);
+
+    const actors = [
+      ...session.characters.map((entry) => ({
+        kind: 'character',
+        id: entry.id,
+        name: entry.character.name,
+        currentHp: entry.state?.currentHp ?? null,
+        maxHpSnapshot: entry.state?.maxHpSnapshot ?? null,
+        initiative: entry.state?.initiative ?? null,
+        effectsCount: entry._count.effects,
+      })),
+      ...session.monsters.map((entry) => ({
+        kind: 'monster',
+        id: entry.id,
+        name: entry.nameSnapshot,
+        currentHp: entry.currentHp,
+        maxHpSnapshot: entry.maxHpSnapshot,
+        initiative: entry.initiative,
+        effectsCount: entry._count.effects,
+      })),
+    ];
+
+    await this.prisma.sessionCombatSnapshot.upsert({
+      where: {
+        sessionId,
+      },
+      update: {
+        encounterActive: session.encounterActive,
+        combatRound: session.combatRound,
+        activeTurnSessionCharacterId: session.activeTurnSessionCharacterId,
+        initiativeOrder: initiativeOrder as Prisma.InputJsonValue,
+        actors: actors as Prisma.InputJsonValue,
+      },
+      create: {
+        sessionId,
+        encounterActive: session.encounterActive,
+        combatRound: session.combatRound,
+        activeTurnSessionCharacterId: session.activeTurnSessionCharacterId,
+        initiativeOrder: initiativeOrder as Prisma.InputJsonValue,
+        actors: actors as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  private async addSessionEvent(
+    sessionId: string,
+    type: string,
+    message: string,
+    actorTelegramId: string,
+    eventCategory = 'GENERAL',
+    payload?: Prisma.InputJsonValue
+  ) {
     await this.prisma.sessionEvent.create({
       data: {
         sessionId,
         type,
+        eventCategory,
         message,
+        payload,
         actorTelegramId,
       },
     });
+
+    await this.refreshCombatSnapshot(sessionId);
   }
 
   private async pushUndoSnapshot(sessionId: string, actorTelegramId: string, snapshot: UndoActionSnapshot) {
@@ -87,7 +238,7 @@ export class SessionService {
     }
   }
 
-  private async getSessionEvents(sessionId: string, limit = 100) {
+  private async getSessionEvents(sessionId: string, limit = 100, afterEventSeq?: bigint) {
     const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 100) : 100;
 
     const events = await this.prisma.sessionEvent.findMany({
@@ -96,17 +247,21 @@ export class SessionService {
         type: {
           notIn: ['undo_snapshot'],
         },
+        ...(afterEventSeq !== undefined ? { eventSeq: { gt: afterEventSeq } } : {}),
       },
       orderBy: {
-        createdAt: 'desc',
+        eventSeq: afterEventSeq !== undefined ? 'asc' : 'desc',
       },
       take: safeLimit,
     });
 
     return events.map((event) => ({
       id: event.id,
+      eventSeq: event.eventSeq.toString(),
       type: event.type,
+      eventCategory: event.eventCategory,
       message: event.message,
+      payload: event.payload,
       actorTelegramId: event.actorTelegramId,
       createdAt: event.createdAt,
     }));
@@ -1048,12 +1203,72 @@ export class SessionService {
     };
   }
 
-  async getSessionEventsFeed(sessionId: string, telegramUserId: string, limit = 30) {
+  async getSessionEventsFeed(sessionId: string, telegramUserId: string, limit = 30, afterEventSeq?: string) {
     const user = await this.resolveUserByTelegramId(telegramUserId);
     await this.requireSessionMember(sessionId, user.id);
 
     const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 100) : 30;
-    return this.getSessionEvents(sessionId, safeLimit);
+    let parsedAfter: bigint | undefined;
+    if (afterEventSeq !== undefined) {
+      if (!/^\d+$/.test(afterEventSeq.trim())) {
+        throw new Error('Validation: after must be a positive integer event sequence');
+      }
+
+      parsedAfter = BigInt(afterEventSeq);
+    }
+
+    return this.getSessionEvents(sessionId, safeLimit, parsedAfter);
+  }
+
+  async getCombatSummary(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionMember(sessionId, user.id);
+
+    let snapshot = await this.prisma.sessionCombatSnapshot.findUnique({
+      where: {
+        sessionId,
+      },
+    });
+
+    if (!snapshot) {
+      await this.refreshCombatSnapshot(sessionId);
+      snapshot = await this.prisma.sessionCombatSnapshot.findUnique({
+        where: {
+          sessionId,
+        },
+      });
+    }
+
+    const lastEventSeq = await this.getLatestEventSeq(sessionId);
+    const pendingReactions = await this.prisma.sessionReactionWindow.findMany({
+      where: {
+        sessionId,
+        status: 'PENDING',
+      },
+      orderBy: {
+        deadlineAt: 'asc',
+      },
+      take: 50,
+    });
+
+    return {
+      sessionId,
+      encounterActive: snapshot?.encounterActive ?? false,
+      combatRound: snapshot?.combatRound ?? 1,
+      activeTurnSessionCharacterId: snapshot?.activeTurnSessionCharacterId ?? null,
+      initiativeOrder: snapshot?.initiativeOrder ?? [],
+      actors: snapshot?.actors ?? [],
+      snapshotUpdatedAt: snapshot?.updatedAt ?? null,
+      lastEventSeq: lastEventSeq ? lastEventSeq.toString() : null,
+      pendingReactions: pendingReactions.map((window) => ({
+        id: window.id,
+        targetType: window.targetType,
+        targetRefId: window.targetRefId,
+        reactionType: window.reactionType,
+        status: window.status,
+        deadlineAt: window.deadlineAt,
+      })),
+    };
   }
 
   async getSessionMonsters(sessionId: string, telegramUserId: string) {
@@ -1971,6 +2186,303 @@ export class SessionService {
     return effect;
   }
 
+  async openReactionWindow(
+    sessionId: string,
+    telegramUserId: string,
+    input: {
+      targetType: 'character' | 'monster';
+      targetRefId: string;
+      reactionType: string;
+      ttlSeconds?: number;
+    }
+  ) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+
+    const targetType = input.targetType;
+    if (targetType !== 'character' && targetType !== 'monster') {
+      throw new Error('Validation: targetType must be character or monster');
+    }
+
+    if (!input.targetRefId || !input.targetRefId.trim()) {
+      throw new Error('Validation: targetRefId is required');
+    }
+
+    if (!input.reactionType || !input.reactionType.trim()) {
+      throw new Error('Validation: reactionType is required');
+    }
+
+    const ttlSeconds = Number.isInteger(input.ttlSeconds) ? Number(input.ttlSeconds) : 15;
+    if (ttlSeconds < 3 || ttlSeconds > 120) {
+      throw new Error('Validation: ttlSeconds must be in range 3..120');
+    }
+
+    const deadlineAt = new Date(Date.now() + ttlSeconds * 1000);
+    const window = await this.prisma.sessionReactionWindow.create({
+      data: {
+        sessionId,
+        targetType,
+        targetRefId: input.targetRefId,
+        reactionType: input.reactionType.trim(),
+        deadlineAt,
+        requestedByUserId: user.id,
+      },
+    });
+
+    await this.addSessionEvent(
+      sessionId,
+      'reaction_available',
+      `Доступна реакция ${window.reactionType} для ${targetType}:${window.targetRefId}`,
+      telegramUserId,
+      'COMBAT',
+      {
+        reactionId: window.id,
+        targetType: window.targetType,
+        targetRefId: window.targetRefId,
+        reactionType: window.reactionType,
+        deadlineAt: window.deadlineAt.toISOString(),
+      }
+    );
+
+    return window;
+  }
+
+  async respondReactionWindow(
+    sessionId: string,
+    reactionId: string,
+    telegramUserId: string,
+    responsePayload: Prisma.InputJsonValue
+  ) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionMember(sessionId, user.id);
+
+    const window = await this.prisma.sessionReactionWindow.findFirst({
+      where: {
+        id: reactionId,
+        sessionId,
+      },
+    });
+
+    if (!window) {
+      throw new Error('Reaction window not found');
+    }
+
+    if (window.status !== 'PENDING') {
+      throw new Error('Validation: reaction window is not pending');
+    }
+
+    if (window.deadlineAt.getTime() <= Date.now()) {
+      await this.prisma.sessionReactionWindow.update({
+        where: {
+          id: window.id,
+        },
+        data: {
+          status: 'EXPIRED',
+          resolvedAt: new Date(),
+        },
+      });
+
+      throw new Error('Validation: reaction window has expired');
+    }
+
+    const updated = await this.prisma.sessionReactionWindow.update({
+      where: {
+        id: window.id,
+      },
+      data: {
+        status: 'RESOLVED',
+        resolvedByUserId: user.id,
+        responsePayload,
+        resolvedAt: new Date(),
+      },
+    });
+
+    await this.addSessionEvent(
+      sessionId,
+      'reaction_resolved',
+      `Реакция ${updated.reactionType} обработана`,
+      telegramUserId,
+      'COMBAT',
+      {
+        reactionId: updated.id,
+        status: updated.status,
+      }
+    );
+
+    return updated;
+  }
+
+  async executeCombatAction(
+    sessionId: string,
+    telegramUserId: string,
+    idempotencyKey: string,
+    actionType: CombatActionType,
+    payload: CombatActionPayload
+  ) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionMember(sessionId, user.id);
+
+    const normalizedKey = String(idempotencyKey || '').trim();
+    if (!normalizedKey) {
+      throw new Error('Validation: idempotencyKey is required');
+    }
+
+    if (normalizedKey.length > 128) {
+      throw new Error('Validation: idempotencyKey length must be <= 128');
+    }
+
+    const existing = await this.prisma.sessionCombatAction.findUnique({
+      where: {
+        sessionId_idempotencyKey: {
+          sessionId,
+          idempotencyKey: normalizedKey,
+        },
+      },
+    });
+
+    if (existing?.status === 'completed' && existing.responsePayload) {
+      return {
+        ...(existing.responsePayload as Record<string, unknown>),
+        idempotentReplay: true,
+      };
+    }
+
+    if (existing?.status === 'failed') {
+      throw new Error('Validation: action with this idempotencyKey already failed');
+    }
+
+    const beforeSeq = await this.getLatestEventSeq(sessionId);
+
+    const actionRecord = await this.prisma.sessionCombatAction.create({
+      data: {
+        sessionId,
+        actorUserId: user.id,
+        idempotencyKey: normalizedKey,
+        actionType,
+        status: 'processing',
+        requestPayload: payload as Prisma.InputJsonValue,
+      },
+    });
+
+    try {
+      let result: unknown;
+
+      if (actionType === 'START_ENCOUNTER') {
+        result = await this.startEncounter(sessionId, telegramUserId);
+      } else if (actionType === 'NEXT_TURN') {
+        result = await this.nextEncounterTurn(sessionId, telegramUserId);
+      } else if (actionType === 'END_ENCOUNTER') {
+        result = await this.endEncounter(sessionId, telegramUserId);
+      } else if (actionType === 'UNDO_LAST') {
+        result = await this.undoLastCombatAction(sessionId, telegramUserId);
+      } else if (actionType === 'SET_CHARACTER_HP') {
+        if (!payload.characterId || payload.currentHp === undefined) {
+          throw new Error('Validation: characterId and currentHp are required');
+        }
+
+        result = await this.setSessionCharacterHp(
+          sessionId,
+          payload.characterId,
+          telegramUserId,
+          payload.currentHp,
+          payload.tempHp
+        );
+      } else if (actionType === 'SET_MONSTER_HP') {
+        if (!payload.monsterId || payload.currentHp === undefined) {
+          throw new Error('Validation: monsterId and currentHp are required');
+        }
+
+        result = await this.setSessionMonsterHp(sessionId, payload.monsterId, telegramUserId, payload.currentHp);
+      } else if (actionType === 'APPLY_CHARACTER_EFFECT') {
+        if (!payload.characterId || !payload.effectType || !payload.duration) {
+          throw new Error('Validation: characterId, effectType, duration are required');
+        }
+
+        result = await this.applySessionCharacterEffect(
+          sessionId,
+          payload.characterId,
+          telegramUserId,
+          payload.effectType,
+          payload.duration,
+          (payload.effectPayload || {}) as Prisma.InputJsonValue
+        );
+      } else if (actionType === 'APPLY_MONSTER_EFFECT') {
+        if (!payload.monsterId || !payload.effectType || !payload.duration) {
+          throw new Error('Validation: monsterId, effectType, duration are required');
+        }
+
+        result = await this.applySessionMonsterEffect(
+          sessionId,
+          payload.monsterId,
+          telegramUserId,
+          payload.effectType,
+          payload.duration,
+          (payload.effectPayload || {}) as Prisma.InputJsonValue
+        );
+      } else if (actionType === 'OPEN_REACTION_WINDOW') {
+        if (!payload.targetType || !payload.targetRefId || !payload.reactionType) {
+          throw new Error('Validation: targetType, targetRefId, reactionType are required');
+        }
+
+        result = await this.openReactionWindow(sessionId, telegramUserId, {
+          targetType: payload.targetType,
+          targetRefId: payload.targetRefId,
+          reactionType: payload.reactionType,
+          ttlSeconds: payload.ttlSeconds,
+        });
+      } else if (actionType === 'RESPOND_REACTION_WINDOW') {
+        if (!payload.reactionId) {
+          throw new Error('Validation: reactionId is required');
+        }
+
+        result = await this.respondReactionWindow(
+          sessionId,
+          payload.reactionId,
+          telegramUserId,
+          (payload.responsePayload || {}) as Prisma.InputJsonValue
+        );
+      } else {
+        throw new Error('Validation: unsupported combat action type');
+      }
+
+      const combatEvents = await this.getSessionEvents(sessionId, 100, beforeSeq ?? undefined);
+      const responsePayload = {
+        actionType,
+        result,
+        combatEvents,
+      } as Record<string, unknown>;
+
+      await this.prisma.sessionCombatAction.update({
+        where: {
+          id: actionRecord.id,
+        },
+        data: {
+          status: 'completed',
+          responsePayload: responsePayload as Prisma.InputJsonValue,
+        },
+      });
+
+      return {
+        ...responsePayload,
+        idempotentReplay: false,
+      };
+    } catch (error) {
+      await this.prisma.sessionCombatAction.update({
+        where: {
+          id: actionRecord.id,
+        },
+        data: {
+          status: 'failed',
+          responsePayload: {
+            error: error instanceof Error ? error.message : 'Unknown combat action error',
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      throw error;
+    }
+  }
+
   async undoLastCombatAction(sessionId: string, telegramUserId: string) {
     const user = await this.resolveUserByTelegramId(telegramUserId);
     await this.requireSessionGM(sessionId, user.id);
@@ -1981,7 +2493,7 @@ export class SessionService {
         type: 'undo_snapshot',
       },
       orderBy: {
-        createdAt: 'desc',
+        eventSeq: 'desc',
       },
     });
 

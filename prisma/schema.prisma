@@ -258,6 +258,9 @@ model Session {
   characters      SessionCharacter[]
   monsters        SessionMonster[]
   events          SessionEvent[]
+  combatSnapshot  SessionCombatSnapshot?
+  combatActions   SessionCombatAction[]
+  reactionWindows SessionReactionWindow[]
 
   @@index([gmUserId])
   @@index([createdByUserId])
@@ -341,14 +344,72 @@ model SessionMonsterEffect {
 model SessionEvent {
   id              String    @id @default(uuid())
   sessionId       String
+  eventSeq        BigInt    @default(autoincrement()) @unique @map("event_seq")
   type            String
+  eventCategory   String    @default("GENERAL") @map("event_category")
   message         String
+  payload         Json?
   actorTelegramId String
   createdAt       DateTime  @default(now())
   session         Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, createdAt])
+  @@index([sessionId, eventSeq])
   @@map("session_events")
+}
+
+model SessionCombatSnapshot {
+  id                        String   @id @default(uuid())
+  sessionId                 String   @unique @map("session_id")
+  encounterActive           Boolean  @default(false) @map("encounter_active")
+  combatRound               Int      @default(1) @map("combat_round")
+  activeTurnSessionCharacterId String? @map("active_turn_session_character_id")
+  initiativeOrder           Json     @map("initiative_order")
+  actors                    Json
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+  session                   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, updatedAt])
+  @@map("session_combat_snapshots")
+}
+
+model SessionCombatAction {
+  id             String   @id @default(uuid())
+  sessionId      String   @map("session_id")
+  actorUserId    String   @map("actor_user_id")
+  idempotencyKey String   @map("idempotency_key")
+  actionType     String   @map("action_type")
+  status         String   @default("completed")
+  requestPayload Json     @map("request_payload")
+  responsePayload Json?   @map("response_payload")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  session        Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, idempotencyKey])
+  @@index([sessionId, createdAt])
+  @@map("session_combat_actions")
+}
+
+model SessionReactionWindow {
+  id               String   @id @default(uuid())
+  sessionId        String   @map("session_id")
+  targetType       String   @map("target_type")
+  targetRefId      String   @map("target_ref_id")
+  reactionType     String   @map("reaction_type")
+  status           String   @default("PENDING")
+  deadlineAt       DateTime @map("deadline_at")
+  requestedByUserId String  @map("requested_by_user_id")
+  resolvedByUserId String?  @map("resolved_by_user_id")
+  responsePayload  Json?    @map("response_payload")
+  resolvedAt       DateTime? @map("resolved_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  session          Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, status, deadlineAt])
+  @@index([sessionId, targetType, targetRefId])
+  @@map("session_reaction_windows")
 }
 
 model SessionPlayer {

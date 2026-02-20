@@ -15,7 +15,9 @@ export class CharacterAssemblerService {
 
   async assembleCharacter(characterId: string, options?: { testSeed?: any }) {
     if (options?.testSeed) {
-      return this.assembleFromSeed(options.testSeed);
+      const assembledFromSeed = this.assembleFromSeed(options.testSeed);
+      await this.validateAssembled(assembledFromSeed, undefined, options);
+      return assembledFromSeed;
     }
 
     if (!this.prisma || !this.sheetService || !this.capabilityResolver) {
@@ -75,16 +77,11 @@ export class CharacterAssemblerService {
       unresolvedChoices: Array.isArray(sheet.missingChoices) ? sheet.missingChoices.length : 0,
     };
 
-        // Equipment validation: ensure no slot conflicts (only one equipped item per slot)
-        const slotCounts: Record<string, number> = {};
-        for (const e of assembled.equipment) {
-          const slot = e?.item?.slot ?? 'unspecified';
-          slotCounts[slot] = (slotCounts[slot] || 0) + 1;
-          if (slotCounts[slot] > 1) {
-            throw new Error(`Invalid equipment: multiple items equipped in slot '${slot}'`);
-          }
-        }
+    await this.validateAssembled(assembled, characterId, options);
+    return assembled;
+  }
 
+  private async validateAssembled(assembled: any, characterId?: string, options?: { testSeed?: any }) {
     const missing: string[] = [];
     if (!assembled.header || !assembled.header.id) missing.push('header');
     if (!assembled.abilities || !assembled.abilities.base || !assembled.abilities.effective) missing.push('abilities');
@@ -104,7 +101,39 @@ export class CharacterAssemblerService {
       throw new Error('Assembly incomplete: unresolved choices remain');
     }
 
-    return assembled;
+    // Equipment validation: ensure no slot conflicts (only one equipped item per slot)
+    const slotCounts: Record<string, number> = {};
+    for (const e of assembled.equipment) {
+      const slot = e?.item?.slot ?? 'unspecified';
+      slotCounts[slot] = (slotCounts[slot] || 0) + 1;
+      if (slotCounts[slot] > 1) {
+        throw new Error(`Invalid equipment: multiple items equipped in slot '${slot}'`);
+      }
+    }
+
+    // Equipment proficiency validation
+    let profSet = new Set<string>();
+    if (options?.testSeed) {
+      const seedProfs = options.testSeed.proficiencies || [];
+      profSet = new Set(Array.isArray(seedProfs) ? seedProfs : []);
+    } else if (characterId && this.prisma) {
+      const charSkillProfs = await this.prisma.characterSkillProficiency.findMany({ where: { characterId } });
+      profSet = new Set(charSkillProfs.map(p => p.skillId));
+    }
+
+    for (const e of assembled.equipment) {
+      const req = (e?.item as any)?.proficiencyRequirements;
+      if (!req) continue;
+
+      if (typeof req === 'object' && Array.isArray((req as any).skillIds)) {
+        const need: string[] = (req as any).skillIds;
+        for (const sid of need) {
+          if (!profSet.has(sid)) {
+            throw new Error(`Invalid equipment: missing proficiency '${sid}' for item '${e.item?.id || 'unknown'}'`);
+          }
+        }
+      }
+    }
   }
 
   private assembleFromSeed(seed: any) {

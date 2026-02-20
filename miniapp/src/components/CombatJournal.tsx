@@ -94,14 +94,14 @@ export function CombatJournal({
         (combatEvents.length + interactionUiJournal.length) === 0 ? (
           <StatusBox type="info" message="Боевых событий пока нет" />
         ) : (
-          <div className="list-grid">
+          <div className="list-grid combat-journal-list">
             {interactionUiJournal.map((entry) => (
-              <div className="list-item" key={`ui-${entry.id}`}>
-                <div>
-                  <strong>{entry.message}</strong>
-                  <div>Кто: интерфейс</div>
+              <div className="list-item combat-journal-item" key={`ui-${entry.id}`}>
+                <div className="combat-journal-main">
+                  <strong className="combat-journal-primary">{entry.message}</strong>
+                  <div className="combat-journal-meta">Кто: интерфейс</div>
                 </div>
-                <span>{new Date(entry.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="combat-journal-time">{new Date(entry.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             ))}
             {combatEvents.map((event) => {
@@ -110,25 +110,25 @@ export function CombatJournal({
               const details = getCombatEventDetails(event);
 
               return (
-                <div className="list-item" key={event.id}>
-                  <div>
+                <div className="list-item combat-journal-item" key={event.id}>
+                  <div className="combat-journal-main">
                     {applySummary ? (
                       <>
-                        <strong>{`${applySummary.targetName} · ${applySummary.statusName} · ${event.actorTelegramId}`}</strong>
+                        <strong className="combat-journal-primary">{`${applySummary.targetName} · ${applySummary.statusName} · ${event.actorTelegramId}`}</strong>
                       </>
                     ) : autoTickSummary ? (
-                      <strong>{`${autoTickSummary.targetName} получает урон от ${autoTickSummary.statusName}: ${autoTickSummary.formula}`}</strong>
+                      <strong className="combat-journal-primary">{`${autoTickSummary.targetName} получает урон от ${autoTickSummary.statusName}: ${autoTickSummary.formula}`}</strong>
                     ) : (
                       <>
-                        <strong>{event.message}</strong>
-                        <div>Кто: {event.actorTelegramId}</div>
+                        <strong className="combat-journal-primary">{event.message}</strong>
+                        <div className="combat-journal-meta">Кто: {event.actorTelegramId}</div>
                         {details.map((detail, index) => (
-                          <div className="meta-row" key={`${event.id}-detail-${index}`}>{detail}</div>
+                          <div className="combat-journal-meta" key={`${event.id}-detail-${index}`}>{detail}</div>
                         ))}
                       </>
                     )}
                   </div>
-                  <span>{new Date(event.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="combat-journal-time">{new Date(event.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
               );
             })}

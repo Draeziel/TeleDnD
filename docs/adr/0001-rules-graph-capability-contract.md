@@ -64,6 +64,30 @@ Any other operation mode is invalid.
 
 Resolver and validators must enforce deterministic conflict resolution using these modes.
 
+### 4) Execution and runtime boundaries
+
+Execution path is part of architecture contract:
+- `Rules Graph -> Resolver -> Capability -> Execution`
+
+Runtime concerns are not implemented in this ADR scope, but are reserved by contract:
+- `executionIntent` placeholder,
+- `lifecycleState` placeholder (`active | suspended | expired`).
+
+Combat/session services must not become implicit execution engines for raw capability payloads.
+
+### 5) Resolver non-functional guardrails (mandatory)
+
+To prevent resolver-centric bottlenecks, the following NFRs are required:
+- deterministic capability IDs,
+- cache strategy,
+- partial/dirty recompute strategy,
+- observability contract (trace id, stage timings, cache-hit ratio, recompute depth).
+
+### 6) Event normalization guardrail (runtime-facing)
+
+For future playback and debugging consistency, execution-facing events must follow normalized envelope:
+- `type + actor + target + payload`.
+
 ## Consequences
 
 Positive:
@@ -86,3 +110,4 @@ Phase 0 deliverables:
 Phase 2+:
 - enforce payloadType in resolver output and tests,
 - reject unsupported modifier operation values at import/validation stage.
+- enforce resolver observability metrics in tests and diagnostics.

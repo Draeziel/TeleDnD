@@ -282,6 +282,99 @@ Controls:
 - golden-sheet snapshot tests (old vs new parity)
 - importer dry-run in CI before apply
 
+### Extended architecture risk register (system-level)
+
+#### P0 (must be addressed before active combat expansion)
+
+1. **Resolver bottleneck risk**
+	- Risk: sheet/combat/automation/validation all depend on resolver and can cause latency spikes, duplicate recompute, and opaque failures.
+	- Mandatory controls:
+	  - resolver caching strategy,
+	  - deterministic capability IDs,
+	  - partial/dirty recompute only,
+	  - resolver observability (trace id, stage timing, cache hit ratio, recompute depth).
+
+2. **Execution layer gap**
+	- Risk: combat code starts interpreting capability internals directly and grows if/else branches per capability type.
+	- Mandatory controls:
+	  - keep explicit architecture path `Rules Graph -> Resolver -> Capability -> Execution`,
+	  - preserve `executionIntent` placeholder contract,
+	  - prohibit direct capability-shape branching in combat services outside execution adapters.
+
+3. **Runtime state fragmentation**
+	- Risk: runtime behavior split across session/effect/combat fragments without a unified state contract.
+	- Mandatory controls:
+	  - define `RuntimeState` concept in Phase 0/1 contracts,
+	  - map lifecycle (`active|suspended|expired`) and trigger processing ownership,
+	  - prohibit new runtime-only flags without RuntimeState mapping.
+
+#### P1 (must be addressed before content scale-up)
+
+4. **Feature god-object drift**
+	- Risk: Feature accumulates action/passive/trigger behavior and loses cohesion.
+	- Mandatory controls:
+	  - keep `Feature` as grouping concept,
+	  - keep `Capability` as executable/resolved unit,
+	  - enforce boundary in schema and resolver output.
+
+5. **Missing explicit dependency graph**
+	- Risk: multiclass/prereq/feat-chains/homebrew become brittle.
+	- Mandatory controls:
+	  - add dependency relations (`dependsOn`, `requires`, `excludes`) in graph contract,
+	  - validate dependency consistency at import-time.
+
+6. **Weak content compatibility policy**
+	- Risk: old characters vs new rules conflict despite `rulesVersion` field.
+	- Mandatory controls:
+	  - explicit compatibility policy,
+	  - content migration strategy and fallback path,
+	  - version-aware resolver behavior.
+
+#### P2 (must be addressed before deep combat/runtime scope)
+
+7. **Combat/session coupling risk**
+	- Risk: encounter history, multi-encounter scenarios, and non-combat actions become hard to model.
+	- Mandatory controls:
+	  - design toward `Session + CombatInstance` split,
+	  - isolate combat runtime aggregates from session membership aggregate.
+
+8. **Action economy model gap**
+	- Risk: class mechanics become unmanageable without turn-resource abstraction.
+	- Mandatory controls:
+	  - define `TurnResource` model before advanced class actions.
+
+9. **Automation hardcode regression**
+	- Risk: effect automation degrades to hardcoded branches (e.g., poison-only logic).
+	- Mandatory controls:
+	  - automation must consume trigger/capability contract,
+	  - no effect-name-specific branches as system strategy.
+
+#### Frontend/runtime integration risks
+
+10. **Sheet as logic host risk**
+	- Control: sheet remains read-only projection of resolved capabilities.
+
+11. **UI mode mixing risk**
+	- Control: keep explicit UI boundaries for Sheet / Combat / Action Builder.
+
+12. **Event format drift risk**
+	- Control: normalize event envelope (`type + actor + target + payload`) before playback complexity grows.
+
+#### Performance scaling risks
+
+13. **Resolver recompute explosion**
+	- Control: dirty-graph recompute and cache invalidation policy are mandatory.
+
+14. **Capability count explosion (50-100+)**
+	- Control: capability indexing/grouping contract for projection layers and client rendering.
+
+### Phase gates tied to this register
+
+- **Gate A (end of Phase 0):** ADR + contracts include resolver observability, execution path placeholder, lifecycle/runtime mapping, payloadType policy, modifier modes.
+- **Gate B (end of Phase 1):** schema supports dependency relations and version-aware compatibility metadata.
+- **Gate C (end of Phase 2):** resolver demonstrates cache + partial recompute + deterministic IDs + telemetry in tests.
+- **Gate D (before combat-depth scope):** RuntimeState and TurnResource contracts approved; CombatInstance split strategy documented.
+
 ---
 
 ## 13) Immediate execution tasks (next 1-2 days)

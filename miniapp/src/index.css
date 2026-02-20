@@ -592,6 +592,24 @@ td {
   color: #9ca3af;
 }
 
+.status-dot-poisoned {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.status-dot-cursed {
+  background: #f3e8ff;
+  border-color: #c4b5fd;
+  color: #6b21a8;
+}
+
+.status-dot-stunned {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #075985;
+}
+
 .character-tile-avatar {
   width: 52px;
   height: 52px;
@@ -847,6 +865,16 @@ td {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.status-preset-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.status-preset-btn {
+  font-size: 12px;
 }
 
 .session-list {

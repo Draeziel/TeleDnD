@@ -13,6 +13,25 @@ type SessionViewModel = Omit<SessionDetails, 'characters'> & {
   characters: SessionCharacterView[];
 };
 
+type StatusPreset = {
+  key: string;
+  label: string;
+  defaultDuration: string;
+};
+
+const STATUS_PRESETS: StatusPreset[] = [
+  { key: 'poisoned', label: 'Отравлен', defaultDuration: '1 раунд' },
+  { key: 'cursed', label: 'Проклят', defaultDuration: '1 минута' },
+  { key: 'stunned', label: 'Оглушен', defaultDuration: '1 раунд' },
+];
+
+const STATUS_COLOR_BY_KEY: Record<string, string> = {
+  poisoned: 'status-dot-poisoned',
+  poisoneded: 'status-dot-poisoned',
+  cursed: 'status-dot-cursed',
+  stunned: 'status-dot-stunned',
+};
+
 export function SessionViewPage() {
   const { id = '' } = useParams();
   const { userId } = useTelegram();
@@ -92,6 +111,14 @@ export function SessionViewPage() {
     setTimeout(() => {
       setToastNotifications((prev) => prev.filter((item) => item.id !== id));
     }, 4000);
+  };
+
+  const normalizeStatusKey = (effectType: string) => effectType.trim().toLowerCase();
+
+  const getStatusDotClassName = (effectType: string) => {
+    const normalized = normalizeStatusKey(effectType);
+    const colorClass = STATUS_COLOR_BY_KEY[normalized] || '';
+    return colorClass ? `status-dot ${colorClass}` : 'status-dot';
   };
 
   const mergeSummaryIntoSession = (prev: SessionViewModel | null, summary: SessionSummary): SessionViewModel | null => {
@@ -1069,6 +1096,21 @@ export function SessionViewPage() {
 
                     {activeCombatPanelEntry.kind === 'character' && activeCombatPanelEntry.characterId && (
                       <div className="combat-modal-body">
+                        <div className="status-preset-row">
+                          {STATUS_PRESETS.map((preset) => (
+                            <button
+                              key={preset.key}
+                              className={`btn btn-secondary btn-compact status-preset-btn ${STATUS_COLOR_BY_KEY[preset.key] || ''}`}
+                              disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm}
+                              onClick={() => {
+                                setEffectTypeInput(preset.key);
+                                setEffectDurationInput((current) => current.trim() ? current : preset.defaultDuration);
+                              }}
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
                         <input
                           value={effectTypeInput}
                           onChange={(event) => setEffectTypeInput(event.target.value)}
@@ -1140,7 +1182,7 @@ export function SessionViewPage() {
                         <span className="status-dot muted">•</span>
                       ) : (
                         statusIcons.map((effect) => (
-                          <span key={effect.id} className="status-dot" title={effect.effectType}>
+                          <span key={effect.id} className={getStatusDotClassName(effect.effectType)} title={effect.effectType}>
                             {effect.effectType.slice(0, 1).toUpperCase()}
                           </span>
                         ))

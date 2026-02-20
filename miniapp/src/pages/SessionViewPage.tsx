@@ -250,6 +250,15 @@ export function SessionViewPage() {
       return false;
     }
 
+    if (
+      normalized.includes('ход передан')
+      || normalized.includes('передал ход')
+      || normalized.includes('текущий раунд')
+      || normalized.includes('раунд:')
+    ) {
+      return false;
+    }
+
     return normalized.includes('урон')
       || normalized.includes('эффект')
       || normalized.includes('статус')

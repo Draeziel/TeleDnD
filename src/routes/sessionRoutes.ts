@@ -34,6 +34,7 @@ export default function sessionRoutes(prisma: PrismaClient) {
   router.post('/:sessionId/monsters/:monsterId/set-hp', sessionController.setMonsterHp.bind(sessionController));
   router.post('/:sessionId/characters/:characterId/set-initiative', sessionController.setInitiative.bind(sessionController));
   router.post('/:sessionId/characters/:characterId/apply-effect', sessionController.applyEffect.bind(sessionController));
+  router.post('/:sessionId/monsters/:monsterId/apply-effect', sessionController.applyMonsterEffect.bind(sessionController));
 
   return router;
 }

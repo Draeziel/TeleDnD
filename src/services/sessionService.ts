@@ -36,6 +36,13 @@ type UndoActionSnapshot =
       sessionCharacterId: string;
       characterName: string;
       effectType: string;
+    }
+  | {
+      kind: 'monster_effect_applied';
+      effectId: string;
+      sessionMonsterId: string;
+      monsterName: string;
+      effectType: string;
     };
 
 export class SessionService {
@@ -316,6 +323,24 @@ export class SessionService {
     return sessionCharacter;
   }
 
+  private async getSessionMonsterOrThrow(sessionId: string, sessionMonsterId: string) {
+    const sessionMonster = await this.prisma.sessionMonster.findFirst({
+      where: {
+        id: sessionMonsterId,
+        sessionId,
+      },
+      include: {
+        effects: true,
+      },
+    });
+
+    if (!sessionMonster) {
+      throw new Error('Session monster not found');
+    }
+
+    return sessionMonster;
+  }
+
   private normalizeJoinCode(joinCode: string): string {
     return joinCode.trim().toUpperCase();
   }
@@ -577,6 +602,11 @@ export class SessionService {
         },
         monsters: {
           include: {
+            effects: {
+              orderBy: {
+                createdAt: 'desc',
+              },
+            },
             monsterTemplate: {
               select: {
                 id: true,
@@ -664,6 +694,8 @@ export class SessionService {
         notes: monster.notes,
         createdAt: monster.createdAt,
         updatedAt: monster.updatedAt,
+        effects: monster.effects,
+        effectsCount: monster.effects.length,
         template: monster.monsterTemplate,
       })),
     };
@@ -878,6 +910,20 @@ export class SessionService {
                 updatedAt: true,
               },
             },
+            effects: {
+              select: {
+                id: true,
+                sessionCharacterId: true,
+                effectType: true,
+                duration: true,
+                payload: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+              orderBy: {
+                createdAt: 'desc',
+              },
+            },
             _count: {
               select: {
                 effects: true,
@@ -899,6 +945,25 @@ export class SessionService {
             notes: true,
             createdAt: true,
             updatedAt: true,
+            effects: {
+              select: {
+                id: true,
+                sessionMonsterId: true,
+                effectType: true,
+                duration: true,
+                payload: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+              orderBy: {
+                createdAt: 'desc',
+              },
+            },
+            _count: {
+              select: {
+                effects: true,
+              },
+            },
             monsterTemplate: {
               select: {
                 id: true,
@@ -963,6 +1028,7 @@ export class SessionService {
         id: entry.id,
         character: entry.character,
         state: entry.state,
+        effects: entry.effects,
         effectsCount: entry._count.effects,
       })),
       monsters: session.monsters.map((monster) => ({
@@ -975,6 +1041,8 @@ export class SessionService {
         notes: monster.notes,
         createdAt: monster.createdAt,
         updatedAt: monster.updatedAt,
+        effects: monster.effects,
+        effectsCount: monster._count.effects,
         template: monster.monsterTemplate,
       })),
     };
@@ -1855,6 +1923,54 @@ export class SessionService {
     return effect;
   }
 
+  async applySessionMonsterEffect(
+    sessionId: string,
+    sessionMonsterId: string,
+    telegramUserId: string,
+    effectType: string,
+    duration: string,
+    payload: Prisma.InputJsonValue
+  ) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+
+    if (!effectType || !effectType.trim()) {
+      throw new Error('Validation: effectType is required');
+    }
+
+    if (!duration || !duration.trim()) {
+      throw new Error('Validation: duration is required');
+    }
+
+    const sessionMonster = await this.getSessionMonsterOrThrow(sessionId, sessionMonsterId);
+
+    const effect = await this.prisma.sessionMonsterEffect.create({
+      data: {
+        sessionMonsterId: sessionMonster.id,
+        effectType: effectType.trim(),
+        duration: duration.trim(),
+        payload,
+      },
+    });
+
+    await this.pushUndoSnapshot(sessionId, telegramUserId, {
+      kind: 'monster_effect_applied',
+      effectId: effect.id,
+      sessionMonsterId: sessionMonster.id,
+      monsterName: sessionMonster.nameSnapshot,
+      effectType: effect.effectType,
+    });
+
+    await this.addSessionEvent(
+      sessionId,
+      'monster_effect_applied',
+      `Эффект ${effect.effectType} применён к монстру ${sessionMonster.nameSnapshot}`,
+      telegramUserId
+    );
+
+    return effect;
+  }
+
   async undoLastCombatAction(sessionId: string, telegramUserId: string) {
     const user = await this.resolveUserByTelegramId(telegramUserId);
     await this.requireSessionGM(sessionId, user.id);
@@ -1918,6 +2034,15 @@ export class SessionService {
       });
     }
 
+    if (snapshot.kind === 'monster_effect_applied') {
+      await this.prisma.sessionMonsterEffect.deleteMany({
+        where: {
+          id: snapshot.effectId,
+          sessionMonsterId: snapshot.sessionMonsterId,
+        },
+      });
+    }
+
     await this.prisma.sessionEvent.delete({
       where: {
         id: snapshotEvent.id,
@@ -1938,6 +2063,9 @@ export class SessionService {
     }
     if (snapshot.kind === 'effect_applied') {
       message = `Отменено применение эффекта ${snapshot.effectType} к ${snapshot.characterName}`;
+    }
+    if (snapshot.kind === 'monster_effect_applied') {
+      message = `Отменено применение эффекта ${snapshot.effectType} к монстру ${snapshot.monsterName}`;
     }
 
     await this.addSessionEvent(sessionId, 'combat_action_undone', message, telegramUserId);

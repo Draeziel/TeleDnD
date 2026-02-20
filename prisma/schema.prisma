@@ -317,10 +317,25 @@ model SessionMonster {
   updatedAt         DateTime         @updatedAt
   session           Session          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   monsterTemplate   MonsterTemplate? @relation(fields: [monsterTemplateId], references: [id], onDelete: SetNull)
+  effects           SessionMonsterEffect[]
 
   @@index([sessionId])
   @@index([monsterTemplateId])
   @@map("session_monsters")
+}
+
+model SessionMonsterEffect {
+  id               String         @id @default(uuid())
+  sessionMonsterId String         @map("session_monster_id")
+  effectType       String         @map("effect_type")
+  duration         String
+  payload          Json
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  sessionMonster   SessionMonster @relation(fields: [sessionMonsterId], references: [id], onDelete: Cascade)
+
+  @@index([sessionMonsterId])
+  @@map("session_monster_effects")
 }
 
 model SessionEvent {

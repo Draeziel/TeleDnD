@@ -187,6 +187,16 @@ export interface SessionEffect {
   updatedAt: string;
 }
 
+export interface SessionMonsterEffect {
+  id: string;
+  sessionMonsterId: string;
+  effectType: string;
+  duration: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SessionEvent {
   id: string;
   type: string;
@@ -239,6 +249,8 @@ export interface SessionMonster {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  effects: SessionMonsterEffect[];
+  effectsCount?: number;
   template?: MonsterTemplate | null;
 }
 
@@ -300,6 +312,7 @@ export interface SessionSummary {
       };
     };
     state: SessionCharacterState | null;
+    effects: SessionEffect[];
     effectsCount: number;
   }>;
 }

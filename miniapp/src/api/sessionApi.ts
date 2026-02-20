@@ -7,6 +7,7 @@ import type {
   SessionSummary,
   SessionEvent,
   SessionMonster,
+  SessionMonsterEffect,
 } from '../types/models';
 
 export const sessionApi = {
@@ -272,6 +273,21 @@ export const sessionApi = {
     payload: Record<string, unknown>
   ): Promise<SessionEffect> {
     const { data } = await http.post<SessionEffect>(`/sessions/${sessionId}/characters/${characterId}/apply-effect`, {
+      effectType,
+      duration,
+      payload,
+    });
+    return data;
+  },
+
+  async applyMonsterEffect(
+    sessionId: string,
+    monsterId: string,
+    effectType: string,
+    duration: string,
+    payload: Record<string, unknown>
+  ): Promise<SessionMonsterEffect> {
+    const { data } = await http.post<SessionMonsterEffect>(`/sessions/${sessionId}/monsters/${monsterId}/apply-effect`, {
       effectType,
       duration,
       payload,

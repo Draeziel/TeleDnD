@@ -4,7 +4,7 @@ import { sessionApi } from '../api/sessionApi';
 import { characterApi } from '../api/characterApi';
 import { monsterApi } from '../api/monsterApi';
 import { StatusBox } from '../components/StatusBox';
-import type { CharacterSummary, MonsterTemplate, SessionDetails, SessionSummary } from '../types/models';
+import type { CharacterSummary, MonsterTemplate, SessionDetails, SessionSummary, SessionEffect, SessionMonsterEffect } from '../types/models';
 import { useTelegram } from '../hooks/useTelegram';
 
 type SessionCharacterView = SessionDetails['characters'][number] & { effectsCount?: number };
@@ -68,8 +68,6 @@ export function SessionViewPage() {
   const [isOffline, setIsOffline] = useState<boolean>(typeof navigator !== 'undefined' ? !navigator.onLine : false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [silentPollFailures, setSilentPollFailures] = useState(0);
-  const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
-  const [nowTick, setNowTick] = useState<number>(Date.now());
 
   const formatErrorMessage = (fallback: string, unknownError: unknown) => {
     const responsePayload = (unknownError as { response?: { data?: { message?: string; requestId?: string } } })?.response?.data;
@@ -121,6 +119,20 @@ export function SessionViewPage() {
     return colorClass ? `status-dot ${colorClass}` : 'status-dot';
   };
 
+  const renderStatusDots = (effects: Array<SessionEffect | SessionMonsterEffect>) => {
+    const visible = effects.slice(0, 3);
+
+    if (visible.length === 0) {
+      return <span className="status-dot muted">•</span>;
+    }
+
+    return visible.map((effect) => (
+      <span key={effect.id} className={getStatusDotClassName(effect.effectType)} title={`${effect.effectType} (${effect.duration})`}>
+        {effect.effectType.slice(0, 1).toUpperCase()}
+      </span>
+    ));
+  };
+
   const mergeSummaryIntoSession = (prev: SessionViewModel | null, summary: SessionSummary): SessionViewModel | null => {
     if (!prev) {
       return prev;
@@ -138,6 +150,7 @@ export function SessionViewPage() {
         }),
         character: characterSummary.character,
         state: characterSummary.state,
+        effects: characterSummary.effects || [],
         effectsCount: characterSummary.effectsCount,
       };
     });
@@ -161,6 +174,7 @@ export function SessionViewPage() {
 
         return {
           ...monster,
+          effects: monster.effects || [],
           template: normalizedTemplate,
         };
       }),
@@ -186,9 +200,14 @@ export function SessionViewPage() {
         setSession({
           ...data,
           playersCount: data.players.length,
-          monsters: data.monsters || [],
+          monsters: (data.monsters || []).map((monster) => ({
+            ...monster,
+            effects: monster.effects || [],
+            effectsCount: monster.effectsCount ?? (monster.effects || []).length,
+          })),
           characters: data.characters.map((entry) => ({
             ...entry,
+            effects: entry.effects || [],
             effectsCount: entry.effects.length,
           })),
         });
@@ -196,7 +215,6 @@ export function SessionViewPage() {
 
       setIsOffline(false);
       setIsReconnecting(false);
-      setLastSyncAt(new Date());
       if (error) {
         setError('');
       }
@@ -308,11 +326,6 @@ export function SessionViewPage() {
       window.removeEventListener('offline', handleOffline);
     };
   }, [id]);
-
-  useEffect(() => {
-    const timer = setInterval(() => setNowTick(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     if (!session) {
@@ -580,7 +593,12 @@ export function SessionViewPage() {
     }
   };
 
-  const onApplyCombatEffect = async (characterId: string, characterName: string, panelKey: string) => {
+  const onApplyCombatEffect = async (
+    target:
+      | { kind: 'character'; characterId: string; name: string }
+      | { kind: 'monster'; monsterId: string; name: string },
+    panelKey: string
+  ) => {
     const effectType = effectTypeInput.trim();
     const duration = effectDurationInput.trim() || '1 раунд';
 
@@ -591,9 +609,13 @@ export function SessionViewPage() {
 
     try {
       setEffectApplyingKey(panelKey);
-      await sessionApi.applyEffect(id, characterId, effectType, duration, {});
+      if (target.kind === 'character') {
+        await sessionApi.applyEffect(id, target.characterId, effectType, duration, {});
+      } else {
+        await sessionApi.applyMonsterEffect(id, target.monsterId, effectType, duration, {});
+      }
       await load();
-      notify('success', `Эффект ${effectType} применён к ${characterName}`);
+      notify('success', `Эффект ${effectType} применён к ${target.name}`);
       setEffectTypeInput('');
       setEffectDurationInput('1 раунд');
     } catch (unknownError) {
@@ -645,6 +667,7 @@ export function SessionViewPage() {
         armorClass: characterArmorClass[entry.character.id] ?? null,
         avatarText: getAvatarInitials(entry.character.name),
         isActive: session?.activeTurnSessionCharacterId === entry.id,
+        effects: entry.effects || [],
       })),
     ...(session?.monsters || [])
       .filter((monster) => monster.initiative !== null && monster.initiative !== undefined)
@@ -659,6 +682,7 @@ export function SessionViewPage() {
         avatarText: '👾',
         iconUrl: monster.template?.iconUrl || null,
         isActive: session?.activeTurnSessionCharacterId === monster.id,
+        effects: monster.effects || [],
       })),
   ].sort((left, right) => {
     if (right.initiative !== left.initiative) {
@@ -675,7 +699,6 @@ export function SessionViewPage() {
     ? initiativeQueue.find((entry) => `${entry.kind}:${entry.id}` === activeCombatPanelKey) || null
     : null;
   const activeCombatPanelKeyValue = activeCombatPanelEntry ? `${activeCombatPanelEntry.kind}:${activeCombatPanelEntry.id}` : '';
-  const lastSyncSecondsAgo = lastSyncAt ? Math.max(0, Math.floor((nowTick - lastSyncAt.getTime()) / 1000)) : null;
 
   useEffect(() => {
     if (!activeCombatPanelKey) {
@@ -732,11 +755,6 @@ export function SessionViewPage() {
           <span className="session-chip session-chip-players" title={`Игроков: ${session.playersCount ?? session.players.length}`}>
             👥 {session.playersCount ?? session.players.length}
           </span>
-          {lastSyncSecondsAgo !== null && (
-            <span className="session-chip" title="Последняя успешная синхронизация">
-              ⟳ {lastSyncSecondsAgo}с
-            </span>
-          )}
         </div>
       </div>
 
@@ -907,6 +925,7 @@ export function SessionViewPage() {
                   <div className="combat-actor-card combat-actor-character" key={`precombat-character-${entry.id}`}>
                     <span className="combat-actor-badge character">ПЕРС</span>
                     <div className="combat-actor-title">{entry.character.name}</div>
+                    <div className="character-tile-statuses">{renderStatusDots(entry.effects || [])}</div>
                     <div className="combat-actor-icon">{getAvatarInitials(entry.character.name)}</div>
                     <div className="combat-actor-meta">❤️ {entry.state?.currentHp ?? 0} / {entry.state?.maxHpSnapshot ?? '—'}</div>
                     <div className="combat-actor-meta">🛡 {characterArmorClass[entry.character.id] ?? '—'}</div>
@@ -926,6 +945,7 @@ export function SessionViewPage() {
                   <div className="combat-actor-card combat-actor-monster" key={`precombat-monster-${monster.id}`}>
                     <span className="combat-actor-badge monster">МОН</span>
                     <div className="combat-actor-title">{monster.nameSnapshot}</div>
+                    <div className="character-tile-statuses">{renderStatusDots(monster.effects || [])}</div>
                     {monster.template?.iconUrl ? (
                       <img className="combat-actor-image" src={monster.template.iconUrl} alt={monster.nameSnapshot} />
                     ) : (
@@ -1034,6 +1054,7 @@ export function SessionViewPage() {
                       )}
                       <div className="combat-actor-meta">🛡 {entry.armorClass ?? '—'}</div>
                       <div className="combat-actor-meta">🎲 {entry.initiative}</div>
+                      <div className="character-tile-statuses">{renderStatusDots(entry.effects || [])}</div>
                           </>
                         );
                       })()}
@@ -1094,44 +1115,55 @@ export function SessionViewPage() {
                       )}
                     </div>
 
-                    {activeCombatPanelEntry.kind === 'character' && activeCombatPanelEntry.characterId && (
-                      <div className="combat-modal-body">
-                        <div className="status-preset-row">
-                          {STATUS_PRESETS.map((preset) => (
-                            <button
-                              key={preset.key}
-                              className={`btn btn-secondary btn-compact status-preset-btn ${STATUS_COLOR_BY_KEY[preset.key] || ''}`}
-                              disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm}
-                              onClick={() => {
-                                setEffectTypeInput(preset.key);
-                                setEffectDurationInput((current) => current.trim() ? current : preset.defaultDuration);
-                              }}
-                            >
-                              {preset.label}
-                            </button>
-                          ))}
-                        </div>
-                        <input
-                          value={effectTypeInput}
-                          onChange={(event) => setEffectTypeInput(event.target.value)}
-                          placeholder="Эффект (например, poisoned)"
-                          disabled={effectApplyingKey === activeCombatPanelKey || !session.hasActiveGm}
-                        />
-                        <input
-                          value={effectDurationInput}
-                          onChange={(event) => setEffectDurationInput(event.target.value)}
-                          placeholder="Длительность"
-                          disabled={effectApplyingKey === activeCombatPanelKey || !session.hasActiveGm}
-                        />
-                        <button
-                          className="btn btn-secondary"
-                          disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm}
-                          onClick={() => onApplyCombatEffect(activeCombatPanelEntry.characterId as string, activeCombatPanelEntry.name, activeCombatPanelKeyValue)}
-                        >
-                          {effectApplyingKey === activeCombatPanelKeyValue ? 'Применение...' : 'Добавить статус'}
-                        </button>
+                    <div className="combat-modal-body">
+                      <div className="status-preset-row">
+                        {STATUS_PRESETS.map((preset) => (
+                          <button
+                            key={preset.key}
+                            className={`btn btn-secondary btn-compact status-preset-btn ${STATUS_COLOR_BY_KEY[preset.key] || ''}`}
+                            disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm}
+                            onClick={() => {
+                              setEffectTypeInput(preset.key);
+                              setEffectDurationInput((current) => current.trim() ? current : preset.defaultDuration);
+                            }}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
                       </div>
-                    )}
+                      <input
+                        value={effectTypeInput}
+                        onChange={(event) => setEffectTypeInput(event.target.value)}
+                        placeholder="Эффект (например, poisoned)"
+                        disabled={effectApplyingKey === activeCombatPanelKey || !session.hasActiveGm}
+                      />
+                      <input
+                        value={effectDurationInput}
+                        onChange={(event) => setEffectDurationInput(event.target.value)}
+                        placeholder="Длительность"
+                        disabled={effectApplyingKey === activeCombatPanelKey || !session.hasActiveGm}
+                      />
+                      <button
+                        className="btn btn-secondary"
+                        disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm}
+                        onClick={() => {
+                          if (activeCombatPanelEntry.kind === 'character' && activeCombatPanelEntry.characterId) {
+                            void onApplyCombatEffect(
+                              { kind: 'character', characterId: activeCombatPanelEntry.characterId, name: activeCombatPanelEntry.name },
+                              activeCombatPanelKeyValue
+                            );
+                            return;
+                          }
+
+                          void onApplyCombatEffect(
+                            { kind: 'monster', monsterId: activeCombatPanelEntry.id, name: activeCombatPanelEntry.name },
+                            activeCombatPanelKeyValue
+                          );
+                        }}
+                      >
+                        {effectApplyingKey === activeCombatPanelKeyValue ? 'Применение...' : 'Добавить статус'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1169,7 +1201,6 @@ export function SessionViewPage() {
                 const isDown = currentHp <= 0;
                 const isOverheal = maxHp > 0 && currentHp > maxHp;
                 const armorClass = characterArmorClass[entry.character.id];
-                const statusIcons = entry.effects.slice(0, 3);
 
                 return (
                   <button
@@ -1178,15 +1209,7 @@ export function SessionViewPage() {
                     onClick={() => setSelectedCharacterId((current) => (current === entry.character.id ? null : entry.character.id))}
                   >
                     <div className="character-tile-statuses">
-                      {statusIcons.length === 0 ? (
-                        <span className="status-dot muted">•</span>
-                      ) : (
-                        statusIcons.map((effect) => (
-                          <span key={effect.id} className={getStatusDotClassName(effect.effectType)} title={effect.effectType}>
-                            {effect.effectType.slice(0, 1).toUpperCase()}
-                          </span>
-                        ))
-                      )}
+                      {renderStatusDots(entry.effects || [])}
                     </div>
                     <div className="character-tile-avatar">{getAvatarInitials(entry.character.name)}</div>
                     <div className="character-tile-name">{entry.character.name}</div>

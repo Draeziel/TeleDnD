@@ -352,3 +352,4 @@ Build a multiplayer session (party) system where:
 - 2026-02-20: Expanded `test-combat-automation.ps1` coverage with idempotent apply replay checks, remove-effect + undo-restore path, and combat event assertions for `effect_removed` and `combat_action_undone`.
 - 2026-02-20: Completed SessionView combat-section decomposition by extracting pre-encounter actors board into dedicated component (`PrecombatActorsGrid`), reducing inline page complexity and isolating combat UI blocks.
 - 2026-02-20: Hardened `test-combat-automation.ps1` for auth-gated smoke runs: protected-path preflight now treats 401 without Telegram `initData` as explicit skip/pass, enabling stable `run-smoke.ps1 -RunCombatAutomation` in production probe mode.
+- 2026-02-20: Added idempotent schema-repair migration `20260220170000_repair_sessions_initiative_locked` to backfill missing `sessions.initiative_locked` in drifted local databases and stabilize local smoke/combat test setup.

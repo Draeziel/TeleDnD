@@ -334,6 +334,10 @@ On each `NEXT_TURN`, if active actor has such effect, backend performs CON save 
 #### Protected monster catalog endpoints (Telegram user required)
 - `GET /api/monsters/templates`: List available templates (`GLOBAL` + caller-owned `PERSONAL`).
 - `POST /api/monsters/templates`: Create template (`PERSONAL` for regular users, `GLOBAL` for admin IDs).
+- `GET /api/monsters/status-templates`: List status templates for GM toolkit management.
+- `POST /api/monsters/status-templates`: Create status template (dice/flat damage + save config).
+- `PUT /api/monsters/status-templates/:id`: Update status template fields (`isActive` supported).
+- `DELETE /api/monsters/status-templates/:id`: Delete status template.
 
 ### Smoke Testing
 

@@ -1,5 +1,5 @@
 import { http } from './http';
-import type { MonsterTemplate } from '../types/models';
+import type { MonsterTemplate, StatusTemplate } from '../types/models';
 
 type MonsterTemplateUpsertInput = {
   name: string;
@@ -31,6 +31,22 @@ type MonsterTemplateUpsertInput = {
   scope?: 'GLOBAL' | 'PERSONAL';
 };
 
+type StatusTemplateUpsertInput = {
+  name: string;
+  effectType: string;
+  defaultDuration: string;
+  damageMode?: 'flat' | 'dice';
+  damageFlat?: number;
+  damageCount?: number;
+  damageSides?: number;
+  damageBonus?: number;
+  rounds?: number;
+  saveDieSides?: number;
+  saveThreshold?: number;
+  halfOnSave?: boolean;
+  isActive?: boolean;
+};
+
 export const monsterApi = {
   async listTemplates(params?: { query?: string; scope?: 'all' | 'global' | 'personal' }): Promise<{
     canManageGlobal: boolean;
@@ -56,6 +72,28 @@ export const monsterApi = {
 
   async deleteTemplate(id: string): Promise<{ success: boolean; id: string }> {
     const { data } = await http.delete(`/monsters/templates/${id}`);
+    return data as { success: boolean; id: string };
+  },
+
+  async listStatusTemplates(): Promise<{ items: StatusTemplate[] }> {
+    const { data } = await http.get('/monsters/status-templates');
+    return {
+      items: Array.isArray((data as any)?.items) ? (data as any).items : [],
+    };
+  },
+
+  async createStatusTemplate(input: StatusTemplateUpsertInput): Promise<StatusTemplate> {
+    const { data } = await http.post('/monsters/status-templates', input);
+    return data as StatusTemplate;
+  },
+
+  async updateStatusTemplate(id: string, input: Partial<StatusTemplateUpsertInput>): Promise<StatusTemplate> {
+    const { data } = await http.put(`/monsters/status-templates/${id}`, input);
+    return data as StatusTemplate;
+  },
+
+  async deleteStatusTemplate(id: string): Promise<{ success: boolean; id: string }> {
+    const { data } = await http.delete(`/monsters/status-templates/${id}`);
     return data as { success: boolean; id: string };
   },
 };

@@ -31,6 +31,22 @@ type MonsterTemplateInput = {
   scope?: string;
 };
 
+type StatusTemplateInput = {
+  name: string;
+  effectType: string;
+  defaultDuration: string;
+  damageMode?: 'flat' | 'dice';
+  damageFlat?: number;
+  damageCount?: number;
+  damageSides?: number;
+  damageBonus?: number;
+  rounds?: number;
+  saveDieSides?: number;
+  saveThreshold?: number;
+  halfOnSave?: boolean;
+  isActive?: boolean;
+};
+
 export class MonsterService {
   private prisma: PrismaClient;
 
@@ -79,6 +95,125 @@ export class MonsterService {
       ownerUserId: template.ownerUserId,
       createdAt: template.createdAt,
       updatedAt: template.updatedAt,
+    };
+  }
+
+  private serializeStatusTemplate(template: any) {
+    return {
+      id: template.id,
+      key: template.key,
+      name: template.name,
+      effectType: template.effectType,
+      defaultDuration: template.defaultDuration,
+      payload: template.payload,
+      isActive: template.isActive,
+      createdAt: template.createdAt,
+      updatedAt: template.updatedAt,
+    };
+  }
+
+  private normalizeStatusTemplateKey(name: string) {
+    const base = name
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zа-я0-9_]/gi, '')
+      .slice(0, 40);
+
+    const suffix = Math.random().toString(36).slice(2, 8);
+    return `${base || 'status'}_${suffix}`;
+  }
+
+  private prepareStatusTemplateData(input: StatusTemplateInput) {
+    const name = String(input.name || '').trim();
+    const effectType = String(input.effectType || '').trim();
+    const defaultDuration = String(input.defaultDuration || '').trim();
+
+    if (!name || name.length < 2 || name.length > 80) {
+      throw new Error('Validation: status template name length must be between 2 and 80 characters');
+    }
+
+    if (!effectType || effectType.length < 2 || effectType.length > 60) {
+      throw new Error('Validation: effectType length must be between 2 and 60 characters');
+    }
+
+    if (!defaultDuration || defaultDuration.length < 1 || defaultDuration.length > 60) {
+      throw new Error('Validation: defaultDuration length must be between 1 and 60 characters');
+    }
+
+    const rounds = Number.isInteger(input.rounds) ? Number(input.rounds) : 3;
+    if (rounds < 1 || rounds > 20) {
+      throw new Error('Validation: rounds must be an integer in range 1..20');
+    }
+
+    const damageMode = input.damageMode === 'flat' ? 'flat' : 'dice';
+    const damageFlat = Number.isInteger(input.damageFlat) ? Number(input.damageFlat) : 1;
+    const damageCount = Number.isInteger(input.damageCount) ? Number(input.damageCount) : 1;
+    const damageSides = Number.isInteger(input.damageSides) ? Number(input.damageSides) : 6;
+    const damageBonus = Number.isInteger(input.damageBonus) ? Number(input.damageBonus) : 0;
+
+    if (damageMode === 'flat' && (damageFlat < 1 || damageFlat > 100)) {
+      throw new Error('Validation: damageFlat must be an integer in range 1..100');
+    }
+
+    if (damageMode === 'dice') {
+      if (damageCount < 1 || damageCount > 20) {
+        throw new Error('Validation: damageCount must be an integer in range 1..20');
+      }
+
+      if (damageSides < 2 || damageSides > 100) {
+        throw new Error('Validation: damageSides must be an integer in range 2..100');
+      }
+
+      if (damageBonus < -100 || damageBonus > 100) {
+        throw new Error('Validation: damageBonus must be an integer in range -100..100');
+      }
+    }
+
+    const saveDieSides = Number.isInteger(input.saveDieSides) ? Number(input.saveDieSides) : 12;
+    const saveThreshold = Number.isInteger(input.saveThreshold) ? Number(input.saveThreshold) : 10;
+
+    if (saveDieSides < 2 || saveDieSides > 100) {
+      throw new Error('Validation: saveDieSides must be an integer in range 2..100');
+    }
+
+    if (saveThreshold < 1 || saveThreshold > 100) {
+      throw new Error('Validation: saveThreshold must be an integer in range 1..100');
+    }
+
+    const payload = {
+      automation: {
+        kind: 'POISON_TICK',
+        trigger: 'TURN_START',
+        ...(damageMode === 'flat'
+          ? {
+              damagePerTick: damageFlat,
+            }
+          : {
+              damage: {
+                mode: 'dice',
+                count: damageCount,
+                sides: damageSides,
+                bonus: damageBonus,
+              },
+            }),
+        roundsLeft: rounds,
+        save: {
+          ability: 'con',
+          dieSides: saveDieSides,
+          threshold: saveThreshold,
+          dc: saveThreshold,
+          halfOnSave: input.halfOnSave === undefined ? true : Boolean(input.halfOnSave),
+        },
+      },
+    };
+
+    return {
+      name,
+      effectType,
+      defaultDuration,
+      payload,
+      isActive: input.isActive === undefined ? true : Boolean(input.isActive),
     };
   }
 
@@ -279,6 +414,98 @@ export class MonsterService {
       success: true,
       id: existing.id,
     };
+  }
+
+  async listStatusTemplates(telegramUserId: string) {
+    await this.resolveUserByTelegramId(telegramUserId);
+
+    const items = await this.prisma.statusTemplate.findMany({
+      orderBy: [
+        { isActive: 'desc' },
+        { name: 'asc' },
+      ],
+    });
+
+    return {
+      items: items.map((item) => this.serializeStatusTemplate(item)),
+    };
+  }
+
+  async createStatusTemplate(telegramUserId: string, input: StatusTemplateInput) {
+    await this.resolveUserByTelegramId(telegramUserId);
+    const data = this.prepareStatusTemplateData(input);
+
+    const created = await this.prisma.statusTemplate.create({
+      data: {
+        key: this.normalizeStatusTemplateKey(data.name),
+        name: data.name,
+        effectType: data.effectType,
+        defaultDuration: data.defaultDuration,
+        payload: data.payload,
+        isActive: data.isActive,
+      },
+    });
+
+    return this.serializeStatusTemplate(created);
+  }
+
+  async updateStatusTemplate(telegramUserId: string, id: string, input: Partial<StatusTemplateInput>) {
+    await this.resolveUserByTelegramId(telegramUserId);
+
+    const existing = await this.prisma.statusTemplate.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new Error('Status template not found');
+    }
+
+    const merged = {
+      name: input.name ?? existing.name,
+      effectType: input.effectType ?? existing.effectType,
+      defaultDuration: input.defaultDuration ?? existing.defaultDuration,
+      isActive: input.isActive ?? existing.isActive,
+      damageMode: ((input as any).damageMode ?? 'dice') as 'flat' | 'dice',
+      damageFlat: (input as any).damageFlat,
+      damageCount: (input as any).damageCount,
+      damageSides: (input as any).damageSides,
+      damageBonus: (input as any).damageBonus,
+      rounds: (input as any).rounds,
+      saveDieSides: (input as any).saveDieSides,
+      saveThreshold: (input as any).saveThreshold,
+      halfOnSave: (input as any).halfOnSave,
+    } as StatusTemplateInput;
+
+    const data = this.prepareStatusTemplateData(merged);
+
+    const updated = await this.prisma.statusTemplate.update({
+      where: { id },
+      data: {
+        name: data.name,
+        effectType: data.effectType,
+        defaultDuration: data.defaultDuration,
+        payload: data.payload,
+        isActive: data.isActive,
+      },
+    });
+
+    return this.serializeStatusTemplate(updated);
+  }
+
+  async deleteStatusTemplate(telegramUserId: string, id: string) {
+    await this.resolveUserByTelegramId(telegramUserId);
+
+    const existing = await this.prisma.statusTemplate.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      throw new Error('Status template not found');
+    }
+
+    await this.prisma.statusTemplate.delete({ where: { id: existing.id } });
+    return { success: true, id: existing.id };
   }
 }
 

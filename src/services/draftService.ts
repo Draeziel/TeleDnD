@@ -18,6 +18,186 @@ export class DraftService {
     });
   }
 
+  private async resolveClassFeatureContext(classId: string, level: number) {
+    const progressionRows = await this.prisma.classLevelProgression.findMany({
+      where: {
+        classId,
+        level: {
+          lte: level,
+        },
+      },
+      select: {
+        featureId: true,
+        feature: {
+          select: {
+            sourceRef: true,
+          },
+        },
+      },
+      orderBy: [
+        { level: 'asc' },
+        { featureId: 'asc' },
+      ],
+    });
+
+    if (progressionRows.length > 0) {
+      return {
+        featureIds: progressionRows.map((row) => row.featureId),
+        featureSourceRefs: progressionRows
+          .map((row) => row.feature.sourceRef)
+          .filter((value): value is string => Boolean(value)),
+      };
+    }
+
+    const classFeatureRows = await this.prisma.classFeature.findMany({
+      where: {
+        classId,
+        levelRequired: {
+          lte: level,
+        },
+      },
+      select: {
+        featureId: true,
+        feature: {
+          select: {
+            sourceRef: true,
+          },
+        },
+      },
+      orderBy: [
+        { levelRequired: 'asc' },
+        { featureId: 'asc' },
+      ],
+    });
+
+    return {
+      featureIds: classFeatureRows.map((row) => row.featureId),
+      featureSourceRefs: classFeatureRows
+        .map((row) => row.feature.sourceRef)
+        .filter((value): value is string => Boolean(value)),
+    };
+  }
+
+  private async filterChoicesByDependencies(
+    choices: any[],
+    activeRefs: Set<string>
+  ): Promise<any[]> {
+    const sourceRefs = Array.from(
+      new Set(
+        choices
+          .map((choice) => choice.sourceRef)
+          .filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+      )
+    );
+
+    if (sourceRefs.length === 0) {
+      return choices;
+    }
+
+    const dependencies = await this.prisma.ruleDependency.findMany({
+      where: {
+        sourceRef: {
+          in: sourceRefs,
+        },
+      },
+      orderBy: [
+        { sourceRef: 'asc' },
+        { relationType: 'asc' },
+        { targetRef: 'asc' },
+      ],
+    });
+
+    if (dependencies.length === 0) {
+      return choices;
+    }
+
+    const bySource = new Map<string, typeof dependencies>();
+    dependencies.forEach((dependency) => {
+      if (!bySource.has(dependency.sourceRef)) {
+        bySource.set(dependency.sourceRef, []);
+      }
+
+      bySource.get(dependency.sourceRef)!.push(dependency);
+    });
+
+    return choices.filter((choice) => {
+      if (!choice.sourceRef) {
+        return true;
+      }
+
+      const refs = bySource.get(choice.sourceRef) || [];
+      if (refs.length === 0) {
+        return true;
+      }
+
+      for (const dependency of refs) {
+        if ((dependency.relationType === 'requires' || dependency.relationType === 'depends_on') && !activeRefs.has(dependency.targetRef)) {
+          return false;
+        }
+
+        if (dependency.relationType === 'excludes' && activeRefs.has(dependency.targetRef)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }
+
+  private async resolveRequiredChoicesForDraft(draft: any): Promise<any[]> {
+    const choiceFilters: any[] = [];
+    const activeRefs = new Set<string>();
+
+    if (draft.classId) {
+      choiceFilters.push({ sourceType: 'class', sourceId: draft.classId });
+      if (draft.class?.sourceRef) {
+        activeRefs.add(draft.class.sourceRef);
+      }
+
+      const classFeatureContext = await this.resolveClassFeatureContext(draft.classId, draft.level);
+      if (classFeatureContext.featureIds.length > 0) {
+        choiceFilters.push({
+          sourceType: 'feature',
+          sourceId: {
+            in: classFeatureContext.featureIds,
+          },
+        });
+      }
+
+      classFeatureContext.featureSourceRefs.forEach((sourceRef) => activeRefs.add(sourceRef));
+    }
+
+    if (draft.raceId) {
+      choiceFilters.push({ sourceType: 'race', sourceId: draft.raceId });
+      if (draft.race?.sourceRef) {
+        activeRefs.add(draft.race.sourceRef);
+      }
+    }
+
+    if (draft.backgroundId) {
+      choiceFilters.push({ sourceType: 'background', sourceId: draft.backgroundId });
+      if (draft.background?.sourceRef) {
+        activeRefs.add(draft.background.sourceRef);
+      }
+    }
+
+    if (choiceFilters.length === 0) {
+      return [];
+    }
+
+    const requiredChoices = await this.prisma.choice.findMany({
+      where: {
+        OR: choiceFilters,
+      },
+      orderBy: [
+        { sourceType: 'asc' },
+        { id: 'asc' },
+      ],
+    });
+
+    return this.filterChoicesByDependencies(requiredChoices, activeRefs);
+  }
+
   /**
    * Create a new empty character draft
    */
@@ -64,37 +244,13 @@ export class DraftService {
       throw new Error(`Draft with ID ${draftId} not found`);
     }
 
-    let requiredChoices: any[] = [];
-    let missingChoices: any[] = [];
-
-    // Build choice filters for class, race, and background
-    const choiceFilters: any[] = [];
-    if (draft.classId) {
-      choiceFilters.push({ sourceType: 'class', sourceId: draft.classId });
-    }
-    if (draft.raceId) {
-      choiceFilters.push({ sourceType: 'race', sourceId: draft.raceId });
-    }
-    if (draft.backgroundId) {
-      choiceFilters.push({ sourceType: 'background', sourceId: draft.backgroundId });
-    }
-
-    // If any source is selected, calculate required choices
-    if (choiceFilters.length > 0) {
-      requiredChoices = await this.prisma.choice.findMany({
-        where: {
-          OR: choiceFilters,
-        },
-      });
-
-      // Calculate missing choices
-      const selectedChoiceIds = new Set(
-        draft.characterDraftChoices.map(dc => dc.choiceId)
-      );
-      missingChoices = requiredChoices.filter(
-        choice => !selectedChoiceIds.has(choice.id)
-      );
-    }
+    const requiredChoices = await this.resolveRequiredChoicesForDraft(draft);
+    const selectedChoiceIds = new Set(
+      draft.characterDraftChoices.map(dc => dc.choiceId)
+    );
+    const missingChoices = requiredChoices.filter(
+      choice => !selectedChoiceIds.has(choice.id)
+    );
 
     return {
       id: draft.id,
@@ -382,24 +538,36 @@ export class DraftService {
       throw new Error('Cannot finalize draft: class not selected');
     }
 
-    // Get all required choices for class, race, and background
-    const choiceFilters: any[] = [
-      { sourceType: 'class', sourceId: draft.classId },
-    ];
-    if (draft.raceId) {
-      choiceFilters.push({ sourceType: 'race', sourceId: draft.raceId });
-    }
-    if (draft.backgroundId) {
-      choiceFilters.push({
-        sourceType: 'background',
-        sourceId: draft.backgroundId,
-      });
+    const draftWithSources = await this.prisma.characterDraft.findUnique({
+      where: { id: draftId },
+      include: {
+        class: {
+          select: {
+            sourceRef: true,
+          },
+        },
+        race: {
+          select: {
+            sourceRef: true,
+          },
+        },
+        background: {
+          select: {
+            sourceRef: true,
+          },
+        },
+      },
+    });
+
+    if (!draftWithSources) {
+      throw new Error(`Draft with ID ${draftId} not found`);
     }
 
-    const requiredChoices = await this.prisma.choice.findMany({
-      where: {
-        OR: choiceFilters,
-      },
+    const requiredChoices = await this.resolveRequiredChoicesForDraft({
+      ...draft,
+      class: draftWithSources.class,
+      race: draftWithSources.race,
+      background: draftWithSources.background,
     });
 
     // Check if all required choices are completed

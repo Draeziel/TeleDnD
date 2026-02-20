@@ -370,17 +370,17 @@ The project is functionally complete for MVP usage with:
 ## 7. Next Planned Steps
 
 ### Immediate Next Sprint
-- Launch **Character Sheet & Creation Overhaul** stream:
-  - move from draft-like sheet representation to stable character-sheet domain model and API contract,
-  - redesign creation flow UX for clearer step state, validation visibility, and recovery,
-  - align finalize/save semantics to avoid confusion between draft and playable character sheet,
-  - define migration/backward-compatibility approach for existing character records.
-- Keep session/combat work in maintenance mode (bugfix-only) until overhaul baseline is approved.
+- Start **Runtime Execution Depth** stream:
+  - define executable runtime contract for resolver action/trigger capabilities,
+  - implement first execution adapter path (without hardcoded effect-name branching),
+  - formalize `RuntimeState` ownership between session/combat aggregates.
+- Expand class/content coverage beyond demo slices while keeping importer-only ingestion.
 
 ### Near-term Improvements
 - Structured request logging and correlation IDs
 - Render/Cloudflare uptime monitor and alerting
 - Character roster enhancements (sorting/searching)
+- Resolver/runtime telemetry surfacing (dashboards + alerts)
 
 ### Mid-term Gameplay Depth
 - Character progression/leveling flow

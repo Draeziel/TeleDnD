@@ -1,7 +1,7 @@
 # Character Rules Graph Overhaul Roadmap
 
 **Last Updated**: 2026-02-20  
-**Status**: In progress (resolver-only cutover complete; next wave is content hardening + vertical expansion)  
+**Status**: In progress (core resolver/content hardening milestones completed; runtime execution depth remains)  
 **Scope**: Backend/domain architecture and data pipeline only (no UI redesign in this stream)
 
 ---
@@ -276,22 +276,23 @@ Required for stream closure:
 
 ## 11.1) Post-cutover execution queue
 
-1. **Content schema freeze** — **NEXT**
+1. **Content schema freeze** — **DONE**
 	- Freeze importer pack contract and required validation invariants.
 	- Lock field-level requirements for `classes/races/backgrounds/features/items/actions/spells/choices/dependencies`.
 	- Define breaking-change policy via schema versioning.
 
 2. **Capability-driven features** — **PARTIAL**
 	- Resolver-only sheet projection is complete.
-	- Runtime/combat capability consumption depth remains in progress.
+	- Session endpoint + miniapp consumption for combat capabilities are complete.
+	- Full runtime execution engine remains out of scope in this stream.
 
-3. **Item metadata** — **PARTIAL**
-	- Schema and importer foundation are implemented.
-	- Coverage/validation expansion for broader catalog remains.
+3. **Item metadata** — **DONE (contract hardening)**
+	- Schema and importer validation contract are implemented.
+	- Further catalog expansion is a content-growth follow-up task.
 
-4. **Action definitions** — **PARTIAL**
-	- Action model and import path are implemented.
-	- Rich payload contracts and runtime mapping expansion remain.
+4. **Action definitions** — **DONE (contract hardening)**
+	- Action model/import path plus payload/trigger validation contract are implemented.
+	- Runtime executor semantics remain a follow-up track.
 
 5. **Vertical slice (Barbarian)** — **DONE**
 	- Demo content and golden resolver fixture are in place.
@@ -300,12 +301,28 @@ Required for stream closure:
 	- Demo content and golden resolver fixture are in place.
 
 7. **Class progression expansion** — **PARTIAL**
-	- `ClassLevelProgression` + progression-aware draft/domain logic are implemented.
-	- Broader class-level content coverage remains.
+	- `ClassLevelProgression` is consumed by resolver and covered by level-2 golden slices.
+	- Broader class catalog expansion remains.
 
-8. **Content importer tooling** — **PARTIAL**
-	- Dry-run/apply, idempotent upsert, immutable `sourceRef` guard, structured report, and CI dry-run guard are implemented.
-	- Schema-freeze integration and stronger contract linting remain.
+8. **Content importer tooling** — **DONE (v1 hardening)**
+	- Dry-run/apply, idempotent upsert, immutable `sourceRef` guard, structured report, CI dry-run guard, and strict warnings mode are implemented.
+	- Advanced linting and authoring UX remain future tooling enhancements.
+
+## 11.2) Stream closure snapshot
+
+Closed in this stream:
+- resolver-first sheet cutover without legacy fallback branches,
+- dependency-aware capability filtering,
+- importer schema freeze + strict contract validation,
+- action/item metadata hardening,
+- vertical slices for Barbarian/Bard with level-2 golden coverage,
+- session combat capabilities endpoint + miniapp consumption,
+- smoke regression coverage for capabilities endpoints.
+
+Deferred to next stream:
+- full runtime trigger/action executor,
+- broader class/content pack expansion beyond demo slices,
+- production observability and analytics depth.
 
 ---
 

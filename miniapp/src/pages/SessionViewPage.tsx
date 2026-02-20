@@ -616,10 +616,7 @@ export function SessionViewPage() {
     }
   };
 
-  if (loading && !session) return <StatusBox type="info" message="Загрузка сессии..." />;
-  if (!session) return <StatusBox type="info" message="Сессия не найдена" />;
-
-  const attachedCharacterIds = new Set(session.characters.map((entry) => entry.character.id));
+  const attachedCharacterIds = new Set((session?.characters || []).map((entry) => entry.character.id));
   const availableCharacters = myCharacters.filter((character) => !attachedCharacterIds.has(character.id));
   const getAvatarInitials = (name: string) => {
     const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -635,7 +632,7 @@ export function SessionViewPage() {
   };
 
   const initiativeQueue = [
-    ...session.characters
+    ...(session?.characters || [])
       .filter((entry) => entry.state?.initiative !== null && entry.state?.initiative !== undefined)
       .map((entry) => ({
         kind: 'character' as const,
@@ -647,9 +644,9 @@ export function SessionViewPage() {
         maxHp: entry.state?.maxHpSnapshot ?? null,
         armorClass: characterArmorClass[entry.character.id] ?? null,
         avatarText: getAvatarInitials(entry.character.name),
-        isActive: session.activeTurnSessionCharacterId === entry.id,
+        isActive: session?.activeTurnSessionCharacterId === entry.id,
       })),
-    ...session.monsters
+    ...(session?.monsters || [])
       .filter((monster) => monster.initiative !== null && monster.initiative !== undefined)
       .map((monster) => ({
         kind: 'monster' as const,
@@ -661,7 +658,7 @@ export function SessionViewPage() {
         armorClass: monster.template?.armorClass ?? null,
         avatarText: '👾',
         iconUrl: monster.template?.iconUrl || null,
-        isActive: session.activeTurnSessionCharacterId === monster.id,
+        isActive: session?.activeTurnSessionCharacterId === monster.id,
       })),
   ].sort((left, right) => {
     if (right.initiative !== left.initiative) {
@@ -670,10 +667,10 @@ export function SessionViewPage() {
 
     return left.name.localeCompare(right.name);
   });
-  const myRole = session.players.find((player) => player.user.telegramId === userId)?.role || 'PLAYER';
+  const myRole = session?.players.find((player) => player.user.telegramId === userId)?.role || 'PLAYER';
   const isGmViewer = myRole === 'GM';
-  const selectedCharacter = session.characters.find((entry) => entry.character.id === selectedCharacterId) || null;
-  const isCombatInterfaceOpen = session.encounterActive || combatInterfaceRequested;
+  const selectedCharacter = session?.characters.find((entry) => entry.character.id === selectedCharacterId) || null;
+  const isCombatInterfaceOpen = (session?.encounterActive || false) || combatInterfaceRequested;
   const activeCombatPanelEntry = activeCombatPanelKey
     ? initiativeQueue.find((entry) => `${entry.kind}:${entry.id}` === activeCombatPanelKey) || null
     : null;
@@ -690,6 +687,9 @@ export function SessionViewPage() {
       setActiveCombatPanelKey(null);
     }
   }, [activeCombatPanelKey, initiativeQueue]);
+
+  if (loading && !session) return <StatusBox type="info" message="Загрузка сессии..." />;
+  if (!session) return <StatusBox type="info" message="Сессия не найдена" />;
 
   return (
     <div className="page-stack">

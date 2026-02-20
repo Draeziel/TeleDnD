@@ -286,7 +286,7 @@ Build a multiplayer session (party) system where:
 - [x] Status template editor: add short badge label field (e.g., `ЯД`) and persist it in template payload/meta.
 - [x] Combat journal filter pass: show only participant interactions (damage, apply/remove effect, reaction results), hide system/flow lines (`turn advanced`, `round counter`, etc.) in combat-phase log.
 - [x] Effect immutability: persist full template-rule snapshot into applied effect payload at apply time, so later template edits do not retroactively change active effects.
-- [~] SessionView refactor: split large combat page logic into focused components/hooks to reduce regression risk and improve maintainability.
+- [x] SessionView refactor: split large combat page logic into focused components/hooks to reduce regression risk and improve maintainability.
 - [~] Combat/status automation tests: cover save ability selection, dice rolls, damage percent mapping, rounds decrement/expiry, and event payload shape.
 - [x] CSS cleanup: remove/merge stale card/status styles left after combat card redesign to keep UI layer predictable.
 
@@ -350,3 +350,4 @@ Build a multiplayer session (party) system where:
 - 2026-02-20: Added integration smoke script `test-combat-automation.ps1` covering combat-action apply via template, immutable template snapshot, auto-tick decrement/expiry, and combat event payload checks.
 - 2026-02-20: Continued SessionView decomposition by extracting encounter queue rendering (`CombatTurnGrid`) and GM actor interaction modal (`CombatActorModal`) into dedicated miniapp components.
 - 2026-02-20: Expanded `test-combat-automation.ps1` coverage with idempotent apply replay checks, remove-effect + undo-restore path, and combat event assertions for `effect_removed` and `combat_action_undone`.
+- 2026-02-20: Completed SessionView combat-section decomposition by extracting pre-encounter actors board into dedicated component (`PrecombatActorsGrid`), reducing inline page complexity and isolating combat UI blocks.

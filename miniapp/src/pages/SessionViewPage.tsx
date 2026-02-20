@@ -8,6 +8,7 @@ import { CombatJournal } from '../components/CombatJournal';
 import { CombatTurnGrid } from '../components/CombatTurnGrid';
 import { CombatActorModal } from '../components/CombatActorModal';
 import type { CombatActorEntry } from '../components/CombatTypes';
+import { PrecombatActorsGrid } from '../components/PrecombatActorsGrid';
 import type { CharacterSummary, MonsterTemplate, SessionDetails, SessionSummary, SessionEffect, SessionMonsterEffect, CombatSummary, StatusTemplate } from '../types/models';
 import { useTelegram } from '../hooks/useTelegram';
 
@@ -1516,77 +1517,26 @@ export function SessionViewPage() {
           {!session.encounterActive && (
             <>
               <h2>Участники</h2>
-              <div className="combat-actors-grid">
-                {session.characters.map((entry) => (
-                  <div className="combat-actor-card combat-actor-character" key={`precombat-character-${entry.id}`}>
-                    <div className="combat-actor-namebar">{entry.character.name}</div>
-                    <div className="combat-actor-icon">{getAvatarInitials(entry.character.name)}</div>
-                    <div className="combat-actor-vitals-row">
-                      <div className="combat-actor-stat">❤️ {entry.state?.currentHp ?? 0} / {entry.state?.maxHpSnapshot ?? '—'}</div>
-                      <div className="combat-actor-stat">🛡 {characterArmorClass[entry.character.id] ?? '—'}</div>
-                    </div>
-                    <div className="combat-actor-status-row">
-                      <div className="character-tile-statuses">{renderStatusBadges(entry.effects || [])}</div>
-                      <div className="combat-actor-stat">🎲 {entry.state?.initiative ?? '—'}</div>
-                    </div>
-                    <button
-                      className="btn btn-danger btn-icon combat-actor-remove"
-                      aria-label={`Удалить ${entry.character.name}`}
-                      disabled={removingId === entry.character.id}
-                      onClick={() => onRemoveCharacter(entry.character.id)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-
-                {session.monsters.map((monster) => (
-                  <div className="combat-actor-card combat-actor-monster" key={`precombat-monster-${monster.id}`}>
-                    <div className="combat-actor-namebar">{monster.nameSnapshot}</div>
-                    {monster.template?.iconUrl ? (
-                      <img className="combat-actor-image" src={monster.template.iconUrl} alt={monster.nameSnapshot} />
-                    ) : (
-                      <div className="combat-actor-icon">👾</div>
-                    )}
-                    <div className="combat-actor-vitals-row">
-                      <div className="combat-actor-stat">❤️ {monster.currentHp} / {monster.maxHpSnapshot}</div>
-                      <div className="combat-actor-stat">🛡 {monster.template?.armorClass ?? '—'}</div>
-                    </div>
-                    <div className="combat-actor-status-row">
-                      <div className="character-tile-statuses">{renderStatusBadges(monster.effects || [])}</div>
-                      <div className="combat-actor-stat">🎲 {monster.initiative ?? '—'}</div>
-                    </div>
-                    {isGmViewer && (
-                      <div className="inline-row">
-                        <button
-                          className="btn btn-secondary"
-                          disabled={!session.hasActiveGm}
-                          onClick={() => onSetMonsterHp(monster.id, Math.max(monster.currentHp - 1, 0))}
-                        >
-                          HP -1
-                        </button>
-                        <button
-                          className="btn btn-secondary"
-                          disabled={!session.hasActiveGm}
-                          onClick={() => onSetMonsterHp(monster.id, monster.currentHp + 1)}
-                        >
-                          HP +1
-                        </button>
-                      </div>
-                    )}
-                    {isGmViewer && (
-                      <button
-                        className="btn btn-danger btn-icon combat-actor-remove"
-                        aria-label={`Удалить ${monster.nameSnapshot}`}
-                        disabled={removingMonsterId === monster.id}
-                        onClick={() => onRemoveMonster(monster.id)}
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <PrecombatActorsGrid
+                characters={session.characters}
+                monsters={session.monsters}
+                characterArmorClass={characterArmorClass}
+                renderStatusBadges={renderStatusBadges}
+                getAvatarInitials={getAvatarInitials}
+                isGmViewer={isGmViewer}
+                hasActiveGm={session.hasActiveGm}
+                removingId={removingId}
+                removingMonsterId={removingMonsterId}
+                onRemoveCharacter={(characterId) => {
+                  void onRemoveCharacter(characterId);
+                }}
+                onSetMonsterHp={(monsterId, currentHp) => {
+                  void onSetMonsterHp(monsterId, currentHp);
+                }}
+                onRemoveMonster={(monsterId) => {
+                  void onRemoveMonster(monsterId);
+                }}
+              />
             </>
           )}
 

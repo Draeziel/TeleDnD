@@ -10,7 +10,8 @@
     "migrate": "prisma migrate dev",
     "seed": "ts-node scripts/seed.ts",
     "deploy:trigger": "powershell -ExecutionPolicy Bypass -File ./trigger-deploy.ps1",
-    "test:combat:automation": "powershell -ExecutionPolicy Bypass -File ./test-combat-automation.ps1"
+    "test:combat:automation": "powershell -ExecutionPolicy Bypass -File ./test-combat-automation.ps1",
+    "smoke:combat": "powershell -ExecutionPolicy Bypass -File ./run-smoke.ps1 -RunCombatAutomation"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

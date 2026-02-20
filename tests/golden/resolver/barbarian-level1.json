@@ -1,0 +1,120 @@
+{
+  "actions": [],
+  "passiveFeatures": [
+    {
+      "type": "PASSIVE",
+      "sourceType": "feature",
+      "sourceRef": "feature:Military Rank",
+      "scope": "sheet",
+      "timing": "static",
+      "rulesVersion": "v1",
+      "payloadType": "PASSIVE_TRAIT",
+      "payload": {
+        "name": "Military Rank",
+        "description": "You have a military rank from your years of service."
+      },
+      "executionIntent": {
+        "kind": "passive"
+      },
+      "lifecycleState": "active"
+    },
+    {
+      "type": "PASSIVE",
+      "sourceType": "feature",
+      "sourceRef": "feature:Ability Score Improvement",
+      "scope": "sheet",
+      "timing": "static",
+      "rulesVersion": "v1",
+      "payloadType": "PASSIVE_TRAIT",
+      "payload": {
+        "name": "Ability Score Improvement",
+        "description": "Your ability scores each increase by 1."
+      },
+      "executionIntent": {
+        "kind": "passive"
+      },
+      "lifecycleState": "active"
+    },
+    {
+      "type": "PASSIVE",
+      "sourceType": "feature",
+      "sourceRef": "feature:Rage",
+      "scope": "sheet",
+      "timing": "static",
+      "rulesVersion": "v1",
+      "payloadType": "PASSIVE_TRAIT",
+      "payload": {
+        "name": "Rage",
+        "description": "You can enter a furious rage as an action on your turn."
+      },
+      "executionIntent": {
+        "kind": "passive"
+      },
+      "lifecycleState": "active"
+    },
+    {
+      "type": "PASSIVE",
+      "sourceType": "feature",
+      "sourceRef": "feature:Unarmored Defense",
+      "scope": "sheet",
+      "timing": "static",
+      "rulesVersion": "v1",
+      "payloadType": "PASSIVE_TRAIT",
+      "payload": {
+        "name": "Unarmored Defense",
+        "description": "While you are not wearing any armor, your AC equals 10 + your Dexterity modifier."
+      },
+      "executionIntent": {
+        "kind": "passive"
+      },
+      "lifecycleState": "active"
+    }
+  ],
+  "modifiers": [
+    {
+      "type": "MODIFIER",
+      "sourceType": "feature",
+      "sourceRef": "feature:Ability Score Improvement",
+      "scope": "sheet",
+      "timing": "static",
+      "rulesVersion": "v1",
+      "payloadType": "MODIFIER_ABILITY_SCORE",
+      "payload": {
+        "operation": "add",
+        "target": "ability",
+        "targetKey": "all",
+        "value": 1
+      },
+      "executionIntent": {
+        "kind": "passive"
+      },
+      "lifecycleState": "active"
+    },
+    {
+      "type": "MODIFIER",
+      "sourceType": "feature",
+      "sourceRef": "feature:Rage",
+      "scope": "sheet",
+      "timing": "static",
+      "rulesVersion": "v1",
+      "payloadType": "CUSTOM",
+      "payload": {
+        "operation": "add",
+        "target": "attack",
+        "targetKey": null,
+        "value": 2
+      },
+      "executionIntent": {
+        "kind": "passive"
+      },
+      "lifecycleState": "active"
+    }
+  ],
+  "choicesRemaining": [],
+  "metadata": {
+    "rulesVersion": "v1",
+    "resolverSchemaVersion": "1.0.0",
+    "computedAt": "<computedAt>",
+    "sourceGraphDigest": "<sourceGraphDigest>"
+  }
+}

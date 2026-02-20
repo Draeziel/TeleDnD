@@ -132,6 +132,10 @@ export class CapabilityResolverService {
         featureId: true,
         levelRequired: true,
       },
+      orderBy: [
+        { levelRequired: 'asc' },
+        { featureId: 'asc' },
+      ],
     });
 
     const raceFeaturesPromise = character.raceId
@@ -141,6 +145,9 @@ export class CapabilityResolverService {
           },
           select: {
             featureId: true,
+          },
+          orderBy: {
+            featureId: 'asc',
           },
         })
       : Promise.resolve([] as Array<{ featureId: string }>);
@@ -152,6 +159,9 @@ export class CapabilityResolverService {
           },
           select: {
             featureId: true,
+          },
+          orderBy: {
+            featureId: 'asc',
           },
         })
       : Promise.resolve([] as Array<{ featureId: string }>);
@@ -180,6 +190,9 @@ export class CapabilityResolverService {
             name: true,
             description: true,
           },
+          orderBy: {
+            id: 'asc',
+          },
         })
       : [];
 
@@ -192,7 +205,7 @@ export class CapabilityResolverService {
             },
           },
           orderBy: {
-            createdAt: 'asc',
+            sourceId: 'asc',
           },
         })
       : [];
@@ -238,7 +251,7 @@ export class CapabilityResolverService {
         },
         lifecycleState: 'active',
       });
-    });
+    }).sort((left, right) => left.id.localeCompare(right.id));
     stages.push({ stage: 'capability-map', durationMs: Date.now() - mapStart });
 
     const normalizeStart = Date.now();

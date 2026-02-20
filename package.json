@@ -9,6 +9,8 @@
     "start": "node dist/server.js",
     "migrate": "prisma migrate dev",
     "seed": "ts-node scripts/seed.ts",
+    "test:resolver:golden": "ts-node scripts/verifyResolverGolden.ts",
+    "test:resolver:golden:update": "ts-node scripts/verifyResolverGolden.ts --update",
     "verify:localdb": "powershell -ExecutionPolicy Bypass -File ./scripts/verify-local-db.ps1",
     "verify:localdb:fix": "powershell -ExecutionPolicy Bypass -File ./scripts/verify-local-db.ps1 -Fix",
     "deploy:trigger": "powershell -ExecutionPolicy Bypass -File ./trigger-deploy.ps1",

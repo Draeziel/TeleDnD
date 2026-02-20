@@ -822,11 +822,24 @@ td {
   color: #374151;
 }
 
-.combat-actor-stats-row {
+.combat-actor-vitals-row {
   width: 100%;
   display: grid;
-  grid-template-columns: 1.6fr 0.8fr 0.8fr;
+  grid-template-columns: 1.7fr 0.9fr;
   gap: 4px;
+}
+
+.combat-actor-status-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.combat-actor-status-row .character-tile-statuses {
+  min-height: 22px;
+  align-items: center;
 }
 
 .combat-actor-stat {
@@ -834,7 +847,7 @@ td {
   color: #1f2937;
   border: 1px solid #d1d5db;
   border-radius: 6px;
-  padding: 2px 4px;
+  padding: 2px 5px;
   text-align: center;
   background: #fff;
 }

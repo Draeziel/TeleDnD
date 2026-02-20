@@ -1413,11 +1413,13 @@ export function SessionViewPage() {
                   <div className="combat-actor-card combat-actor-character" key={`precombat-character-${entry.id}`}>
                     <div className="combat-actor-namebar">{entry.character.name}</div>
                     <div className="combat-actor-icon">{getAvatarInitials(entry.character.name)}</div>
-                    <div className="character-tile-statuses">{renderStatusBadges(entry.effects || [])}</div>
-                    <div className="combat-actor-stats-row">
+                    <div className="combat-actor-vitals-row">
                       <div className="combat-actor-stat">❤️ {entry.state?.currentHp ?? 0} / {entry.state?.maxHpSnapshot ?? '—'}</div>
-                      <div className="combat-actor-stat">🎲 {entry.state?.initiative ?? '—'}</div>
                       <div className="combat-actor-stat">🛡 {characterArmorClass[entry.character.id] ?? '—'}</div>
+                    </div>
+                    <div className="combat-actor-status-row">
+                      <div className="character-tile-statuses">{renderStatusBadges(entry.effects || [])}</div>
+                      <div className="combat-actor-stat">🎲 {entry.state?.initiative ?? '—'}</div>
                     </div>
                     <button
                       className="btn btn-danger btn-icon combat-actor-remove"
@@ -1438,11 +1440,13 @@ export function SessionViewPage() {
                     ) : (
                       <div className="combat-actor-icon">👾</div>
                     )}
-                    <div className="character-tile-statuses">{renderStatusBadges(monster.effects || [])}</div>
-                    <div className="combat-actor-stats-row">
+                    <div className="combat-actor-vitals-row">
                       <div className="combat-actor-stat">❤️ {monster.currentHp} / {monster.maxHpSnapshot}</div>
-                      <div className="combat-actor-stat">🎲 {monster.initiative ?? '—'}</div>
                       <div className="combat-actor-stat">🛡 {monster.template?.armorClass ?? '—'}</div>
+                    </div>
+                    <div className="combat-actor-status-row">
+                      <div className="character-tile-statuses">{renderStatusBadges(monster.effects || [])}</div>
+                      <div className="combat-actor-stat">🎲 {monster.initiative ?? '—'}</div>
                     </div>
                     {isGmViewer && (
                       <div className="inline-row">
@@ -1521,8 +1525,7 @@ export function SessionViewPage() {
                       ) : (
                         <div className="combat-actor-icon">{entry.avatarText}</div>
                       )}
-                      <div className="character-tile-statuses">{renderStatusBadges(entry.effects || [])}</div>
-                      <div className="combat-actor-stats-row">
+                      <div className="combat-actor-vitals-row">
                         {isGmViewer ? (
                           <button
                             className="btn btn-inline combat-hp-toggle"
@@ -1535,8 +1538,11 @@ export function SessionViewPage() {
                         ) : (
                           <div className="combat-actor-stat">❤️ {entry.currentHp} / {entry.maxHp ?? '—'}</div>
                         )}
-                        <div className="combat-actor-stat">🎲 {entry.initiative}</div>
                         <div className="combat-actor-stat">🛡 {entry.armorClass ?? '—'}</div>
+                      </div>
+                      <div className="combat-actor-status-row">
+                        <div className="character-tile-statuses">{renderStatusBadges(entry.effects || [])}</div>
+                        <div className="combat-actor-stat">🎲 {entry.initiative}</div>
                       </div>
                           </>
                         );

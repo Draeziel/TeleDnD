@@ -180,6 +180,7 @@ npm run import:rules:apply
 - Importer guard prevents external ID mutation for already bound entities.
 - Importer validates dependency graph contract entries (`depends_on`, `requires`, `excludes`) and fails on unresolved refs.
 - Importer validates choice nodes (`chooseCount > 0`, `chooseCount <= options.length`, unique option ids, resolvable `sourceExternalId`).
+- Importer validates action definitions (`payloadType` allowlist, object payload, trigger schema with phase/targeting/stackPolicy and optional cooldown contract).
 
 Report format includes structured `issues[]` entries:
 - `severity`: `error | warning`

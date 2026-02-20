@@ -437,3 +437,4 @@ Controls:
 17. Remove transitional cutover/fallback wording from roadmap and runtime docs. ✅
 18. Freeze importer content pack schema (`schemaVersion=1.0.0`) and reject unknown top-level keys. ✅
 19. Add session combat capabilities endpoint backed by resolver (`GET /api/sessions/:id/combat/capabilities`). ✅
+20. Harden importer action-definition validation (`payloadType` + trigger schema contract). ✅

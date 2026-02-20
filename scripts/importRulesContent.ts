@@ -9,6 +9,28 @@ type ImportIssue = {
   reason: string;
 };
 
+const ALLOWED_ACTION_PAYLOAD_TYPES = new Set([
+  'ACTION_ATTACK',
+  'PASSIVE_TRAIT',
+  'MODIFIER_ABILITY_SCORE',
+  'CHOICE_SELECTION',
+  'RUNTIME_EFFECT',
+  'CUSTOM',
+]);
+
+const ALLOWED_TRIGGER_PHASES = new Set([
+  'on_apply',
+  'turn_start',
+  'turn_end',
+  'on_hit',
+  'on_damage',
+  'on_save',
+  'manual',
+]);
+
+const ALLOWED_TRIGGER_TARGETING = new Set(['self', 'ally', 'enemy', 'area', 'explicit']);
+const ALLOWED_TRIGGER_STACK_POLICY = new Set(['refresh', 'stack', 'ignore', 'replace']);
+
 type CoreNode = {
   externalId: string;
   name: string;
@@ -399,6 +421,127 @@ function validatePack(pack: ContentPack): ImportIssue[] {
         rule: 'allowed_dependency_relation',
         reason: `Unsupported relationType '${node.relationType}'. Allowed: ${allowedDependencyRelations.join(', ')}`,
       });
+    }
+  });
+
+  ensureArray(pack.actions).forEach((node, index) => {
+    if (!node.name?.trim()) {
+      issues.push({
+        severity: 'error',
+        path: `actions[${index}].name`,
+        rule: 'required_field',
+        reason: 'action name is required',
+      });
+    }
+
+    if (!node.payloadType?.trim()) {
+      issues.push({
+        severity: 'error',
+        path: `actions[${index}].payloadType`,
+        rule: 'required_field',
+        reason: 'action payloadType is required',
+      });
+    } else if (!ALLOWED_ACTION_PAYLOAD_TYPES.has(node.payloadType)) {
+      issues.push({
+        severity: 'error',
+        path: `actions[${index}].payloadType`,
+        rule: 'allowed_payload_type',
+        reason: `Unsupported action payloadType '${node.payloadType}'`,
+      });
+    }
+
+    if (!node.payload || typeof node.payload !== 'object' || Array.isArray(node.payload)) {
+      issues.push({
+        severity: 'error',
+        path: `actions[${index}].payload`,
+        rule: 'payload_object_required',
+        reason: 'action payload must be an object',
+      });
+    }
+
+    if (node.featureExternalId !== undefined && !node.featureExternalId.trim()) {
+      issues.push({
+        severity: 'error',
+        path: `actions[${index}].featureExternalId`,
+        rule: 'non_empty_string',
+        reason: 'featureExternalId must be a non-empty string when provided',
+      });
+    }
+
+    if (node.trigger !== undefined) {
+      if (!node.trigger || typeof node.trigger !== 'object' || Array.isArray(node.trigger)) {
+        issues.push({
+          severity: 'error',
+          path: `actions[${index}].trigger`,
+          rule: 'trigger_object_required',
+          reason: 'trigger must be an object when provided',
+        });
+        return;
+      }
+
+      const triggerPhase = (node.trigger as Record<string, unknown>).phase;
+      const triggerTargeting = (node.trigger as Record<string, unknown>).targeting;
+      const triggerStackPolicy = (node.trigger as Record<string, unknown>).stackPolicy;
+      const triggerCooldown = (node.trigger as Record<string, unknown>).cooldown;
+
+      if (typeof triggerPhase !== 'string' || !ALLOWED_TRIGGER_PHASES.has(triggerPhase)) {
+        issues.push({
+          severity: 'error',
+          path: `actions[${index}].trigger.phase`,
+          rule: 'allowed_trigger_phase',
+          reason: `Unsupported trigger.phase '${String(triggerPhase)}'`,
+        });
+      }
+
+      if (typeof triggerTargeting !== 'string' || !ALLOWED_TRIGGER_TARGETING.has(triggerTargeting)) {
+        issues.push({
+          severity: 'error',
+          path: `actions[${index}].trigger.targeting`,
+          rule: 'allowed_trigger_targeting',
+          reason: `Unsupported trigger.targeting '${String(triggerTargeting)}'`,
+        });
+      }
+
+      if (typeof triggerStackPolicy !== 'string' || !ALLOWED_TRIGGER_STACK_POLICY.has(triggerStackPolicy)) {
+        issues.push({
+          severity: 'error',
+          path: `actions[${index}].trigger.stackPolicy`,
+          rule: 'allowed_trigger_stack_policy',
+          reason: `Unsupported trigger.stackPolicy '${String(triggerStackPolicy)}'`,
+        });
+      }
+
+      if (triggerCooldown !== undefined) {
+        if (!triggerCooldown || typeof triggerCooldown !== 'object' || Array.isArray(triggerCooldown)) {
+          issues.push({
+            severity: 'error',
+            path: `actions[${index}].trigger.cooldown`,
+            rule: 'cooldown_object_required',
+            reason: 'trigger.cooldown must be an object when provided',
+          });
+        } else {
+          const cooldownValue = (triggerCooldown as Record<string, unknown>).value;
+          const cooldownUnit = (triggerCooldown as Record<string, unknown>).unit;
+
+          if (typeof cooldownValue !== 'number' || !Number.isFinite(cooldownValue) || cooldownValue < 0) {
+            issues.push({
+              severity: 'error',
+              path: `actions[${index}].trigger.cooldown.value`,
+              rule: 'cooldown_value_non_negative_number',
+              reason: 'trigger.cooldown.value must be a non-negative finite number',
+            });
+          }
+
+          if (typeof cooldownUnit !== 'string' || !cooldownUnit.trim()) {
+            issues.push({
+              severity: 'error',
+              path: `actions[${index}].trigger.cooldown.unit`,
+              rule: 'cooldown_unit_required',
+              reason: 'trigger.cooldown.unit must be a non-empty string',
+            });
+          }
+        }
+      }
     }
   });
 

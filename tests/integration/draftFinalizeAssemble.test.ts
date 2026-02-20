@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { DraftService } from '../../../src/services/draftService';
-import { CharacterAssemblerService } from '../../../src/services/characterAssemblerService';
+import { DraftService } from '../../src/services/draftService';
+import { CharacterAssemblerService } from '../../src/services/characterAssemblerService';
 
 async function main() {
   if (!process.env.DATABASE_URL) {

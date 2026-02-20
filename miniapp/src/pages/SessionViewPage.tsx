@@ -122,6 +122,34 @@ export function SessionViewPage() {
     return colorClass ? `status-dot ${colorClass}` : 'status-dot';
   };
 
+  const parseRoundsFromDuration = (duration: string) => {
+    const match = duration.match(/(\d+)/);
+    if (!match) {
+      return null;
+    }
+
+    const parsed = Number(match[1]);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  };
+
+  const buildEffectPayload = (effectType: string, duration: string): Record<string, unknown> => {
+    const normalized = normalizeStatusKey(effectType);
+    if (normalized !== 'poisoned' && normalized !== 'poisoneded') {
+      return {};
+    }
+
+    const roundsLeft = parseRoundsFromDuration(duration) ?? 3;
+
+    return {
+      automation: {
+        kind: 'POISON_TICK',
+        trigger: 'TURN_START',
+        damagePerTick: 1,
+        roundsLeft,
+      },
+    };
+  };
+
   const renderStatusDots = (effects: Array<SessionEffect | SessionMonsterEffect>) => {
     const visible = effects.slice(0, 3);
 
@@ -867,6 +895,7 @@ export function SessionViewPage() {
   ) => {
     const effectType = effectTypeInput.trim();
     const duration = effectDurationInput.trim() || '1 раунд';
+    const effectPayload = buildEffectPayload(effectType, duration);
 
     if (!effectType) {
       notify('error', 'Укажите тип эффекта');
@@ -882,9 +911,9 @@ export function SessionViewPage() {
             characterId: target.characterId,
             effectType,
             duration,
-            effectPayload: {},
+            effectPayload,
           },
-          () => sessionApi.applyEffect(id, target.characterId, effectType, duration, {})
+          () => sessionApi.applyEffect(id, target.characterId, effectType, duration, effectPayload)
         );
       } else {
         await executeCombatActionWithFallback(
@@ -893,9 +922,9 @@ export function SessionViewPage() {
             monsterId: target.monsterId,
             effectType,
             duration,
-            effectPayload: {},
+            effectPayload,
           },
-          () => sessionApi.applyMonsterEffect(id, target.monsterId, effectType, duration, {})
+          () => sessionApi.applyMonsterEffect(id, target.monsterId, effectType, duration, effectPayload)
         );
       }
       await load();

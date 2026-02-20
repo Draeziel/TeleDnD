@@ -278,6 +278,21 @@ Payload expectations by type:
 - `OPEN_REACTION_WINDOW`: `targetType` (`character|monster`), `targetRefId`, `reactionType`, optional `ttlSeconds`
 - `RESPOND_REACTION_WINDOW`: `reactionId`, optional `responsePayload`
 
+MVP automation: for `effectType = poisoned` backend supports turn-start auto tick when `effectPayload.automation` is provided (or defaults are inferred):
+
+```json
+{
+  "automation": {
+    "kind": "POISON_TICK",
+    "trigger": "TURN_START",
+    "damagePerTick": 1,
+    "roundsLeft": 3
+  }
+}
+```
+
+On each `NEXT_TURN`, if active actor has such effect, backend applies damage, decrements `roundsLeft`, and removes effect when it reaches 0.
+
 #### Protected monster catalog endpoints (Telegram user required)
 - `GET /api/monsters/templates`: List available templates (`GLOBAL` + caller-owned `PERSONAL`).
 - `POST /api/monsters/templates`: Create template (`PERSONAL` for regular users, `GLOBAL` for admin IDs).

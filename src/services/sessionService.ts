@@ -461,6 +461,306 @@ export class SessionService {
     return crypto.randomInt(1, 21);
   }
 
+  private parsePositiveInteger(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+      return value;
+    }
+
+    if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
+      const parsed = Number(value.trim());
+      if (Number.isInteger(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+
+    return null;
+  }
+
+  private parseDurationRounds(duration: string): number | null {
+    const match = String(duration || '').match(/(\d+)/);
+    if (!match) {
+      return null;
+    }
+
+    const parsed = Number(match[1]);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  private normalizePoisonEffectPayload(
+    effectType: string,
+    duration: string,
+    payload: Prisma.InputJsonValue
+  ): Prisma.InputJsonValue {
+    const normalizedType = effectType.trim().toLowerCase();
+    if (normalizedType !== 'poisoned' && normalizedType !== 'poisoneded') {
+      return payload;
+    }
+
+    const payloadRecord = payload && typeof payload === 'object' && !Array.isArray(payload)
+      ? { ...(payload as Record<string, unknown>) }
+      : {};
+
+    const automationRecord = payloadRecord.automation && typeof payloadRecord.automation === 'object' && !Array.isArray(payloadRecord.automation)
+      ? { ...(payloadRecord.automation as Record<string, unknown>) }
+      : {};
+
+    const defaultRounds = this.parseDurationRounds(duration) ?? 3;
+    const damagePerTick = Math.min(Math.max(this.parsePositiveInteger(automationRecord.damagePerTick) ?? 1, 1), 50);
+    const roundsLeft = Math.min(Math.max(this.parsePositiveInteger(automationRecord.roundsLeft) ?? defaultRounds, 1), 20);
+
+    payloadRecord.automation = {
+      kind: 'POISON_TICK',
+      trigger: 'TURN_START',
+      damagePerTick,
+      roundsLeft,
+    };
+
+    return payloadRecord as Prisma.InputJsonValue;
+  }
+
+  private extractPoisonTurnStartRule(
+    effectType: string,
+    duration: string,
+    payload: Prisma.JsonValue
+  ): { damagePerTick: number; roundsLeft: number } | null {
+    const normalizedType = effectType.trim().toLowerCase();
+    if (normalizedType !== 'poisoned' && normalizedType !== 'poisoneded') {
+      return null;
+    }
+
+    const payloadRecord = payload && typeof payload === 'object' && !Array.isArray(payload)
+      ? payload as Record<string, unknown>
+      : {};
+
+    const automationRecord = payloadRecord.automation && typeof payloadRecord.automation === 'object' && !Array.isArray(payloadRecord.automation)
+      ? payloadRecord.automation as Record<string, unknown>
+      : {};
+
+    const trigger = String(automationRecord.trigger || 'TURN_START').toUpperCase();
+    if (trigger !== 'TURN_START') {
+      return null;
+    }
+
+    const defaultRounds = this.parseDurationRounds(duration) ?? 1;
+    const damagePerTick = Math.min(Math.max(this.parsePositiveInteger(automationRecord.damagePerTick) ?? 1, 1), 50);
+    const roundsLeft = Math.min(Math.max(this.parsePositiveInteger(automationRecord.roundsLeft) ?? defaultRounds, 1), 20);
+
+    return {
+      damagePerTick,
+      roundsLeft,
+    };
+  }
+
+  private formatRoundsDuration(roundsLeft: number): string {
+    return `${roundsLeft} раунд(ов)`;
+  }
+
+  private withUpdatedPoisonRounds(payload: Prisma.JsonValue, roundsLeft: number): Prisma.InputJsonValue {
+    const payloadRecord = payload && typeof payload === 'object' && !Array.isArray(payload)
+      ? { ...(payload as Record<string, unknown>) }
+      : {};
+
+    const automationRecord = payloadRecord.automation && typeof payloadRecord.automation === 'object' && !Array.isArray(payloadRecord.automation)
+      ? { ...(payloadRecord.automation as Record<string, unknown>) }
+      : {};
+
+    payloadRecord.automation = {
+      ...automationRecord,
+      kind: 'POISON_TICK',
+      trigger: 'TURN_START',
+      roundsLeft,
+    };
+
+    return payloadRecord as Prisma.InputJsonValue;
+  }
+
+  private async processAutomatedStartOfTurnEffects(sessionId: string, actorId: string, actorTelegramId: string) {
+    const sessionCharacter = await this.prisma.sessionCharacter.findFirst({
+      where: {
+        id: actorId,
+        sessionId,
+      },
+      include: {
+        character: {
+          select: {
+            name: true,
+          },
+        },
+        state: true,
+        effects: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+    });
+
+    if (sessionCharacter && sessionCharacter.state) {
+      let currentHp = sessionCharacter.state.currentHp;
+      let tickCount = 0;
+      let totalDamage = 0;
+
+      for (const effect of sessionCharacter.effects) {
+        const rule = this.extractPoisonTurnStartRule(effect.effectType, effect.duration, effect.payload);
+        if (!rule) {
+          continue;
+        }
+
+        const nextHp = Math.max(currentHp - rule.damagePerTick, 0);
+        const appliedDamage = Math.max(currentHp - nextHp, 0);
+
+        if (appliedDamage > 0) {
+          await this.prisma.sessionCharacterState.updateMany({
+            where: {
+              sessionCharacterId: sessionCharacter.id,
+            },
+            data: {
+              currentHp: nextHp,
+            },
+          });
+        }
+
+        const nextRounds = rule.roundsLeft - 1;
+        if (nextRounds <= 0) {
+          await this.prisma.sessionEffect.delete({
+            where: {
+              id: effect.id,
+            },
+          });
+        } else {
+          await this.prisma.sessionEffect.update({
+            where: {
+              id: effect.id,
+            },
+            data: {
+              duration: this.formatRoundsDuration(nextRounds),
+              payload: this.withUpdatedPoisonRounds(effect.payload, nextRounds),
+            },
+          });
+        }
+
+        await this.addSessionEvent(
+          sessionId,
+          'effect_auto_tick',
+          `Авто-тик ${effect.effectType}: ${sessionCharacter.character.name} получает ${appliedDamage} урона (${currentHp} → ${nextHp})`,
+          actorTelegramId,
+          'COMBAT',
+          {
+            targetType: 'character',
+            targetRefId: sessionCharacter.id,
+            effectId: effect.id,
+            effectType: effect.effectType,
+            appliedDamage,
+            hpBefore: currentHp,
+            hpAfter: nextHp,
+            roundsLeftAfterTick: Math.max(nextRounds, 0),
+          } as Prisma.InputJsonValue
+        );
+
+        currentHp = nextHp;
+        tickCount += 1;
+        totalDamage += appliedDamage;
+      }
+
+      return {
+        tickCount,
+        totalDamage,
+      };
+    }
+
+    const sessionMonster = await this.prisma.sessionMonster.findFirst({
+      where: {
+        id: actorId,
+        sessionId,
+      },
+      include: {
+        effects: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+    });
+
+    if (!sessionMonster) {
+      return {
+        tickCount: 0,
+        totalDamage: 0,
+      };
+    }
+
+    let currentHp = sessionMonster.currentHp;
+    let tickCount = 0;
+    let totalDamage = 0;
+
+    for (const effect of sessionMonster.effects) {
+      const rule = this.extractPoisonTurnStartRule(effect.effectType, effect.duration, effect.payload);
+      if (!rule) {
+        continue;
+      }
+
+      const nextHp = Math.max(currentHp - rule.damagePerTick, 0);
+      const appliedDamage = Math.max(currentHp - nextHp, 0);
+
+      if (appliedDamage > 0) {
+        await this.prisma.sessionMonster.update({
+          where: {
+            id: sessionMonster.id,
+          },
+          data: {
+            currentHp: nextHp,
+          },
+        });
+      }
+
+      const nextRounds = rule.roundsLeft - 1;
+      if (nextRounds <= 0) {
+        await this.prisma.sessionMonsterEffect.delete({
+          where: {
+            id: effect.id,
+          },
+        });
+      } else {
+        await this.prisma.sessionMonsterEffect.update({
+          where: {
+            id: effect.id,
+          },
+          data: {
+            duration: this.formatRoundsDuration(nextRounds),
+            payload: this.withUpdatedPoisonRounds(effect.payload, nextRounds),
+          },
+        });
+      }
+
+      await this.addSessionEvent(
+        sessionId,
+        'monster_effect_auto_tick',
+        `Авто-тик ${effect.effectType}: ${sessionMonster.nameSnapshot} получает ${appliedDamage} урона (${currentHp} → ${nextHp})`,
+        actorTelegramId,
+        'COMBAT',
+        {
+          targetType: 'monster',
+          targetRefId: sessionMonster.id,
+          effectId: effect.id,
+          effectType: effect.effectType,
+          appliedDamage,
+          hpBefore: currentHp,
+          hpAfter: nextHp,
+          roundsLeftAfterTick: Math.max(nextRounds, 0),
+        } as Prisma.InputJsonValue
+      );
+
+      currentHp = nextHp;
+      tickCount += 1;
+      totalDamage += appliedDamage;
+    }
+
+    return {
+      tickCount,
+      totalDamage,
+    };
+  }
+
   private async getSessionCharacterOrThrow(sessionId: string, characterId: string) {
     const sessionCharacter = await this.prisma.sessionCharacter.findUnique({
       where: {
@@ -2069,10 +2369,13 @@ export class SessionService {
 
     await this.addSessionEvent(sessionId, 'turn_advanced', `ГМ передал ход. Раунд ${nextRound}`, telegramUserId);
 
+    const automation = await this.processAutomatedStartOfTurnEffects(sessionId, nextId, telegramUserId);
+
     return {
       encounterActive: true,
       combatRound: nextRound,
       activeTurnSessionCharacterId: nextId,
+      automation,
     };
   }
 
@@ -2119,12 +2422,14 @@ export class SessionService {
 
     const sessionCharacter = await this.getSessionCharacterOrThrow(sessionId, characterId);
 
+    const normalizedPayload = this.normalizePoisonEffectPayload(effectType, duration, payload);
+
     const effect = await this.prisma.sessionEffect.create({
       data: {
         sessionCharacterId: sessionCharacter.id,
         effectType: effectType.trim(),
         duration: duration.trim(),
-        payload,
+        payload: normalizedPayload,
       },
     });
 
@@ -2167,12 +2472,14 @@ export class SessionService {
 
     const sessionMonster = await this.getSessionMonsterOrThrow(sessionId, sessionMonsterId);
 
+    const normalizedPayload = this.normalizePoisonEffectPayload(effectType, duration, payload);
+
     const effect = await this.prisma.sessionMonsterEffect.create({
       data: {
         sessionMonsterId: sessionMonster.id,
         effectType: effectType.trim(),
         duration: duration.trim(),
-        payload,
+        payload: normalizedPayload,
       },
     });
 

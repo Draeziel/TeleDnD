@@ -58,4 +58,26 @@ export interface ResolveCapabilitiesDto {
   metadata: ResolverMetadataDto;
 }
 
+export interface ResolverStageTiming {
+  stage: string;
+  durationMs: number;
+}
+
+export interface ResolverTelemetrySnapshot {
+  traceId: string;
+  characterId: string;
+  resolverSchemaVersion: string;
+  rulesVersion: string;
+  durationMs: number;
+  cacheHit: boolean;
+  recomputeMode: 'full' | 'partial';
+  dirtyNodeCount: number;
+  stages: ResolverStageTiming[];
+  createdAt: string;
+}
+
+export interface ResolverTelemetrySink {
+  record(snapshot: ResolverTelemetrySnapshot): void | Promise<void>;
+}
+
 export const RESOLVER_SCHEMA_VERSION = '1.0.0';

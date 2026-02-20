@@ -18,6 +18,7 @@ export default function characterRoutes(prisma: PrismaClient) {
     router.get('/:id', characterController.getCharacter.bind(characterController));
     router.delete('/:id', characterController.deleteCharacter.bind(characterController));
     router.get('/:id/sheet', characterController.getCharacterSheet.bind(characterController));
+    router.get('/:id/capabilities', characterController.getCharacterCapabilities.bind(characterController));
     router.post('/:id/choices', characterController.createCharacterChoices.bind(characterController));
     router.post('/:id/items', characterController.addItem.bind(characterController));
     router.post('/:id/items/:itemId/equip', characterController.equipItem.bind(characterController));

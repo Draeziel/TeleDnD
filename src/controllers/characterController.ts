@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { CharacterService } from '../services/characterService';
 import { CharacterSheetService } from '../services/characterSheetService';
 import { InventoryService } from '../services/inventoryService';
+import { CapabilityResolverService } from '../services/capabilityResolverService';
 
 function getTelegramUserId(res: Response): string | null {
     const telegramUserId = res.locals.telegramUserId;
@@ -17,11 +18,13 @@ export class CharacterController {
     private characterService: CharacterService;
     private characterSheetService: CharacterSheetService;
     private inventoryService: InventoryService;
+    private capabilityResolverService: CapabilityResolverService;
 
     constructor(prisma: PrismaClient) {
         this.characterService = new CharacterService(prisma);
         this.characterSheetService = new CharacterSheetService(prisma);
         this.inventoryService = new InventoryService(prisma);
+        this.capabilityResolverService = new CapabilityResolverService(prisma);
     }
 
     public async getClasses(req: Request, res: Response): Promise<void> {
@@ -145,6 +148,36 @@ export class CharacterController {
             } else {
                 res.status(500).json({ message: 'Error retrieving character sheet', error });
             }
+        }
+    }
+
+    public async getCharacterCapabilities(req: Request, res: Response): Promise<void> {
+        try {
+            const telegramUserId = getTelegramUserId(res);
+            if (!telegramUserId) {
+                res.status(401).json({ message: 'Unauthorized: Telegram user context is missing' });
+                return;
+            }
+
+            const characterId = req.params.id;
+            const dirtyQuery = req.query.dirtyNodeId;
+            const dirtyNodeIds = Array.isArray(dirtyQuery)
+                ? dirtyQuery.map((value) => String(value)).filter(Boolean)
+                : dirtyQuery
+                    ? [String(dirtyQuery)]
+                    : [];
+
+            const capabilities = await this.capabilityResolverService.resolveCharacterCapabilities(characterId, telegramUserId, {
+                dirtyNodeIds,
+            });
+            res.status(200).json(capabilities);
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('not found')) {
+                res.status(404).json({ message: error.message });
+                return;
+            }
+
+            res.status(500).json({ message: 'Error resolving character capabilities', error });
         }
     }
 

@@ -11,6 +11,25 @@ param(
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $runTestsPath = Join-Path $scriptDir "run-tests.ps1"
 $combatAutomationPath = Join-Path $scriptDir "test-combat-automation.ps1"
+$verifyLocalDbPath = Join-Path $scriptDir "scripts\verify-local-db.ps1"
+
+$isLocalBaseUrl = $BaseUrl -match '^https?://(localhost|127\.0\.0\.1)(:\d+)?/?$'
+
+if ($isLocalBaseUrl) {
+    if (-not (Test-Path $verifyLocalDbPath)) {
+        Write-Host "verify-local-db.ps1 not found at: $verifyLocalDbPath" -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host "Running local DB schema pre-check..." -ForegroundColor Cyan
+    & $verifyLocalDbPath
+    $verifyExitCode = $LASTEXITCODE
+    if ($verifyExitCode -ne 0) {
+        Write-Host "Local DB schema pre-check failed. Resolve schema drift before smoke run." -ForegroundColor Red
+        Write-Host "Tip: run 'npm run verify:localdb:fix' for initiative_locked-only drift, otherwise run 'npx prisma migrate deploy'." -ForegroundColor Yellow
+        exit $verifyExitCode
+    }
+}
 
 if (-not (Test-Path $runTestsPath)) {
     Write-Host "run-tests.ps1 not found at: $runTestsPath" -ForegroundColor Red

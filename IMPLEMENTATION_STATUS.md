@@ -1,3 +1,20 @@
+## Current Platform Status (2026-02-20)
+
+### Summary
+
+The active implementation baseline has moved beyond the initial Ability Score milestone and now runs on a resolver-driven rules graph pipeline.
+
+- Character sheet projection is resolver-only for feature/modifier output (`GET /api/characters/:id/sheet`).
+- Legacy sheet cutover/fallback env flags were removed from runtime config and docs.
+- Dependency graph contract (`depends_on/requires/excludes`) is imported and enforced by resolver filtering.
+- Draft domain enforces `chooseCount` and selected option consistency.
+- Importer pipeline is primary path (`dry-run` + transactional `apply` + immutable `sourceRef` guard + structured issue report).
+- Local smoke baseline passes (`26/26`) on the current branch.
+
+Historical implementation details for the original Ability Score phase are preserved below.
+
+---
+
 ## Ability Scores Feature - Implementation Complete
 
 ### Summary

@@ -1,7 +1,7 @@
 # RPG Character Service - Project Snapshot
 
 **Last Updated**: 2026-02-20  
-**Status**: Beta - Sessions/combat baseline stabilized; next priority is character sheet and character-creation overhaul  
+**Status**: Beta - Rules graph + resolver baseline active; sheet projection is resolver-only; focus has moved to parity hardening and runtime depth  
 **Tech Stack**: Node.js + TypeScript, Express, PostgreSQL, Prisma ORM, React + Vite + TypeScript, Cloudflare Pages, Render
 
 ---
@@ -59,7 +59,7 @@ Step-by-step character creation:
 #### **Character Sheet Layer**
 Dynamic computation service:
 - Gathers character data (class, race, background)
-- Queries all applicable features (from class by level, from race, from background)
+- Resolves capabilities through `CapabilityResolverService`
 - Calculates required vs. completed choices
 - Returns complete sheet for display
 
@@ -130,7 +130,7 @@ CharacterDraft
 - Finalize draft: `POST /api/drafts/:id/finalize`
 
 ### ✅ Character Sheet Computation
-- Dynamic feature calculation (class features by level, race/background features)
+- Resolver-driven feature/modifier projection (resolver-only path)
 - Choice requirement computation from all sources (class + race + background)
 - Track selected vs. missing choices
 - Include ability scores in sheet response
@@ -263,6 +263,7 @@ CharacterDraft
 | `POST` | `/api/characters` | Create character directly (legacy) |
 | `GET` | `/api/characters` | List current user's characters |
 | `GET` | `/api/characters/:id` | Get character basic info |
+| `GET` | `/api/characters/:id/capabilities` | Get resolver capabilities payload |
 | `DELETE` | `/api/characters/:id` | Delete owned character |
 | `GET` | `/api/characters/:id/sheet` | Get complete character sheet with features, derived stats, and skills |
 

@@ -1,5 +1,9 @@
 ## 🎯 TESTING COMPLETE - SYSTEM STABLE
 
+> Historical note (2026-02-20): this summary reflects early Ability Score testing.
+> Current service baseline is validated by smoke coverage for health/readiness, drafts/characters/sheet/capabilities, sessions, and encounter flow.
+> Latest local smoke: **26/26 PASS**.
+
 ### Test Execution Summary
 
 **Date**: 2026-02-16  

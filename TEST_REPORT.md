@@ -3,6 +3,10 @@
 **Status**: ✅ ALL TESTS PASSED  
 **System Stability**: CONFIRMED
 
+> Historical note (2026-02-20): this report captures the original Ability Score milestone.
+> Current baseline validation is maintained through `run-smoke.ps1` / `run-tests.ps1`.
+> Latest resolver-era local smoke result: **26 passed / 0 failed**.
+
 ---
 
 ## Executive Summary

@@ -1,7 +1,7 @@
 # Session / Party System Roadmap
 
-**Last Updated**: 2026-02-19  
-**Status**: Phase 1 implemented and stabilized for production MVP; initiative automation baseline completed
+**Last Updated**: 2026-02-20  
+**Status**: Phase 1 implemented and stabilized for production MVP; combat automation foundation and MVP status automation are live
 
 ---
 
@@ -256,10 +256,20 @@ Build a multiplayer session (party) system where:
 - [x] B4: In-combat HP/status interaction panel (GM-only edits)
    - tap heart opens HP/status panel
    - HP and status modifications restricted to GM
+   - manual status removal before expiration
 - [x] B5: Visibility and attach-flow tightening
    - events journal visible to GM only, behind explicit toggle
    - attach-character section hidden by default behind "+персонаж"
    - enforce 1 character per player; GM unlimited
+
+### P1.7 — Status rule templates (new)
+
+- [ ] Add status template catalog model (GM-configurable presets with trigger/duration rules).
+- [ ] Add dice-based damage config for templates (e.g., `1d6`, `2d4+1`).
+- [ ] Add save config in template (`die`, `threshold`, `ability`, `half/full/none on success`).
+- [ ] Persist rule snapshot to applied session effect at apply time (immutability for existing effects).
+- [ ] Extend GM Toolkit miniapp with simple status-template editor and picker.
+- [ ] Add combat log payload fields for rolled dice and save breakdown from template rules.
 
 ### P2 — Companion product depth
 
@@ -311,3 +321,12 @@ Build a multiplayer session (party) system where:
 - 2026-02-20: Fixed active-turn model for monsters in encounter queue, added explicit active card highlight, and blocked repeated player self-roll during active encounter.
 - 2026-02-20: Implemented network resilience in miniapp session view (GET retry with backoff+jitter, offline/reconnecting banners, adaptive polling backoff, online/offline recovery hooks).
 - 2026-02-20: Reworked in-combat heart interaction to GM popup editor (no card height expansion), added sync-age chip in session header, and introduced status presets + color-coded status dots (`poisoned/cursed/stunned`).
+- 2026-02-20: Removed sync-age chip from session header as noisy UX, while preserving silent polling and reconnect handling.
+- 2026-02-20: Added monster status workflow parity (apply/render/effects count + undo support), plus status dots on character and monster combat cards.
+- 2026-02-20: Implemented combat automation foundation: event cursor sequencing (`eventSeq`), persisted combat snapshot endpoint, idempotent `POST /combat/action`, and persisted reaction windows with deadlines.
+- 2026-02-20: Switched miniapp polling to cursor-aware merge (`after=eventSeq`) and combat-summary merge for active encounter.
+- 2026-02-20: Added dual combat API modes (`action/auto/legacy`) with strict default `action` and GM-visible mode badge in session header.
+- 2026-02-20: Fixed Render deploy blocker (`P3009`) caused by migration SQL index column mismatch and added safe auto-recovery in `render.yaml` start command.
+- 2026-02-20: Added MVP poison auto-tick on `NEXT_TURN` with duration decrement and expiry cleanup; extended with CON save + `halfOnSave` behavior.
+- 2026-02-20: Added manual status removal actions (character/monster) before expiration via combat modal and unified combat action API.
+- 2026-02-20: Improved poison auto-tick trigger detection (localized labels + automation kind), and surfaced auto-tick summary in `Next turn` success notifications.

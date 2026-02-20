@@ -41,11 +41,36 @@ export const sessionApi = {
     return data;
   },
 
-  async getSessionEvents(sessionId: string, limit = 30): Promise<SessionEvent[]> {
+  async getSessionEvents(sessionId: string, limit = 30, afterEventSeq?: string): Promise<SessionEvent[]> {
     const { data } = await http.get<SessionEvent[]>(`/sessions/${sessionId}/events`, {
-      params: { limit },
+      params: {
+        limit,
+        ...(afterEventSeq ? { after: afterEventSeq } : {}),
+      },
     });
     return Array.isArray(data) ? data : [];
+  },
+
+  async executeCombatAction(
+    sessionId: string,
+    body: {
+      idempotencyKey: string;
+      actionType: string;
+      payload?: Record<string, unknown>;
+    }
+  ): Promise<{
+    actionType: string;
+    result: unknown;
+    combatEvents: SessionEvent[];
+    idempotentReplay: boolean;
+  }> {
+    const { data } = await http.post(`/sessions/${sessionId}/combat/action`, body);
+    return data as {
+      actionType: string;
+      result: unknown;
+      combatEvents: SessionEvent[];
+      idempotentReplay: boolean;
+    };
   },
 
   async getSessionMonsters(sessionId: string): Promise<SessionMonster[]> {

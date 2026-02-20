@@ -183,7 +183,8 @@ Run smoke against deployed backend with optional SLO thresholds:
 - `DELETE /api/sessions/:id`: Delete session (GM only).
 - `GET /api/sessions/:id`: Full session details (members/party/state/effects).
 - `GET /api/sessions/:id/summary`: Lightweight polling payload.
-- `GET /api/sessions/:id/events`: Lightweight event feed (supports `?limit=`).
+- `GET /api/sessions/:id/events`: Lightweight event feed (supports `?limit=` and cursor `?after=` by `eventSeq`).
+- `GET /api/sessions/:id/combat-summary`: Persisted combat snapshot (initiative order, actors, pending reactions, `lastEventSeq`).
 - `POST /api/sessions/:id/characters`: Attach owned character to session.
 - `DELETE /api/sessions/:id/characters/:characterId`: Remove character from session (owner or GM).
 - `POST /api/sessions/:sessionId/characters/:characterId/set-hp`: GM only.
@@ -200,9 +201,73 @@ Run smoke against deployed backend with optional SLO thresholds:
 - `POST /api/sessions/:id/encounter/next-turn`: GM advances active turn and increments round on wrap.
 - `POST /api/sessions/:id/encounter/end`: GM ends encounter and clears active turn.
 - `POST /api/sessions/:id/combat/undo-last`: GM undoes last combat action.
+- `POST /api/sessions/:id/combat/action`: Single combat action endpoint (requires `idempotencyKey`).
+- `POST /api/sessions/:id/combat/reactions`: Open persisted reaction window with deadline.
+- `POST /api/sessions/:id/combat/reactions/:reactionId/respond`: Resolve reaction window.
 - `GET /api/sessions/:id/monsters`: List monsters currently attached to session.
 - `POST /api/sessions/:id/monsters`: GM adds monsters from template with `quantity`.
 - `POST /api/sessions/:sessionId/characters/:characterId/apply-effect`: GM only.
+- `POST /api/sessions/:sessionId/monsters/:monsterId/apply-effect`: GM only.
+
+### Combat Action Contract (`POST /api/sessions/:id/combat/action`)
+
+Request body:
+
+```json
+{
+  "idempotencyKey": "client-unique-key-123",
+  "actionType": "SET_CHARACTER_HP",
+  "payload": {
+    "characterId": "...",
+    "currentHp": 12,
+    "tempHp": 0
+  }
+}
+```
+
+Response shape:
+
+```json
+{
+  "actionType": "SET_CHARACTER_HP",
+  "result": { "...": "action-specific payload" },
+  "combatEvents": [
+    {
+      "id": "...",
+      "eventSeq": "124",
+      "type": "hp_updated",
+      "eventCategory": "COMBAT",
+      "message": "HP персонажа ... изменён",
+      "payload": { "...": "optional" },
+      "actorTelegramId": "...",
+      "createdAt": "..."
+    }
+  ],
+  "idempotentReplay": false
+}
+```
+
+Supported `actionType` values:
+
+- `START_ENCOUNTER`
+- `NEXT_TURN`
+- `END_ENCOUNTER`
+- `UNDO_LAST`
+- `SET_CHARACTER_HP`
+- `SET_MONSTER_HP`
+- `APPLY_CHARACTER_EFFECT`
+- `APPLY_MONSTER_EFFECT`
+- `OPEN_REACTION_WINDOW`
+- `RESPOND_REACTION_WINDOW`
+
+Payload expectations by type:
+
+- `SET_CHARACTER_HP`: `characterId`, `currentHp`, optional `tempHp`
+- `SET_MONSTER_HP`: `monsterId`, `currentHp`
+- `APPLY_CHARACTER_EFFECT`: `characterId`, `effectType`, `duration`, optional `effectPayload`
+- `APPLY_MONSTER_EFFECT`: `monsterId`, `effectType`, `duration`, optional `effectPayload`
+- `OPEN_REACTION_WINDOW`: `targetType` (`character|monster`), `targetRefId`, `reactionType`, optional `ttlSeconds`
+- `RESPOND_REACTION_WINDOW`: `reactionId`, optional `responsePayload`
 
 #### Protected monster catalog endpoints (Telegram user required)
 - `GET /api/monsters/templates`: List available templates (`GLOBAL` + caller-owned `PERSONAL`).

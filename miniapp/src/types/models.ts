@@ -199,8 +199,11 @@ export interface SessionMonsterEffect {
 
 export interface SessionEvent {
   id: string;
+  eventSeq?: string;
   type: string;
+  eventCategory?: string;
   message: string;
+  payload?: Record<string, unknown> | null;
   actorTelegramId: string;
   createdAt: string;
 }

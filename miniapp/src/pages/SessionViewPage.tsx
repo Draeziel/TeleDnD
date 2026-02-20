@@ -68,6 +68,7 @@ export function SessionViewPage() {
   const [isOffline, setIsOffline] = useState<boolean>(typeof navigator !== 'undefined' ? !navigator.onLine : false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [silentPollFailures, setSilentPollFailures] = useState(0);
+  const [lastEventSeq, setLastEventSeq] = useState<string | null>(null);
 
   const formatErrorMessage = (fallback: string, unknownError: unknown) => {
     const responsePayload = (unknownError as { response?: { data?: { message?: string; requestId?: string } } })?.response?.data;
@@ -133,6 +134,60 @@ export function SessionViewPage() {
     ));
   };
 
+  const compareEventSeq = (left?: string | null, right?: string | null) => {
+    if (!left && !right) return 0;
+    if (!left) return -1;
+    if (!right) return 1;
+
+    try {
+      const l = BigInt(left);
+      const r = BigInt(right);
+      if (l > r) return 1;
+      if (l < r) return -1;
+      return 0;
+    } catch {
+      return String(left).localeCompare(String(right));
+    }
+  };
+
+  const pickLatestEventSeq = (events: Array<{ eventSeq?: string }>) => {
+    let maxSeq: string | null = null;
+    for (const event of events) {
+      if (!event.eventSeq) {
+        continue;
+      }
+
+      if (!maxSeq || compareEventSeq(event.eventSeq, maxSeq) > 0) {
+        maxSeq = event.eventSeq;
+      }
+    }
+
+    return maxSeq;
+  };
+
+  const mergeEventsNewestFirst = (
+    existing: SessionViewModel['events'],
+    incoming: SessionViewModel['events']
+  ): SessionViewModel['events'] => {
+    if (incoming.length === 0) {
+      return existing;
+    }
+
+    const map = new Map<string, SessionViewModel['events'][number]>();
+    [...incoming, ...existing].forEach((event) => {
+      map.set(event.id, event);
+    });
+
+    return Array.from(map.values()).sort((left, right) => {
+      const seqOrder = compareEventSeq(right.eventSeq || null, left.eventSeq || null);
+      if (seqOrder !== 0) {
+        return seqOrder;
+      }
+
+      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+    }).slice(0, 120);
+  };
+
   const mergeSummaryIntoSession = (prev: SessionViewModel | null, summary: SessionSummary): SessionViewModel | null => {
     if (!prev) {
       return prev;
@@ -166,7 +221,7 @@ export function SessionViewPage() {
       combatRound: summary.combatRound,
       activeTurnSessionCharacterId: summary.activeTurnSessionCharacterId,
       hasActiveGm: summary.hasActiveGm,
-      events: summary.events,
+      events: prev.events,
       monsters: summary.monsters.map((monster) => {
         const normalizedTemplate = (monster as SessionDetails['monsters'][number] & { monsterTemplate?: SessionDetails['monsters'][number]['template'] }).template
           ?? (monster as SessionDetails['monsters'][number] & { monsterTemplate?: SessionDetails['monsters'][number]['template'] }).monsterTemplate
@@ -195,6 +250,10 @@ export function SessionViewPage() {
       if (silent) {
         const summary = await sessionApi.getSessionSummary(id);
         setSession((prev) => mergeSummaryIntoSession(prev, summary));
+        const seqFromSummary = pickLatestEventSeq(summary.events || []);
+        if (seqFromSummary) {
+          setLastEventSeq((prev) => (compareEventSeq(seqFromSummary, prev) > 0 ? seqFromSummary : prev));
+        }
       } else {
         const data = await sessionApi.getSession(id);
         setSession({
@@ -211,6 +270,9 @@ export function SessionViewPage() {
             effectsCount: entry.effects.length,
           })),
         });
+
+        const seqFromFullLoad = pickLatestEventSeq(data.events || []);
+        setLastEventSeq(seqFromFullLoad);
       }
 
       setIsOffline(false);
@@ -244,6 +306,47 @@ export function SessionViewPage() {
     }
   };
 
+  const pollEventsCursor = async () => {
+    if (!id) {
+      return;
+    }
+
+    try {
+      const incoming = await sessionApi.getSessionEvents(id, 80, lastEventSeq || undefined);
+      if (!incoming.length) {
+        return;
+      }
+
+      setSession((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        const normalizedIncoming = incoming.slice().sort((left, right) => {
+          const seqOrder = compareEventSeq(left.eventSeq || null, right.eventSeq || null);
+          if (seqOrder !== 0) {
+            return seqOrder;
+          }
+          return new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+        });
+
+        const newestFirstIncoming = normalizedIncoming.slice().reverse();
+
+        return {
+          ...prev,
+          events: mergeEventsNewestFirst(prev.events, newestFirstIncoming),
+        };
+      });
+
+      const latestSeq = pickLatestEventSeq(incoming);
+      if (latestSeq) {
+        setLastEventSeq((prev) => (compareEventSeq(latestSeq, prev) > 0 ? latestSeq : prev));
+      }
+    } catch {
+      return;
+    }
+  };
+
   const loadMonsterTemplates = async () => {
     try {
       const payload = await monsterApi.listTemplates({ scope: 'all' });
@@ -270,6 +373,7 @@ export function SessionViewPage() {
   };
 
   useEffect(() => {
+    setLastEventSeq(null);
     load();
     loadMyCharacters();
     loadMonsterTemplates();
@@ -292,6 +396,7 @@ export function SessionViewPage() {
       const backoffInterval = Math.min(baseInterval * (2 ** Math.min(silentPollFailures, 2)), 28000);
       timer = setTimeout(async () => {
         await load(true);
+        await pollEventsCursor();
         schedulePoll();
       }, backoffInterval);
     };

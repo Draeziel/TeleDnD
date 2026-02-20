@@ -238,6 +238,7 @@ npm run import:rules:ci
 - `GET /api/sessions/:id/summary`: Lightweight polling payload.
 - `GET /api/sessions/:id/events`: Lightweight event feed (supports `?limit=` and cursor `?after=` by `eventSeq`).
 - `GET /api/sessions/:id/combat-summary`: Persisted combat snapshot (initiative order, actors, pending reactions, `lastEventSeq`).
+- `GET /api/sessions/:id/combat/capabilities`: Resolver-driven combat action capabilities for session characters.
 - `GET /api/sessions/:id/status-templates`: List active status templates available for session GM workflow.
 - `POST /api/sessions/:id/characters`: Attach owned character to session.
 - `DELETE /api/sessions/:id/characters/:characterId`: Remove character from session (owner or GM).

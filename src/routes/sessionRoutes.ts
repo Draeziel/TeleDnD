@@ -13,6 +13,7 @@ export default function sessionRoutes(prisma: PrismaClient) {
   router.delete('/:id', sessionController.deleteSession.bind(sessionController));
   router.get('/:id/summary', sessionController.getSessionSummary.bind(sessionController));
   router.get('/:id/combat-summary', sessionController.getCombatSummary.bind(sessionController));
+  router.get('/:id/combat/capabilities', sessionController.getCombatCapabilities.bind(sessionController));
   router.get('/:id/status-templates', sessionController.getStatusTemplates.bind(sessionController));
   router.get('/:id/events', sessionController.getSessionEvents.bind(sessionController));
   router.get('/:id/monsters', sessionController.getSessionMonsters.bind(sessionController));

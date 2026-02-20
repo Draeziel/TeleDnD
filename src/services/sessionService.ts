@@ -1,5 +1,7 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import crypto from 'crypto';
+import { CapabilityResolverService } from './capabilityResolverService';
+import type { CapabilityBaseDto } from '../types';
 
 type CombatActionType =
   | 'START_ENCOUNTER'
@@ -107,9 +109,33 @@ type UndoActionSnapshot =
 
 export class SessionService {
   private prisma: PrismaClient;
+  private capabilityResolverService: CapabilityResolverService;
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
+    this.capabilityResolverService = new CapabilityResolverService(prisma);
+  }
+
+  private static mapCombatCapabilityAction(capability: CapabilityBaseDto) {
+    const payloadName = capability.payload.name;
+    const payloadDescription = capability.payload.description;
+    const payloadSourceRef = capability.payload.sourceRef;
+
+    return {
+      capabilityId: capability.id,
+      sourceType: capability.sourceType,
+      sourceId: capability.sourceId,
+      sourceRef: typeof payloadSourceRef === 'string' ? payloadSourceRef : null,
+      payloadType: capability.payloadType,
+      scope: capability.scope,
+      timing: capability.timing,
+      lifecycleState: capability.lifecycleState,
+      executionIntent: capability.executionIntent,
+      trigger: capability.trigger || null,
+      name: typeof payloadName === 'string' ? payloadName : capability.id,
+      description: typeof payloadDescription === 'string' ? payloadDescription : null,
+      payload: capability.payload,
+    };
   }
 
   private async getLatestEventSeq(sessionId: string): Promise<bigint | null> {
@@ -1960,6 +1986,96 @@ export class SessionService {
         status: window.status,
         deadlineAt: window.deadlineAt,
       })),
+    };
+  }
+
+  async getCombatCapabilities(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionMember(sessionId, user.id);
+
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: {
+        id: true,
+        encounterActive: true,
+        activeTurnSessionCharacterId: true,
+        characters: {
+          select: {
+            id: true,
+            characterId: true,
+            character: {
+              select: {
+                name: true,
+                owner: {
+                  select: {
+                    telegramId: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    const actors = await Promise.all(
+      session.characters.map(async (entry) => {
+        const ownerTelegramId = entry.character.owner?.telegramId;
+        if (!ownerTelegramId) {
+          return {
+            sessionCharacterId: entry.id,
+            characterId: entry.characterId,
+            characterName: entry.character.name,
+            actions: [],
+            metadata: null,
+            unavailableReason: 'missing_owner_telegram_id',
+          };
+        }
+
+        try {
+          const capabilities = await this.capabilityResolverService.resolveCharacterCapabilities(
+            entry.characterId,
+            ownerTelegramId,
+            { dirtyNodeIds: ['combat:actions'] }
+          );
+
+          const actions = capabilities.actions
+            .filter((capability) => capability.scope === 'combat' || capability.scope === 'universal')
+            .map((capability) => SessionService.mapCombatCapabilityAction(capability));
+
+          return {
+            sessionCharacterId: entry.id,
+            characterId: entry.characterId,
+            characterName: entry.character.name,
+            actions,
+            metadata: capabilities.metadata,
+            unavailableReason: null,
+          };
+        } catch (error) {
+          return {
+            sessionCharacterId: entry.id,
+            characterId: entry.characterId,
+            characterName: entry.character.name,
+            actions: [],
+            metadata: null,
+            unavailableReason: error instanceof Error ? error.message : 'resolver_error',
+          };
+        }
+      })
+    );
+
+    return {
+      sessionId: session.id,
+      encounterActive: session.encounterActive,
+      activeTurnSessionCharacterId: session.activeTurnSessionCharacterId,
+      actors,
     };
   }
 

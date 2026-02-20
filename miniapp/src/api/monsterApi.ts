@@ -40,6 +40,7 @@ type StatusTemplateUpsertInput = {
   damageDiceSides?: number;
   saveDiceCount?: number;
   saveDiceSides?: number;
+  saveAbility?: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
   saveOperator?: '<' | '<=' | '=' | '>=' | '>';
   saveTargetValue?: number;
   saveDamagePercent?: 0 | 50 | 100 | 200;

@@ -24,6 +24,7 @@ export function MonstersPage() {
   const [statusSaveDamagePercent, setStatusSaveDamagePercent] = useState<0 | 50 | 100 | 200>(50);
   const [statusSaveDiceCount, setStatusSaveDiceCount] = useState(1);
   const [statusSaveDiceSides, setStatusSaveDiceSides] = useState(12);
+  const [statusSaveAbility, setStatusSaveAbility] = useState<'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha'>('con');
   const [statusSaveOperator, setStatusSaveOperator] = useState<'<' | '<=' | '=' | '>=' | '>'>('>=');
   const [statusSaveTargetValue, setStatusSaveTargetValue] = useState(10);
   const [statusColorHex, setStatusColorHex] = useState('#5b9cff');
@@ -104,6 +105,7 @@ export function MonstersPage() {
     setStatusSaveDamagePercent(50);
     setStatusSaveDiceCount(1);
     setStatusSaveDiceSides(12);
+    setStatusSaveAbility('con');
     setStatusSaveOperator('>=');
     setStatusSaveTargetValue(10);
     setStatusColorHex('#5b9cff');
@@ -133,6 +135,9 @@ export function MonstersPage() {
       : 50) as 0 | 50 | 100 | 200);
     setStatusSaveDiceCount(Number(check.count || 1));
     setStatusSaveDiceSides(Number(check.sides || save.dieSides || 12));
+    setStatusSaveAbility((['str', 'dex', 'con', 'int', 'wis', 'cha'].includes(String(save.ability || '').toLowerCase())
+      ? String(save.ability).toLowerCase()
+      : 'con') as 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha');
     setStatusSaveOperator((['<', '<=', '=', '>=', '>'].includes(String(check.operator))
       ? String(check.operator)
       : '>=') as '<' | '<=' | '=' | '>=' | '>');
@@ -160,6 +165,7 @@ export function MonstersPage() {
         saveDamagePercent: statusSaveDamagePercent,
         saveDiceCount: statusSaveDiceCount,
         saveDiceSides: statusSaveDiceSides,
+        saveAbility: statusSaveAbility,
         saveOperator: statusSaveOperator,
         saveTargetValue: statusSaveTargetValue,
         colorHex: statusColorHex,
@@ -366,6 +372,7 @@ export function MonstersPage() {
               const saveDamagePercent = Number(save.damagePercentOnMatch ?? 50);
               const saveDiceCount = Number(check.count || 1);
               const saveDiceSides = Number(check.sides || save.dieSides || 12);
+              const saveAbility = String(save.ability || 'con').toUpperCase();
               const saveOperator = String(check.operator || '>=');
               const saveTarget = Number(check.target || save.threshold || save.dc || 10);
               const colorHex = String(meta.colorHex || '#5b9cff');
@@ -376,7 +383,7 @@ export function MonstersPage() {
                     <strong>{template.name}</strong>
                     <div className="meta-row">{templateStatusType} / {templateStatusElement} • {rounds} раунд(ов)</div>
                     <div className="meta-row">Урон: {damageText}</div>
-                    <div className="meta-row">Спасбросок: получает {saveDamagePercent}% урона, если результат {saveDiceCount}д{saveDiceSides} + CON {saveOperator} {saveTarget}</div>
+                    <div className="meta-row">Спасбросок: получает {saveDamagePercent}% урона, если результат {saveDiceCount}д{saveDiceSides} + {saveAbility} {saveOperator} {saveTarget}</div>
                   </div>
                   <div className="inline-row">
                     <button
@@ -465,7 +472,7 @@ export function MonstersPage() {
                 />
               </div>
 
-              <div className="meta-row">Спасбросок: получает [% урона], если результат [XdY + CON] [оператор] [значение]</div>
+              <div className="meta-row">Спасбросок: получает [% урона], если результат [XdY + МОД_ХАРАКТЕРИСТИКИ] [оператор] [значение]</div>
               <div className="grid-2">
                 <select
                   value={statusSaveDamagePercent}
@@ -478,6 +485,16 @@ export function MonstersPage() {
                 </select>
                 <div className="meta-row">% урона при выполнении условия</div>
               </div>
+
+              <label className="meta-row">Характеристика для спасброска</label>
+              <select value={statusSaveAbility} onChange={(event) => setStatusSaveAbility(event.target.value as 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha')}>
+                <option value="str">Сила (STR)</option>
+                <option value="dex">Ловкость (DEX)</option>
+                <option value="con">Телосложение (CON)</option>
+                <option value="int">Интеллект (INT)</option>
+                <option value="wis">Мудрость (WIS)</option>
+                <option value="cha">Харизма (CHA)</option>
+              </select>
 
               <div className="grid-3">
                 <input

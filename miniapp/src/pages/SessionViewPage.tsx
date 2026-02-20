@@ -13,18 +13,6 @@ type SessionViewModel = Omit<SessionDetails, 'characters'> & {
   characters: SessionCharacterView[];
 };
 
-type StatusPreset = {
-  key: string;
-  label: string;
-  defaultDuration: string;
-};
-
-const STATUS_PRESETS: StatusPreset[] = [
-  { key: 'poisoned', label: 'Отравлен', defaultDuration: '1 раунд' },
-  { key: 'cursed', label: 'Проклят', defaultDuration: '1 минута' },
-  { key: 'stunned', label: 'Оглушен', defaultDuration: '1 раунд' },
-];
-
 const STATUS_COLOR_BY_KEY: Record<string, string> = {
   poisoned: 'status-dot-poisoned',
   poisoneded: 'status-dot-poisoned',
@@ -60,8 +48,6 @@ export function SessionViewPage() {
   const [combatInterfaceRequested, setCombatInterfaceRequested] = useState(false);
   const [showMonsterAddControls, setShowMonsterAddControls] = useState(false);
   const [activeCombatPanelKey, setActiveCombatPanelKey] = useState<string | null>(null);
-  const [effectTypeInput, setEffectTypeInput] = useState('');
-  const [effectDurationInput, setEffectDurationInput] = useState('1 раунд');
   const [effectApplyingKey, setEffectApplyingKey] = useState<string | null>(null);
   const [effectRemovingKey, setEffectRemovingKey] = useState<string | null>(null);
   const [toastNotifications, setToastNotifications] = useState<Array<{ id: string; type: 'success' | 'error' | 'info'; message: string }>>([]);
@@ -155,47 +141,72 @@ export function SessionViewPage() {
     };
   };
 
-  const buildEffectPayload = (
-    effectType: string,
-    duration: string,
-    selectedTemplate?: StatusTemplate | null
-  ): Record<string, unknown> => {
-    if (selectedTemplate?.payload && typeof selectedTemplate.payload === 'object') {
-      return applyDurationToPayload({ ...selectedTemplate.payload }, duration);
+  const buildEffectPayload = (selectedTemplate: StatusTemplate): Record<string, unknown> => {
+    if (selectedTemplate.payload && typeof selectedTemplate.payload === 'object') {
+      return applyDurationToPayload({ ...selectedTemplate.payload }, selectedTemplate.defaultDuration);
     }
 
-    const normalized = normalizeStatusKey(effectType);
-    const isPoison = normalized === 'poisoned'
-      || normalized === 'poisoneded'
-      || normalized.includes('poison')
-      || normalized.includes('отрав')
-      || normalized === 'яд';
+    return {};
+  };
 
-    if (!isPoison) {
-      return {};
+  const getAbilityLabel = (abilityRaw: unknown): string => {
+    const ability = String(abilityRaw || 'con').toLowerCase();
+    if (ability === 'str') return 'STR';
+    if (ability === 'dex') return 'DEX';
+    if (ability === 'int') return 'INT';
+    if (ability === 'wis') return 'WIS';
+    if (ability === 'cha') return 'CHA';
+    return 'CON';
+  };
+
+  const getCombatEventDetails = (event: SessionViewModel['events'][number]): string[] => {
+    const payload = event.payload && typeof event.payload === 'object'
+      ? event.payload as Record<string, unknown>
+      : null;
+
+    if (!payload) {
+      return [];
     }
 
-    const roundsLeft = parseRoundsFromDuration(duration) ?? 3;
+    const save = payload.save && typeof payload.save === 'object'
+      ? payload.save as Record<string, unknown>
+      : null;
+    const damage = payload.damage && typeof payload.damage === 'object'
+      ? payload.damage as Record<string, unknown>
+      : null;
 
-    return applyDurationToPayload({
-      automation: {
-        kind: 'POISON_TICK',
-        trigger: 'TURN_START',
-        damage: {
-          mode: 'dice',
-          count: 1,
-          sides: 6,
-          bonus: 0,
-        },
-        roundsLeft,
-        save: {
-          ability: 'con',
-          dieSides: 12,
-          threshold: 10,
-          halfOnSave: true,
-        },
-      },
-    }, duration);
+    const details: string[] = [];
+
+    if (damage) {
+      const mode = String(damage.mode || '').toLowerCase();
+      if (mode === 'dice') {
+        const count = Number(damage.count || 1);
+        const sides = Number(damage.sides || 6);
+        const rolls = Array.isArray(damage.rolls) ? damage.rolls.map((value) => Number(value)).filter((value) => Number.isFinite(value)) : [];
+        const bonus = Number(damage.bonus || 0);
+        const baseDamage = Number(payload.appliedDamage ?? damage.baseDamage ?? 0);
+        const rollText = rolls.length > 0 ? ` [${rolls.join(', ')}]` : '';
+        details.push(`Урон: ${count}d${sides}${bonus >= 0 ? ` + ${bonus}` : ` - ${Math.abs(bonus)}`}${rollText} ⇒ ${baseDamage}`);
+      } else if (mode === 'flat') {
+        const value = Number(damage.value || 0);
+        details.push(`Урон: фиксированный ${value}`);
+      }
+    }
+
+    if (save) {
+      const diceCount = Number(save.diceCount || 1);
+      const dieSides = Number(save.dieSides || 20);
+      const modifier = Number(save.modifier || 0);
+      const total = Number(save.total || 0);
+      const operator = String(save.operator || '>=');
+      const threshold = Number(save.threshold ?? save.dc ?? 0);
+      const damagePercent = Number(save.damagePercent ?? 100);
+      const rollValues = Array.isArray(save.rolls) ? save.rolls.map((value) => Number(value)).filter((value) => Number.isFinite(value)) : [];
+      const rollText = rollValues.length > 0 ? ` [${rollValues.join(', ')}]` : '';
+      details.push(`Спасбросок: ${diceCount}d${dieSides}${rollText} + ${getAbilityLabel(save.ability)} mod (${modifier >= 0 ? '+' : ''}${modifier}) = ${total} (${operator} ${threshold}), урон ${damagePercent}%`);
+    }
+
+    return details;
   };
 
   const renderStatusDots = (effects: Array<SessionEffect | SessionMonsterEffect>) => {
@@ -967,12 +978,17 @@ export function SessionViewPage() {
     panelKey: string
   ) => {
     const selectedTemplate = statusTemplates.find((item) => item.id === selectedStatusTemplateId) || null;
-    const effectType = (effectTypeInput.trim() || selectedTemplate?.effectType || '').trim();
-    const duration = (effectDurationInput.trim() || selectedTemplate?.defaultDuration || '1 раунд').trim();
-    const effectPayload = buildEffectPayload(effectType, duration, selectedTemplate);
+    if (!selectedTemplate) {
+      notify('error', 'Выберите шаблон статуса');
+      return;
+    }
+
+    const effectType = selectedTemplate.effectType.trim();
+    const duration = selectedTemplate.defaultDuration.trim() || '1 раунд';
+    const effectPayload = buildEffectPayload(selectedTemplate);
 
     if (!effectType) {
-      notify('error', 'Укажите тип эффекта');
+      notify('error', 'Выбранный шаблон не содержит тип эффекта');
       return;
     }
 
@@ -1004,9 +1020,7 @@ export function SessionViewPage() {
         );
       }
       await load();
-      notify('success', `Эффект ${effectType} применён к ${target.name}`);
-      setEffectTypeInput('');
-      setEffectDurationInput(selectedTemplate?.defaultDuration || '1 раунд');
+      notify('success', `Статус ${selectedTemplate.name} наложен на ${target.name}`);
     } catch (unknownError) {
       notify('error', formatErrorMessage('Не удалось применить эффект (нужна роль GM)', unknownError));
     } finally {
@@ -1120,6 +1134,8 @@ export function SessionViewPage() {
 
     return left.name.localeCompare(right.name);
   });
+
+  const combatEvents = (session?.events || []).filter((event) => event.eventCategory === 'COMBAT');
   const myRole = session?.players.find((player) => player.user.telegramId === userId)?.role || 'PLAYER';
   const isGmViewer = myRole === 'GM';
   const combatApiModeLabel = combatApiMode === 'legacy'
@@ -1483,10 +1499,6 @@ export function SessionViewPage() {
                           className="btn btn-inline combat-hp-toggle"
                           onClick={() => {
                             setActiveCombatPanelKey((current) => (current === panelKey ? null : panelKey));
-                            if (activeCombatPanelKey !== panelKey) {
-                              setEffectTypeInput('');
-                              setEffectDurationInput('1 раунд');
-                            }
                           }}
                         >
                           ❤️ {entry.currentHp} / {entry.maxHp ?? '—'}
@@ -1610,72 +1622,20 @@ export function SessionViewPage() {
                           value={selectedStatusTemplateId}
                           disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm}
                           onChange={(event) => {
-                            const nextId = event.target.value;
-                            setSelectedStatusTemplateId(nextId);
-                            const selectedTemplate = statusTemplates.find((item) => item.id === nextId);
-                            if (selectedTemplate) {
-                              setEffectTypeInput(selectedTemplate.effectType);
-                              setEffectDurationInput(selectedTemplate.defaultDuration);
-                            }
+                            setSelectedStatusTemplateId(event.target.value);
                           }}
                         >
                           <option value="">Шаблон статуса</option>
                           {statusTemplates.map((template) => (
                             <option key={template.id} value={template.id}>
-                              {template.name}
+                              {template.name} ({template.defaultDuration})
                             </option>
                           ))}
                         </select>
-                        {selectedStatusTemplateId && (
-                          <button
-                            className="btn btn-secondary btn-compact"
-                            disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm}
-                            onClick={() => {
-                              const selectedTemplate = statusTemplates.find((item) => item.id === selectedStatusTemplateId);
-                              if (!selectedTemplate) {
-                                return;
-                              }
-
-                              setEffectTypeInput(selectedTemplate.effectType);
-                              setEffectDurationInput(selectedTemplate.defaultDuration);
-                            }}
-                          >
-                            Применить шаблон
-                          </button>
-                        )}
                       </div>
-
-                      <div className="status-preset-row">
-                        {STATUS_PRESETS.map((preset) => (
-                          <button
-                            key={preset.key}
-                            className={`btn btn-secondary btn-compact status-preset-btn ${STATUS_COLOR_BY_KEY[preset.key] || ''}`}
-                            disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm}
-                            onClick={() => {
-                              setSelectedStatusTemplateId('');
-                              setEffectTypeInput(preset.key);
-                              setEffectDurationInput((current) => current.trim() ? current : preset.defaultDuration);
-                            }}
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
-                      </div>
-                      <input
-                        value={effectTypeInput}
-                        onChange={(event) => setEffectTypeInput(event.target.value)}
-                        placeholder="Эффект (например, poisoned)"
-                        disabled={effectApplyingKey === activeCombatPanelKey || !session.hasActiveGm}
-                      />
-                      <input
-                        value={effectDurationInput}
-                        onChange={(event) => setEffectDurationInput(event.target.value)}
-                        placeholder="Длительность"
-                        disabled={effectApplyingKey === activeCombatPanelKey || !session.hasActiveGm}
-                      />
                       <button
                         className="btn btn-secondary"
-                        disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm}
+                        disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm || !selectedStatusTemplateId}
                         onClick={() => {
                           if (activeCombatPanelEntry.kind === 'character' && activeCombatPanelEntry.characterId) {
                             void onApplyCombatEffect(
@@ -1691,7 +1651,7 @@ export function SessionViewPage() {
                           );
                         }}
                       >
-                        {effectApplyingKey === activeCombatPanelKeyValue ? 'Применение...' : 'Добавить статус'}
+                        {effectApplyingKey === activeCombatPanelKeyValue ? 'Наложение...' : 'Наложить'}
                       </button>
                     </div>
                   </div>
@@ -1868,17 +1828,18 @@ export function SessionViewPage() {
       </div>
       )}
 
-      {!isCombatInterfaceOpen && isGmViewer && (
+      {isGmViewer && (
         <div className="section-card">
           <div className="session-list-header">
-            <h2>Журнал событий</h2>
+            <h2>Журнал боя</h2>
             <button className="btn btn-secondary btn-compact" onClick={() => setShowEvents((current) => !current)}>
-              {showEvents ? 'Скрыть журнал' : 'Показать журнал'}
+              {showEvents ? 'Скрыть' : 'Показать'}
             </button>
           </div>
+          <p className="meta-row">Подробности бросков и расчётов урона. По умолчанию скрыт.</p>
           {showEvents && (
-            (session.events.length + uiJournal.length) === 0 ? (
-              <StatusBox type="info" message="Событий пока нет" />
+            (combatEvents.length + uiJournal.length) === 0 ? (
+              <StatusBox type="info" message="Боевых событий пока нет" />
             ) : (
               <div className="list-grid">
                 {uiJournal.map((entry) => (
@@ -1890,15 +1851,21 @@ export function SessionViewPage() {
                     <span>{new Date(entry.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                 ))}
-                {session.events.map((event) => (
+                {combatEvents.map((event) => {
+                  const details = getCombatEventDetails(event);
+
+                  return (
                   <div className="list-item" key={event.id}>
                     <div>
                       <strong>{event.message}</strong>
                       <div>Кто: {event.actorTelegramId}</div>
+                      {details.map((detail, index) => (
+                        <div className="meta-row" key={`${event.id}-detail-${index}`}>{detail}</div>
+                      ))}
                     </div>
                     <span>{new Date(event.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
-                ))}
+                )})}
               </div>
             )
           )}

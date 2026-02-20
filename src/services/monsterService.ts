@@ -40,6 +40,7 @@ type StatusTemplateInput = {
   damageDiceSides?: number;
   saveDiceCount?: number;
   saveDiceSides?: number;
+  saveAbility?: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
   saveOperator?: '<' | '<=' | '=' | '>=' | '>';
   saveTargetValue?: number;
   saveDamagePercent?: 0 | 50 | 100 | 200;
@@ -152,6 +153,7 @@ export class MonsterService {
     const saveDiceSides = Number.isInteger(input.saveDiceSides) ? Number(input.saveDiceSides) : 12;
     const saveTargetValue = Number.isInteger(input.saveTargetValue) ? Number(input.saveTargetValue) : 10;
     const saveOperator = (input.saveOperator || '>=').trim() as '<' | '<=' | '=' | '>=' | '>';
+    const saveAbility = String(input.saveAbility || 'con').trim().toLowerCase();
     const saveDamagePercent = [0, 50, 100, 200].includes(Number(input.saveDamagePercent))
       ? Number(input.saveDamagePercent) as 0 | 50 | 100 | 200
       : 50;
@@ -180,6 +182,10 @@ export class MonsterService {
       throw new Error('Validation: saveOperator must be one of <, <=, =, >=, >');
     }
 
+    if (!['str', 'dex', 'con', 'int', 'wis', 'cha'].includes(saveAbility)) {
+      throw new Error('Validation: saveAbility must be one of str, dex, con, int, wis, cha');
+    }
+
     const colorHex = String(input.colorHex || '#5b9cff').trim();
     if (!/^#([0-9a-fA-F]{6})$/.test(colorHex)) {
       throw new Error('Validation: colorHex must be a valid hex color like #5b9cff');
@@ -206,7 +212,7 @@ export class MonsterService {
               },
               roundsLeft: rounds,
               save: {
-                ability: 'con',
+                ability: saveAbility,
                 check: {
                   count: saveDiceCount,
                   sides: saveDiceSides,
@@ -261,6 +267,7 @@ export class MonsterService {
       damageDiceSides: Number(damage.sides ?? 6),
       saveDiceCount: Number(check.count ?? 1),
       saveDiceSides: Number(check.sides ?? save.dieSides ?? 12),
+      saveAbility: String(save.ability || 'con').toLowerCase() as 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha',
       saveOperator: String(check.operator || '>=' ) as '<' | '<=' | '=' | '>=' | '>',
       saveTargetValue: Number(check.target ?? save.threshold ?? save.dc ?? 10),
       saveDamagePercent: Number(save.damagePercentOnMatch ?? (save.halfOnSave === false ? 0 : 50)) as 0 | 50 | 100 | 200,

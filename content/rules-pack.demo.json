@@ -1,0 +1,86 @@
+{
+  "contentSource": {
+    "name": "SRD Demo",
+    "rulesVersion": "v1"
+  },
+  "classes": [
+    { "externalId": "class.barbarian", "name": "Barbarian", "rulesVersion": "v1" },
+    { "externalId": "class.bard", "name": "Bard", "rulesVersion": "v1" }
+  ],
+  "races": [
+    { "externalId": "race.human", "name": "Human", "rulesVersion": "v1" }
+  ],
+  "backgrounds": [
+    { "externalId": "background.soldier", "name": "Soldier", "rulesVersion": "v1" }
+  ],
+  "features": [
+    {
+      "externalId": "feature.rage",
+      "name": "Rage",
+      "description": "You can enter a furious rage as an action on your turn.",
+      "rulesVersion": "v1"
+    },
+    {
+      "externalId": "feature.unarmored-defense",
+      "name": "Unarmored Defense",
+      "description": "While not wearing armor, AC equals 10 + Dexterity modifier.",
+      "rulesVersion": "v1"
+    },
+    {
+      "externalId": "feature.bardic-inspiration",
+      "name": "Bardic Inspiration",
+      "description": "You can inspire others through music or oration.",
+      "rulesVersion": "v1"
+    }
+  ],
+  "items": [
+    {
+      "externalId": "item.longsword",
+      "name": "Longsword",
+      "description": "Martial melee weapon",
+      "slot": "weapon",
+      "weaponCategory": "martial_melee",
+      "attackAbility": "str",
+      "damageFormula": "1d8+str",
+      "proficiencyRequirements": { "weapon": ["martial"] },
+      "rulesVersion": "v1"
+    }
+  ],
+  "classLevelProgressions": [
+    { "classExternalId": "class.barbarian", "level": 1, "featureExternalId": "feature.rage" },
+    { "classExternalId": "class.barbarian", "level": 1, "featureExternalId": "feature.unarmored-defense" },
+    { "classExternalId": "class.bard", "level": 1, "featureExternalId": "feature.bardic-inspiration" }
+  ],
+  "actions": [
+    {
+      "externalId": "action.rage.activate",
+      "name": "Activate Rage",
+      "featureExternalId": "feature.rage",
+      "payloadType": "RUNTIME_EFFECT",
+      "payload": {
+        "effectType": "rage",
+        "duration": "1 minute"
+      },
+      "trigger": {
+        "phase": "manual",
+        "targeting": "self",
+        "stackPolicy": "refresh"
+      },
+      "rulesVersion": "v1"
+    }
+  ],
+  "spells": [
+    {
+      "externalId": "spell.vicious-mockery",
+      "name": "Vicious Mockery",
+      "level": 0,
+      "school": "Enchantment",
+      "payloadType": "CUSTOM",
+      "payload": {
+        "dice": "1d4",
+        "save": "wis"
+      },
+      "rulesVersion": "v1"
+    }
+  ]
+}

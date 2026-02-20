@@ -27,6 +27,8 @@ model Class {
   id              String              @id @default(uuid())
   name            String              @unique
   contentSourceId String
+  rulesVersion    String              @default("v1")
+  sourceRef       String?             @unique
   contentSource   ContentSource       @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
   classFeatures   ClassFeature[]
   levelProgressions ClassLevelProgression[]
@@ -132,6 +134,8 @@ model Race {
   id              String         @id @default(uuid())
   name            String         @unique
   contentSourceId String
+  rulesVersion    String         @default("v1")
+  sourceRef       String?        @unique
   contentSource   ContentSource  @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
   raceFeatures    RaceFeature[]
   characters      Character[]
@@ -219,6 +223,8 @@ model Background {
   id              String         @id @default(uuid())
   name            String         @unique
   contentSourceId String
+  rulesVersion    String         @default("v1")
+  sourceRef       String?        @unique
   contentSource   ContentSource  @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
   backgroundFeatures BackgroundFeature[]
   characters      Character[]

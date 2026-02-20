@@ -168,6 +168,17 @@ npm run test:resolver:golden:update
 npm run test:resolver:golden
 ```
 
+Rules content importer scaffold:
+
+```powershell
+npm run import:rules:dry-run
+npm run import:rules:apply
+```
+
+- `dry-run` validates pack structure and prints import report without DB writes.
+- `apply` runs transactional import with idempotent upserts by immutable `sourceRef`/external ID.
+- Importer guard prevents external ID mutation for already bound entities.
+
 ### Automated production monitor
 
 - GitHub Actions workflow `.github/workflows/production-monitor.yml` runs every 30 minutes.

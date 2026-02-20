@@ -11,6 +11,8 @@
     "seed": "ts-node scripts/seed.ts",
     "test:resolver:golden": "ts-node scripts/verifyResolverGolden.ts",
     "test:resolver:golden:update": "ts-node scripts/verifyResolverGolden.ts --update",
+    "import:rules:dry-run": "ts-node scripts/importRulesContent.ts --dry-run --file content/rules-pack.demo.json",
+    "import:rules:apply": "ts-node scripts/importRulesContent.ts --apply --file content/rules-pack.demo.json",
     "verify:localdb": "powershell -ExecutionPolicy Bypass -File ./scripts/verify-local-db.ps1",
     "verify:localdb:fix": "powershell -ExecutionPolicy Bypass -File ./scripts/verify-local-db.ps1 -Fix",
     "deploy:trigger": "powershell -ExecutionPolicy Bypass -File ./trigger-deploy.ps1",

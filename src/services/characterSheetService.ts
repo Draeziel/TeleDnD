@@ -135,6 +135,8 @@ export class CharacterSheetService {
       targetKey: typeof targetKey === 'string' ? targetKey : null,
       operation,
       value: typeof value === 'number' ? value : null,
+      rulesVersion: capability.rulesVersion,
+      sourceRef: typeof capability.payload.sourceRef === 'string' ? capability.payload.sourceRef : null,
       createdAt: new Date(0),
     };
   }

@@ -1,7 +1,7 @@
 # Character Rules Graph Overhaul Roadmap
 
 **Last Updated**: 2026-02-20  
-**Status**: In progress (Phase 1 foundation started)  
+**Status**: In progress (Phase 1 foundation + importer scaffold started)  
 **Scope**: Backend/domain architecture and data pipeline only (no UI redesign in this stream)
 
 ---
@@ -390,3 +390,4 @@ Controls:
 3. Draft Prisma model diff for progression/action/spell/item metadata. ✅
 4. Prepare first non-destructive migration. ✅
 5. Add initial golden test fixtures (Barbarian level 1, Bard level 1).
+6. Add importer scaffold (`dry-run` + transactional `apply`, immutable external ID guard via `sourceRef`). ✅

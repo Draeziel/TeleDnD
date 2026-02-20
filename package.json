@@ -12,6 +12,7 @@
     "test:resolver:golden": "ts-node scripts/verifyResolverGolden.ts",
     "test:character:unit": "ts-node tests/unit/characterAssembler.test.ts",
     "test:integration:draft": "ts-node tests/integration/draftFinalizeAssemble.test.ts",
+    "test:integration:choices": "ts-node tests/integration/choiceDependency.test.ts",
     "test:sheet:contract": "ts-node tests/unit/sheetContract.test.ts",
     "test:equipment": "ts-node tests/unit/equipmentProficiency.test.ts",
     "test:sheet:golden": "ts-node scripts/verifySheetGolden.ts",

@@ -163,7 +163,7 @@ Contract requirement:
 Before schema refactor rollout:
 - Define compatibility layer for existing character sheet API.
 - Introduce adapter path so legacy sheet endpoints read from new resolver output.
-- Keep old data path behind fallback flag until parity tests pass.
+- Complete parity tests and remove legacy data path.
 
 Data migration principles:
 - idempotent migrations only
@@ -247,12 +247,12 @@ Used by future capability-to-combat action bridge.
 ### Phase 4: Import pipeline
 - Build JSON importer with dry-run and idempotency.
 - Seed demo content through importer (Barbarian + Bard).
-- Keep old seed path as fallback until parity approved.
+- Use importer as the single content ingestion path.
 
 ### Phase 5: Cutover
-- Switch sheet service to resolver-first path.
+- Switch sheet service to resolver-only path.
 - Remove legacy class/race conditional branches in sheet domain logic.
-- Keep compatibility fallback behind env flag for one release window.
+- Remove compatibility fallback flags from configuration and docs.
 
 ---
 
@@ -401,3 +401,4 @@ Controls:
 14. Add production startup warning when legacy sheet fallback is enabled. ✅
 15. Enforce fail-fast startup guard when legacy sheet fallback is enabled in production. ✅
 16. Remove remaining legacy sheet fallback branches and keep resolver-first projection only. ✅
+17. Remove transitional cutover/fallback wording from roadmap and runtime docs. ✅

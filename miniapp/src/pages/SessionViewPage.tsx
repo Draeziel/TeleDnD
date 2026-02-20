@@ -588,7 +588,11 @@ export function SessionViewPage() {
 
   const onSetInitiative = async (characterId: string, initiative: number) => {
     try {
-      await sessionApi.setInitiative(id, characterId, initiative);
+      await executeCombatActionWithFallback(
+        'SET_CHARACTER_INITIATIVE',
+        { characterId, initiative },
+        () => sessionApi.setInitiative(id, characterId, initiative)
+      );
       await load();
     } catch (unknownError) {
       notify('error', formatErrorMessage('Не удалось изменить инициативу (нужна роль GM)', unknownError));
@@ -598,7 +602,11 @@ export function SessionViewPage() {
   const onRollInitiativeCharacters = async () => {
     try {
       setRollingCharacters(true);
-      const result = await sessionApi.rollInitiativeCharacters(id);
+      const result = await executeCombatActionWithFallback(
+        'ROLL_INITIATIVE_CHARACTERS',
+        {},
+        () => sessionApi.rollInitiativeCharacters(id)
+      );
       await load();
       notify('success', `Инициатива брошена для ${result.rolledCount} персонажей`);
     } catch (unknownError) {
@@ -611,7 +619,11 @@ export function SessionViewPage() {
   const onRollInitiativeMonsters = async () => {
     try {
       setRollingMonsters(true);
-      const result = await sessionApi.rollInitiativeMonsters(id);
+      const result = await executeCombatActionWithFallback(
+        'ROLL_INITIATIVE_MONSTERS',
+        {},
+        () => sessionApi.rollInitiativeMonsters(id)
+      );
       await load();
       notify('success', `Инициатива брошена для ${result.rolledCount} монстров`);
     } catch (unknownError) {
@@ -637,7 +649,11 @@ export function SessionViewPage() {
   const onLockInitiative = async () => {
     try {
       setInitiativeActionLoading(true);
-      await sessionApi.lockInitiative(id);
+      await executeCombatActionWithFallback(
+        'LOCK_INITIATIVE',
+        {},
+        () => sessionApi.lockInitiative(id)
+      );
       await load();
       notify('success', 'Инициатива зафиксирована (lock)');
     } catch (unknownError) {
@@ -650,7 +666,11 @@ export function SessionViewPage() {
   const onUnlockInitiative = async () => {
     try {
       setInitiativeActionLoading(true);
-      await sessionApi.unlockInitiative(id);
+      await executeCombatActionWithFallback(
+        'UNLOCK_INITIATIVE',
+        {},
+        () => sessionApi.unlockInitiative(id)
+      );
       await load();
       notify('success', 'Lock инициативы снят');
     } catch (unknownError) {
@@ -663,7 +683,11 @@ export function SessionViewPage() {
   const onResetInitiative = async () => {
     try {
       setInitiativeActionLoading(true);
-      const result = await sessionApi.resetInitiative(id);
+      const result = await executeCombatActionWithFallback(
+        'RESET_INITIATIVE',
+        {},
+        () => sessionApi.resetInitiative(id)
+      );
       await load();
       notify('success', `Инициатива сброшена для ${result.resetCount} персонажей`);
     } catch (unknownError) {

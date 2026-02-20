@@ -8,6 +8,12 @@ type CombatActionType =
   | 'UNDO_LAST'
   | 'SET_CHARACTER_HP'
   | 'SET_MONSTER_HP'
+  | 'SET_CHARACTER_INITIATIVE'
+  | 'ROLL_INITIATIVE_CHARACTERS'
+  | 'ROLL_INITIATIVE_MONSTERS'
+  | 'LOCK_INITIATIVE'
+  | 'UNLOCK_INITIATIVE'
+  | 'RESET_INITIATIVE'
   | 'APPLY_CHARACTER_EFFECT'
   | 'APPLY_MONSTER_EFFECT'
   | 'OPEN_REACTION_WINDOW'
@@ -17,6 +23,7 @@ type CombatActionPayload = {
   characterId?: string;
   monsterId?: string;
   currentHp?: number;
+  initiative?: number;
   tempHp?: number | null;
   effectType?: string;
   duration?: string;
@@ -2393,6 +2400,27 @@ export class SessionService {
         }
 
         result = await this.setSessionMonsterHp(sessionId, payload.monsterId, telegramUserId, payload.currentHp);
+      } else if (actionType === 'SET_CHARACTER_INITIATIVE') {
+        if (!payload.characterId || payload.initiative === undefined) {
+          throw new Error('Validation: characterId and initiative are required');
+        }
+
+        result = await this.setSessionCharacterInitiative(
+          sessionId,
+          payload.characterId,
+          telegramUserId,
+          payload.initiative
+        );
+      } else if (actionType === 'ROLL_INITIATIVE_CHARACTERS') {
+        result = await this.rollInitiativeForCharacters(sessionId, telegramUserId);
+      } else if (actionType === 'ROLL_INITIATIVE_MONSTERS') {
+        result = await this.rollInitiativeForMonsters(sessionId, telegramUserId);
+      } else if (actionType === 'LOCK_INITIATIVE') {
+        result = await this.lockSessionInitiative(sessionId, telegramUserId);
+      } else if (actionType === 'UNLOCK_INITIATIVE') {
+        result = await this.unlockSessionInitiative(sessionId, telegramUserId);
+      } else if (actionType === 'RESET_INITIATIVE') {
+        result = await this.resetSessionInitiative(sessionId, telegramUserId);
       } else if (actionType === 'APPLY_CHARACTER_EFFECT') {
         if (!payload.characterId || !payload.effectType || !payload.duration) {
           throw new Error('Validation: characterId, effectType, duration are required');

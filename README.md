@@ -255,6 +255,12 @@ Supported `actionType` values:
 - `UNDO_LAST`
 - `SET_CHARACTER_HP`
 - `SET_MONSTER_HP`
+- `SET_CHARACTER_INITIATIVE`
+- `ROLL_INITIATIVE_CHARACTERS`
+- `ROLL_INITIATIVE_MONSTERS`
+- `LOCK_INITIATIVE`
+- `UNLOCK_INITIATIVE`
+- `RESET_INITIATIVE`
 - `APPLY_CHARACTER_EFFECT`
 - `APPLY_MONSTER_EFFECT`
 - `OPEN_REACTION_WINDOW`
@@ -264,6 +270,7 @@ Payload expectations by type:
 
 - `SET_CHARACTER_HP`: `characterId`, `currentHp`, optional `tempHp`
 - `SET_MONSTER_HP`: `monsterId`, `currentHp`
+- `SET_CHARACTER_INITIATIVE`: `characterId`, `initiative`
 - `APPLY_CHARACTER_EFFECT`: `characterId`, `effectType`, `duration`, optional `effectPayload`
 - `APPLY_MONSTER_EFFECT`: `monsterId`, `effectType`, `duration`, optional `effectPayload`
 - `OPEN_REACTION_WINDOW`: `targetType` (`character|monster`), `targetRefId`, `reactionType`, optional `ttlSeconds`

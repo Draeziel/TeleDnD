@@ -683,6 +683,19 @@ td {
   gap: 8px;
 }
 
+.combat-turn-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.combat-turn-head h2 {
+  margin: 0;
+  text-align: center;
+}
+
 .combat-actor-card {
   position: relative;
   border: 1px solid #e5e7eb;

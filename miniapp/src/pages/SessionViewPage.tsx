@@ -448,23 +448,6 @@ export function SessionViewPage() {
 
   const attachedCharacterIds = new Set(session.characters.map((entry) => entry.character.id));
   const availableCharacters = myCharacters.filter((character) => !attachedCharacterIds.has(character.id));
-  const initiativeOrder = [...session.characters]
-    .filter((entry) => entry.state?.initiative !== null && entry.state?.initiative !== undefined)
-    .sort((left, right) => {
-      const leftInitiative = left.state?.initiative ?? -999;
-      const rightInitiative = right.state?.initiative ?? -999;
-
-      if (rightInitiative !== leftInitiative) {
-        return rightInitiative - leftInitiative;
-      }
-
-      return left.character.name.localeCompare(right.character.name);
-    });
-  const myRole = session.players.find((player) => player.user.telegramId === userId)?.role || 'PLAYER';
-  const isGmViewer = myRole === 'GM';
-  const selectedCharacter = session.characters.find((entry) => entry.character.id === selectedCharacterId) || null;
-  const isCombatInterfaceOpen = session.encounterActive || combatInterfaceRequested;
-
   const getAvatarInitials = (name: string) => {
     const parts = name.trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) {
@@ -477,6 +460,46 @@ export function SessionViewPage() {
 
     return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
   };
+
+  const initiativeQueue = [
+    ...session.characters
+      .filter((entry) => entry.state?.initiative !== null && entry.state?.initiative !== undefined)
+      .map((entry) => ({
+        kind: 'character' as const,
+        id: entry.id,
+        name: entry.character.name,
+        initiative: entry.state?.initiative ?? -999,
+        currentHp: entry.state?.currentHp ?? 0,
+        maxHp: entry.state?.maxHpSnapshot ?? null,
+        armorClass: characterArmorClass[entry.character.id] ?? null,
+        avatarText: getAvatarInitials(entry.character.name),
+        isActive: session.activeTurnSessionCharacterId === entry.id,
+      })),
+    ...session.monsters
+      .filter((monster) => monster.initiative !== null && monster.initiative !== undefined)
+      .map((monster) => ({
+        kind: 'monster' as const,
+        id: monster.id,
+        name: monster.nameSnapshot,
+        initiative: monster.initiative ?? -999,
+        currentHp: monster.currentHp,
+        maxHp: monster.maxHpSnapshot,
+        armorClass: monster.template?.armorClass ?? null,
+        avatarText: '👾',
+        iconUrl: monster.template?.iconUrl || null,
+        isActive: false,
+      })),
+  ].sort((left, right) => {
+    if (right.initiative !== left.initiative) {
+      return right.initiative - left.initiative;
+    }
+
+    return left.name.localeCompare(right.name);
+  });
+  const myRole = session.players.find((player) => player.user.telegramId === userId)?.role || 'PLAYER';
+  const isGmViewer = myRole === 'GM';
+  const selectedCharacter = session.characters.find((entry) => entry.character.id === selectedCharacterId) || null;
+  const isCombatInterfaceOpen = session.encounterActive || combatInterfaceRequested;
 
   return (
     <div className="page-stack">
@@ -593,7 +616,6 @@ export function SessionViewPage() {
                 </button>
               </div>
               <div style={{ marginTop: '8px' }}>
-                <strong>Р:{session.encounterActive ? session.combatRound : '—'}</strong>{' '}
                 {!session.encounterActive && (
                   <button
                     className="btn btn-inline"
@@ -658,15 +680,6 @@ export function SessionViewPage() {
                 </div>
               )}
             </div>
-            <button
-              className="btn btn-primary btn-icon"
-              disabled={encounterActionLoading || !session.hasActiveGm || !session.encounterActive}
-              aria-label="Передать ход"
-              title="Передать ход"
-              onClick={onNextTurn}
-            >
-              ⏭
-            </button>
           </div>
 
           {!session.encounterActive && (
@@ -720,21 +733,39 @@ export function SessionViewPage() {
 
           {session.encounterActive && (
             <>
-              <h2>Порядок ходов</h2>
-              {initiativeOrder.length === 0 ? (
+              <div className="combat-turn-head">
+                <strong>Р:{session.combatRound}</strong>
+                <h2>Порядок ходов</h2>
+                <button
+                  className="btn btn-primary btn-icon"
+                  disabled={encounterActionLoading || !session.hasActiveGm}
+                  aria-label="Передать ход"
+                  title="Передать ход"
+                  onClick={onNextTurn}
+                >
+                  ⏭
+                </button>
+              </div>
+              {initiativeQueue.length === 0 ? (
                 <StatusBox type="info" message="Инициатива пока не выставлена" />
               ) : (
                 <div className="combat-turn-grid">
-                  {initiativeOrder.map((entry, index) => (
-                    <div className="combat-actor-card combat-turn-card" key={`initiative-${entry.id}`}>
-                      <span className="combat-actor-badge character">ПЕРС</span>
+                  {initiativeQueue.map((entry, index) => (
+                    <div className={`combat-actor-card combat-turn-card ${entry.kind === 'character' ? 'combat-actor-character' : 'combat-actor-monster'}`} key={`initiative-${entry.kind}-${entry.id}`}>
+                      <span className={`combat-actor-badge ${entry.kind === 'character' ? 'character' : 'monster'}`}>
+                        {entry.kind === 'character' ? 'ПЕРС' : 'МОН'}
+                      </span>
                       <div className="combat-actor-title">
-                        {session.activeTurnSessionCharacterId === entry.id ? '▶ ' : ''}{index + 1}. {entry.character.name}
+                        {entry.isActive ? '▶ ' : ''}{index + 1}. {entry.name}
                       </div>
-                      <div className="combat-actor-icon">{getAvatarInitials(entry.character.name)}</div>
-                      <div className="combat-actor-meta">❤️ {entry.state?.currentHp ?? 0} / {entry.state?.maxHpSnapshot ?? '—'}</div>
-                      <div className="combat-actor-meta">🛡 {characterArmorClass[entry.character.id] ?? '—'}</div>
-                      <div className="combat-actor-meta">🎲 {entry.state?.initiative ?? '—'}</div>
+                      {entry.kind === 'monster' && entry.iconUrl ? (
+                        <img className="combat-actor-image" src={entry.iconUrl} alt={entry.name} />
+                      ) : (
+                        <div className="combat-actor-icon">{entry.avatarText}</div>
+                      )}
+                      <div className="combat-actor-meta">❤️ {entry.currentHp} / {entry.maxHp ?? '—'}</div>
+                      <div className="combat-actor-meta">🛡 {entry.armorClass ?? '—'}</div>
+                      <div className="combat-actor-meta">🎲 {entry.initiative}</div>
                     </div>
                   ))}
                 </div>

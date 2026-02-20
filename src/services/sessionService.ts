@@ -1086,7 +1086,7 @@ export class SessionService {
       },
     });
 
-    const updates = await Promise.all(
+    const characterUpdates = await Promise.all(
       sessionCharacters.map(async (sessionCharacter) => {
         const roll = this.rollD20();
         const dexModifier = this.dexScoreToModifier(sessionCharacter.character.abilityScores?.dex);
@@ -1119,12 +1119,52 @@ export class SessionService {
       })
     );
 
-    await this.addSessionEvent(sessionId, 'initiative_rolled_all', 'ГМ выполнил бросок инициативы для всей группы', telegramUserId);
+    const sessionMonsters = await this.prisma.sessionMonster.findMany({
+      where: { sessionId },
+      include: {
+        monsterTemplate: {
+          select: {
+            initiativeModifier: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    const monsterUpdates = await Promise.all(
+      sessionMonsters.map(async (monster) => {
+        const roll = this.rollD20();
+        const initiativeModifier = monster.monsterTemplate?.initiativeModifier ?? 0;
+        const initiative = roll + initiativeModifier;
+        this.validateInitiative(initiative);
+
+        await this.prisma.sessionMonster.update({
+          where: {
+            id: monster.id,
+          },
+          data: {
+            initiative,
+          },
+        });
+
+        return {
+          sessionMonsterId: monster.id,
+          roll,
+          initiativeModifier,
+          initiative,
+        };
+      })
+    );
+
+    await this.addSessionEvent(sessionId, 'initiative_rolled_all', 'ГМ выполнил бросок инициативы для всех участников', telegramUserId);
     await this.syncEncounterTurnPointer(sessionId);
 
     return {
-      updates,
-      rolledCount: updates.length,
+      updates: characterUpdates,
+      monsterUpdates,
+      rolledCount: characterUpdates.length + monsterUpdates.length,
     };
   }
 

@@ -3,6 +3,10 @@ import type {
   ModifierOperation,
   ExecutionIntent,
   CapabilityLifecycleState,
+  CapabilityTrigger,
+  CapabilityTriggerPhase,
+  CapabilityTriggerTargeting,
+  CapabilityTriggerStackPolicy,
 } from '../types/capabilities';
 
 const ALLOWED_MODIFIER_OPERATIONS: ModifierOperation[] = ['add', 'set', 'override', 'multiply'];
@@ -15,6 +19,9 @@ const ALLOWED_PAYLOAD_TYPES: CapabilityPayloadType[] = [
   'RUNTIME_EFFECT',
   'CUSTOM',
 ];
+const ALLOWED_TRIGGER_PHASES: CapabilityTriggerPhase[] = ['on_apply', 'turn_start', 'turn_end', 'on_hit', 'on_damage', 'on_save', 'manual'];
+const ALLOWED_TRIGGER_TARGETING: CapabilityTriggerTargeting[] = ['self', 'ally', 'enemy', 'area', 'explicit'];
+const ALLOWED_TRIGGER_STACK_POLICY: CapabilityTriggerStackPolicy[] = ['refresh', 'stack', 'ignore', 'replace'];
 
 export function isAllowedModifierOperation(value: string): value is ModifierOperation {
   return ALLOWED_MODIFIER_OPERATIONS.includes(value as ModifierOperation);
@@ -66,4 +73,28 @@ export function normalizeExecutionIntent(intent: ExecutionIntent | null | undefi
   }
 
   return intent;
+}
+
+export function normalizeCapabilityTrigger(trigger: CapabilityTrigger | null | undefined): CapabilityTrigger | undefined {
+  if (!trigger) {
+    return undefined;
+  }
+
+  if (!ALLOWED_TRIGGER_PHASES.includes(trigger.phase)) {
+    throw new Error(`Validation: unsupported trigger phase "${trigger.phase}".`);
+  }
+
+  if (!ALLOWED_TRIGGER_TARGETING.includes(trigger.targeting)) {
+    throw new Error(`Validation: unsupported trigger targeting "${trigger.targeting}".`);
+  }
+
+  if (!ALLOWED_TRIGGER_STACK_POLICY.includes(trigger.stackPolicy)) {
+    throw new Error(`Validation: unsupported trigger stackPolicy "${trigger.stackPolicy}".`);
+  }
+
+  if (trigger.cooldown && (!Number.isFinite(trigger.cooldown.value) || trigger.cooldown.value < 0)) {
+    throw new Error('Validation: trigger cooldown value must be a non-negative number.');
+  }
+
+  return trigger;
 }

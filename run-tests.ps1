@@ -210,10 +210,19 @@ if ($Smoke) {
         } catch {
             Add-SmokeResult "Character capabilities dirty hint" $false "GET /api/characters/:id/capabilities?dirtyNodeId=... failed: $($_.Exception.Message)"
         }
+
+        try {
+            Invoke-WebRequest -Uri "$BaseUrl/api/characters/00000000-0000-0000-0000-000000000000/capabilities" -Method Get -Headers $smokeHeaders -UseBasicParsing -ErrorAction Stop | Out-Null
+            Add-SmokeResult "Character capabilities missing 404" $false "Expected 404 for non-existing character capabilities"
+        } catch {
+            $statusCode = Get-StatusCodeFromError $_
+            Add-SmokeResult "Character capabilities missing 404" ($statusCode -eq 404) "GET /api/characters/:id/capabilities non-existing returned status=$statusCode"
+        }
     } else {
         Add-SmokeResult "Character sheet" $true "Skipped: no characterId available (likely auth-gated create)"
         Add-SmokeResult "Character capabilities" $true "Skipped: no characterId available (likely auth-gated create)"
         Add-SmokeResult "Character capabilities dirty hint" $true "Skipped: no characterId available (likely auth-gated create)"
+        Add-SmokeResult "Character capabilities missing 404" $true "Skipped: no characterId available (likely auth-gated create)"
     }
 
     # 5) Sessions list/create/get/delete flow

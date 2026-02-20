@@ -8,6 +8,23 @@ export type CapabilityLifecycleState = 'active' | 'suspended' | 'expired';
 
 export type ModifierOperation = 'add' | 'set' | 'override' | 'multiply';
 
+export type CapabilityTriggerPhase = 'on_apply' | 'turn_start' | 'turn_end' | 'on_hit' | 'on_damage' | 'on_save' | 'manual';
+
+export type CapabilityTriggerTargeting = 'self' | 'ally' | 'enemy' | 'area' | 'explicit';
+
+export type CapabilityTriggerStackPolicy = 'refresh' | 'stack' | 'ignore' | 'replace';
+
+export interface CapabilityTrigger {
+  phase: CapabilityTriggerPhase;
+  condition?: Record<string, unknown>;
+  targeting: CapabilityTriggerTargeting;
+  cooldown?: {
+    value: number;
+    unit: string;
+  };
+  stackPolicy: CapabilityTriggerStackPolicy;
+}
+
 export type ExecutionIntentKind =
   | 'manual'
   | 'triggered'
@@ -17,7 +34,7 @@ export type ExecutionIntentKind =
 
 export interface ExecutionIntent {
   kind: ExecutionIntentKind;
-  triggerPhase?: 'on_apply' | 'turn_start' | 'turn_end' | 'on_hit' | 'on_damage' | 'on_save' | 'manual';
+  triggerPhase?: CapabilityTriggerPhase;
   description?: string;
 }
 
@@ -39,6 +56,7 @@ export interface CapabilityDto {
   rulesVersion: string;
   payloadType: CapabilityPayloadType;
   payload: Record<string, unknown>;
+  trigger?: CapabilityTrigger;
   executionIntent?: ExecutionIntent;
   lifecycleState: CapabilityLifecycleState;
 }

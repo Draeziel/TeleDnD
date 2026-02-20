@@ -12,6 +12,7 @@ import {
   assertAllowedCapabilityPayloadType,
   assertAllowedLifecycleState,
   assertAllowedModifierOperation,
+  normalizeCapabilityTrigger,
   normalizeExecutionIntent,
 } from '../utils/capabilityContracts';
 import logger from '../utils/logger';
@@ -292,6 +293,7 @@ export class CapabilityResolverService {
     rulesVersion: string;
     payloadType: CapabilityBaseDto['payloadType'];
     payload: Record<string, unknown>;
+    trigger?: CapabilityBaseDto['trigger'];
     executionIntent?: CapabilityBaseDto['executionIntent'];
     lifecycleState: CapabilityBaseDto['lifecycleState'];
   }): CapabilityBaseDto {
@@ -311,6 +313,7 @@ export class CapabilityResolverService {
       rulesVersion: input.rulesVersion,
       payloadType: input.payloadType,
       payload: input.payload,
+      trigger: input.trigger,
       executionIntent: input.executionIntent,
       lifecycleState: input.lifecycleState,
     };
@@ -324,6 +327,7 @@ export class CapabilityResolverService {
       ...capability,
       payloadType,
       lifecycleState,
+      trigger: normalizeCapabilityTrigger(capability.trigger),
       executionIntent: normalizeExecutionIntent(capability.executionIntent),
     };
   }

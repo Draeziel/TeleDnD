@@ -1,0 +1,13 @@
+{
+  "characterSheetVersion": "1.0.0",
+  "header": {"id":"char.barbarian.demo","name":"Thok","level":1,"class":{"id":"class.barbarian","name":"Barbarian"}},
+  "abilities": {"base":{"str":16,"dex":12,"con":15,"int":8,"wis":10,"cha":10},"effective":{"str":16,"dex":12,"con":15,"int":8,"wis":10,"cha":10}},
+  "skills": [{"id":"skill.athletics","name":"Athletics","proficient":true,"bonus":5}],
+  "savingThrows": [{"ability":"str","proficient":true,"bonus":5}],
+  "derivedStats": {"initiative":1,"proficiencyBonus":2,"armorClass":15,"passivePerception":10},
+  "inventory": [],
+  "equipment": [{"id":"item.longsword","name":"Longsword","equipped":true}],
+  "capabilities": [{"id":"action.rage.activate","name":"Activate Rage","payloadType":"RUNTIME_EFFECT"}],
+  "activeEffects": [],
+  "unresolvedChoices": 0
+}

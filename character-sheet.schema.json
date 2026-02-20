@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CharacterSheet v1",
+  "type": "object",
+  "required": ["header","abilities","skills","savingThrows","derivedStats","inventory","equipment","capabilities","unresolvedChoices","characterSheetVersion"],
+  "properties": {
+    "characterSheetVersion": {"type":"string"},
+    "header": {
+      "type": "object",
+      "required": ["id","name","level","class"],
+      "properties": {
+        "id": {"type":"string"},
+        "name": {"type":"string"},
+        "level": {"type":"integer"},
+        "class": {"type":"object"}
+      }
+    },
+    "abilities": {
+      "type": "object",
+      "required": ["base","effective"],
+      "properties": {
+        "base": {"type":"object"},
+        "effective": {"type":"object"}
+      }
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id","name","proficient","bonus"],
+        "properties": {
+          "id": {"type":"string"},
+          "name": {"type":"string"},
+          "proficient": {"type":"boolean"},
+          "bonus": {"type":"integer"}
+        }
+      }
+    },
+    "savingThrows": {
+      "type": "array",
+      "items": {"type":"object"}
+    },
+    "derivedStats": {
+      "type": "object",
+      "properties": {
+        "initiative": {"type":"integer"},
+        "proficiencyBonus": {"type":"integer"},
+        "armorClass": {"type":"integer"},
+        "passivePerception": {"type":"integer"}
+      }
+    },
+    "inventory": {
+      "type": "array",
+      "items": {"type":"object"}
+    },
+    "equipment": {
+      "type": "array",
+      "items": {"type":"object"}
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {"type":"object"}
+    },
+    "activeEffects": {"type":"array","items":{"type":"object"}},
+    "unresolvedChoices": {"type":"integer","minimum":0}
+  }
+}

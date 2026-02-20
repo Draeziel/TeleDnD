@@ -1,0 +1,13 @@
+{
+  "characterSheetVersion": "1.0.0",
+  "header": {"id":"char.bard.demo","name":"Lira","level":1,"class":{"id":"class.bard","name":"Bard"}},
+  "abilities": {"base":{"str":8,"dex":14,"con":12,"int":10,"wis":10,"cha":16},"effective":{"str":8,"dex":14,"con":12,"int":10,"wis":10,"cha":16}},
+  "skills": [{"id":"skill.performance","name":"Performance","proficient":true,"bonus":5}],
+  "savingThrows": [{"ability":"cha","proficient":true,"bonus":5}],
+  "derivedStats": {"initiative":2,"proficiencyBonus":2,"armorClass":12,"passivePerception":10},
+  "inventory": [],
+  "equipment": [{"id":"item.dagger","name":"Dagger","equipped":true}],
+  "capabilities": [{"id":"action.bardic-inspiration.grant","name":"Grant Bardic Inspiration","payloadType":"RUNTIME_EFFECT"}],
+  "activeEffects": [],
+  "unresolvedChoices": 0
+}

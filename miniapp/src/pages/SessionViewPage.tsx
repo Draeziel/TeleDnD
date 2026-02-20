@@ -31,6 +31,7 @@ export function SessionViewPage() {
   const [rollingSelfId, setRollingSelfId] = useState<string | null>(null);
   const [initiativeActionLoading, setInitiativeActionLoading] = useState(false);
   const [encounterActionLoading, setEncounterActionLoading] = useState(false);
+  const [undoActionLoading, setUndoActionLoading] = useState(false);
   const [copyingCode, setCopyingCode] = useState(false);
   const [showAttachCharacters, setShowAttachCharacters] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
@@ -436,6 +437,19 @@ export function SessionViewPage() {
     }
   };
 
+  const onUndoLastCombatAction = async () => {
+    try {
+      setUndoActionLoading(true);
+      const result = await sessionApi.undoLastCombatAction(id);
+      await load();
+      notify('success', result.message);
+    } catch (unknownError) {
+      notify('error', formatErrorMessage('Не удалось отменить последнее боевое действие (нужна роль GM)', unknownError));
+    } finally {
+      setUndoActionLoading(false);
+    }
+  };
+
   const onAddMonsters = async () => {
     if (!selectedMonsterTemplateId) {
       return;
@@ -510,7 +524,7 @@ export function SessionViewPage() {
         armorClass: monster.template?.armorClass ?? null,
         avatarText: '👾',
         iconUrl: monster.template?.iconUrl || null,
-        isActive: false,
+        isActive: session.activeTurnSessionCharacterId === monster.id,
       })),
   ].sort((left, right) => {
     if (right.initiative !== left.initiative) {
@@ -787,22 +801,33 @@ export function SessionViewPage() {
               <div className="combat-turn-head">
                 <strong>Р:{session.combatRound}</strong>
                 <h2>Порядок ходов</h2>
-                <button
-                  className="btn btn-primary btn-icon"
-                  disabled={encounterActionLoading || !session.hasActiveGm}
-                  aria-label="Передать ход"
-                  title="Передать ход"
-                  onClick={onNextTurn}
-                >
-                  ⏭
-                </button>
+                <div className="inline-row">
+                  <button
+                    className="btn btn-secondary btn-icon"
+                    disabled={undoActionLoading || !session.hasActiveGm}
+                    aria-label="Отменить последнее боевое действие"
+                    title="Отменить последнее боевое действие"
+                    onClick={onUndoLastCombatAction}
+                  >
+                    ↩
+                  </button>
+                  <button
+                    className="btn btn-primary btn-icon"
+                    disabled={encounterActionLoading || !session.hasActiveGm}
+                    aria-label="Передать ход"
+                    title="Передать ход"
+                    onClick={onNextTurn}
+                  >
+                    ⏭
+                  </button>
+                </div>
               </div>
               {initiativeQueue.length === 0 ? (
                 <StatusBox type="info" message="Инициатива пока не выставлена" />
               ) : (
                 <div className="combat-turn-grid">
                   {initiativeQueue.map((entry, index) => (
-                    <div className={`combat-actor-card combat-turn-card ${entry.kind === 'character' ? 'combat-actor-character' : 'combat-actor-monster'}`} key={`initiative-${entry.kind}-${entry.id}`}>
+                    <div className={`combat-actor-card combat-turn-card ${entry.kind === 'character' ? 'combat-actor-character' : 'combat-actor-monster'} ${entry.isActive ? 'active-turn' : ''}`} key={`initiative-${entry.kind}-${entry.id}`}>
                       <span className={`combat-actor-badge ${entry.kind === 'character' ? 'character' : 'monster'}`}>
                         {entry.kind === 'character' ? 'ПЕРС' : 'МОН'}
                       </span>

@@ -246,6 +246,11 @@ export const sessionApi = {
     };
   },
 
+  async undoLastCombatAction(sessionId: string): Promise<{ undoneType: string; message: string }> {
+    const { data } = await http.post(`/sessions/${sessionId}/combat/undo-last`);
+    return data as { undoneType: string; message: string };
+  },
+
   async endEncounter(sessionId: string): Promise<{
     encounterActive: boolean;
     combatRound: number;

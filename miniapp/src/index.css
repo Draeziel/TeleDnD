@@ -785,6 +785,11 @@ td {
   min-height: 168px;
 }
 
+.combat-turn-card.active-turn {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.22);
+}
+
 .session-list {
   display: flex;
   flex-direction: column;

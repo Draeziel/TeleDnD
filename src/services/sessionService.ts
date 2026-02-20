@@ -1,6 +1,43 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import crypto from 'crypto';
 
+type UndoActionSnapshot =
+  | {
+      kind: 'character_hp';
+      sessionCharacterId: string;
+      characterName: string;
+      previousState: {
+        currentHp: number;
+        maxHpSnapshot: number;
+        tempHp: number | null;
+        initiative: number | null;
+      } | null;
+    }
+  | {
+      kind: 'character_initiative';
+      sessionCharacterId: string;
+      characterName: string;
+      previousState: {
+        currentHp: number;
+        maxHpSnapshot: number;
+        tempHp: number | null;
+        initiative: number | null;
+      } | null;
+    }
+  | {
+      kind: 'monster_hp';
+      sessionMonsterId: string;
+      monsterName: string;
+      previousCurrentHp: number;
+    }
+  | {
+      kind: 'effect_applied';
+      effectId: string;
+      sessionCharacterId: string;
+      characterName: string;
+      effectType: string;
+    };
+
 export class SessionService {
   private prisma: PrismaClient;
 
@@ -19,11 +56,40 @@ export class SessionService {
     });
   }
 
+  private async pushUndoSnapshot(sessionId: string, actorTelegramId: string, snapshot: UndoActionSnapshot) {
+    await this.prisma.sessionEvent.create({
+      data: {
+        sessionId,
+        type: 'undo_snapshot',
+        message: JSON.stringify(snapshot),
+        actorTelegramId,
+      },
+    });
+  }
+
+  private parseUndoSnapshot(rawMessage: string): UndoActionSnapshot {
+    try {
+      const parsed = JSON.parse(rawMessage) as UndoActionSnapshot;
+      if (!parsed || typeof parsed !== 'object' || !('kind' in parsed)) {
+        throw new Error('Invalid undo payload');
+      }
+
+      return parsed;
+    } catch {
+      throw new Error('Validation: invalid undo snapshot payload');
+    }
+  }
+
   private async getSessionEvents(sessionId: string, limit = 100) {
     const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 100) : 100;
 
     const events = await this.prisma.sessionEvent.findMany({
-      where: { sessionId },
+      where: {
+        sessionId,
+        type: {
+          notIn: ['undo_snapshot'],
+        },
+      },
       orderBy: {
         createdAt: 'desc',
       },
@@ -55,37 +121,61 @@ export class SessionService {
   }
 
   private async getEncounterOrder(sessionId: string): Promise<string[]> {
-    const entries = await this.prisma.sessionCharacter.findMany({
-      where: { sessionId },
-      select: {
-        id: true,
-        character: {
-          select: {
-            name: true,
+    const [characterEntries, monsterEntries] = await Promise.all([
+      this.prisma.sessionCharacter.findMany({
+        where: { sessionId },
+        select: {
+          id: true,
+          character: {
+            select: {
+              name: true,
+            },
+          },
+          state: {
+            select: {
+              initiative: true,
+            },
           },
         },
-        state: {
-          select: {
-            initiative: true,
-          },
+        orderBy: {
+          createdAt: 'asc',
         },
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    });
+      }),
+      this.prisma.sessionMonster.findMany({
+        where: { sessionId },
+        select: {
+          id: true,
+          nameSnapshot: true,
+          initiative: true,
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      }),
+    ]);
 
-    return entries
-      .filter((entry) => entry.state?.initiative !== null && entry.state?.initiative !== undefined)
+    return [
+      ...characterEntries
+        .filter((entry) => entry.state?.initiative !== null && entry.state?.initiative !== undefined)
+        .map((entry) => ({
+          id: entry.id,
+          name: entry.character.name,
+          initiative: entry.state?.initiative ?? -999,
+        })),
+      ...monsterEntries
+        .filter((entry) => entry.initiative !== null && entry.initiative !== undefined)
+        .map((entry) => ({
+          id: entry.id,
+          name: entry.nameSnapshot,
+          initiative: entry.initiative ?? -999,
+        })),
+    ]
       .sort((left, right) => {
-        const leftInitiative = left.state?.initiative ?? -999;
-        const rightInitiative = right.state?.initiative ?? -999;
-
-        if (rightInitiative !== leftInitiative) {
-          return rightInitiative - leftInitiative;
+        if (right.initiative !== left.initiative) {
+          return right.initiative - left.initiative;
         }
 
-        return left.character.name.localeCompare(right.character.name);
+        return left.name.localeCompare(right.name);
       })
       .map((entry) => entry.id);
   }
@@ -1080,12 +1170,20 @@ export class SessionService {
       select: {
         id: true,
         nameSnapshot: true,
+        currentHp: true,
       },
     });
 
     if (!monster) {
       throw new Error('Session monster not found');
     }
+
+    await this.pushUndoSnapshot(sessionId, telegramUserId, {
+      kind: 'monster_hp',
+      sessionMonsterId: monster.id,
+      monsterName: monster.nameSnapshot,
+      previousCurrentHp: monster.currentHp,
+    });
 
     const updatedMonster = await this.prisma.sessionMonster.update({
       where: {
@@ -1422,6 +1520,20 @@ export class SessionService {
 
     const sessionCharacter = await this.getSessionCharacterOrThrow(sessionId, characterId);
 
+    await this.pushUndoSnapshot(sessionId, telegramUserId, {
+      kind: 'character_hp',
+      sessionCharacterId: sessionCharacter.id,
+      characterName: sessionCharacter.character.name,
+      previousState: sessionCharacter.state
+        ? {
+            currentHp: sessionCharacter.state.currentHp,
+            maxHpSnapshot: sessionCharacter.state.maxHpSnapshot,
+            tempHp: sessionCharacter.state.tempHp ?? null,
+            initiative: sessionCharacter.state.initiative ?? null,
+          }
+        : null,
+    });
+
     const state = await this.prisma.sessionCharacterState.upsert({
       where: {
         sessionCharacterId: sessionCharacter.id,
@@ -1461,6 +1573,20 @@ export class SessionService {
     this.validateInitiative(initiative);
 
     const sessionCharacter = await this.getSessionCharacterOrThrow(sessionId, characterId);
+
+    await this.pushUndoSnapshot(sessionId, telegramUserId, {
+      kind: 'character_initiative',
+      sessionCharacterId: sessionCharacter.id,
+      characterName: sessionCharacter.character.name,
+      previousState: sessionCharacter.state
+        ? {
+            currentHp: sessionCharacter.state.currentHp,
+            maxHpSnapshot: sessionCharacter.state.maxHpSnapshot,
+            tempHp: sessionCharacter.state.tempHp ?? null,
+            initiative: sessionCharacter.state.initiative ?? null,
+          }
+        : null,
+    });
 
     const state = await this.prisma.sessionCharacterState.upsert({
       where: {
@@ -1691,6 +1817,14 @@ export class SessionService {
       },
     });
 
+    await this.pushUndoSnapshot(sessionId, telegramUserId, {
+      kind: 'effect_applied',
+      effectId: effect.id,
+      sessionCharacterId: sessionCharacter.id,
+      characterName: sessionCharacter.character.name,
+      effectType: effect.effectType,
+    });
+
     await this.addSessionEvent(
       sessionId,
       'effect_applied',
@@ -1699,6 +1833,99 @@ export class SessionService {
     );
 
     return effect;
+  }
+
+  async undoLastCombatAction(sessionId: string, telegramUserId: string) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+
+    const snapshotEvent = await this.prisma.sessionEvent.findFirst({
+      where: {
+        sessionId,
+        type: 'undo_snapshot',
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (!snapshotEvent) {
+      throw new Error('Validation: no combat action available for undo');
+    }
+
+    const snapshot = this.parseUndoSnapshot(snapshotEvent.message);
+
+    if (snapshot.kind === 'character_hp' || snapshot.kind === 'character_initiative') {
+      if (!snapshot.previousState) {
+        await this.prisma.sessionCharacterState.deleteMany({
+          where: {
+            sessionCharacterId: snapshot.sessionCharacterId,
+          },
+        });
+      } else {
+        await this.prisma.sessionCharacterState.updateMany({
+          where: {
+            sessionCharacterId: snapshot.sessionCharacterId,
+          },
+          data: {
+            currentHp: snapshot.previousState.currentHp,
+            maxHpSnapshot: snapshot.previousState.maxHpSnapshot,
+            tempHp: snapshot.previousState.tempHp,
+            initiative: snapshot.previousState.initiative,
+          },
+        });
+      }
+    }
+
+    if (snapshot.kind === 'monster_hp') {
+      await this.prisma.sessionMonster.updateMany({
+        where: {
+          id: snapshot.sessionMonsterId,
+          sessionId,
+        },
+        data: {
+          currentHp: snapshot.previousCurrentHp,
+        },
+      });
+    }
+
+    if (snapshot.kind === 'effect_applied') {
+      await this.prisma.sessionEffect.deleteMany({
+        where: {
+          id: snapshot.effectId,
+          sessionCharacterId: snapshot.sessionCharacterId,
+        },
+      });
+    }
+
+    await this.prisma.sessionEvent.delete({
+      where: {
+        id: snapshotEvent.id,
+      },
+    });
+
+    await this.syncEncounterTurnPointer(sessionId);
+
+    let message = 'Последнее боевое действие отменено';
+    if (snapshot.kind === 'character_hp') {
+      message = `Отменено изменение HP персонажа ${snapshot.characterName}`;
+    }
+    if (snapshot.kind === 'character_initiative') {
+      message = `Отменено изменение инициативы персонажа ${snapshot.characterName}`;
+    }
+    if (snapshot.kind === 'monster_hp') {
+      message = `Отменено изменение HP монстра ${snapshot.monsterName}`;
+    }
+    if (snapshot.kind === 'effect_applied') {
+      message = `Отменено применение эффекта ${snapshot.effectType} к ${snapshot.characterName}`;
+    }
+
+    await this.addSessionEvent(sessionId, 'combat_action_undone', message, telegramUserId);
+
+    return {
+      undoneType: snapshot.kind,
+      message,
+    };
   }
 }
 

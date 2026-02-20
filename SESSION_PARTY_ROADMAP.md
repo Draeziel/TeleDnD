@@ -281,6 +281,15 @@ Build a multiplayer session (party) system where:
 - [ ] Add in-app onboarding checklist for first session run.
 - [ ] Add bulk import/sync tooling for global monster bestiary maintenance.
 
+### TD1 — Tech debt return (agreed, high priority)
+
+- [ ] Status template editor: add short badge label field (e.g., `ЯД`) and persist it in template payload/meta.
+- [ ] Combat journal filter pass: show only participant interactions (damage, apply/remove effect, reaction results), hide system/flow lines (`turn advanced`, `round counter`, etc.) in combat-phase log.
+- [ ] Effect immutability: persist full template-rule snapshot into applied effect payload at apply time, so later template edits do not retroactively change active effects.
+- [ ] SessionView refactor: split large combat page logic into focused components/hooks to reduce regression risk and improve maintainability.
+- [ ] Combat/status automation tests: cover save ability selection, dice rolls, damage percent mapping, rounds decrement/expiry, and event payload shape.
+- [ ] CSS cleanup: remove/merge stale card/status styles left after combat card redesign to keep UI layer predictable.
+
 ---
 
 ## Open Questions
@@ -335,3 +344,4 @@ Build a multiplayer session (party) system where:
 - 2026-02-20: Extended GM Toolkit (`Монстры`) with status template management CRUD.
 - 2026-02-20: Reworked statuses UX in toolkit: collapsed `Статусы` block (`Просмотр`, `+`, search), modal create/edit form, numeric rounds input, effect-category options, save-condition constructor (`%`, `XdY`, operator, target), configurable status color, and compact colored summary cards with edit/delete icons.
 - 2026-02-20: Added deferred roadmap item to filter combat-phase journal to interaction-only entries and hide technical system events (`turn passed`, `round advanced`, etc.) from that view.
+- 2026-02-20: Added explicit `TD1 — Tech debt return` block with agreed priorities: status short-label field, combat log filtering, effect-rule immutability snapshot, SessionView decomposition, automation tests, and CSS cleanup.

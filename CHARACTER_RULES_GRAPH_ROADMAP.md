@@ -385,11 +385,11 @@ Controls:
 
 ## 13) Immediate execution tasks (next 1-2 days)
 
-1. ADR accepted: [docs/adr/0001-rules-graph-capability-contract.md](docs/adr/0001-rules-graph-capability-contract.md).
-2. Define resolver DTO types in backend and miniapp shared contracts (including capability type + timing + trigger block + payloadType + executionIntent).
+1. ADR accepted: [docs/adr/0001-rules-graph-capability-contract.md](docs/adr/0001-rules-graph-capability-contract.md). ✅
+2. Define resolver DTO types in backend and miniapp shared contracts (including capability type + timing + trigger block + payloadType + executionIntent). ✅
 3. Draft Prisma model diff for progression/action/spell/item metadata. ✅
 4. Prepare first non-destructive migration. ✅
-5. Add initial golden test fixtures (Barbarian level 1, Bard level 1).
+5. Add initial golden test fixtures (Barbarian level 1, Bard level 1). ✅
 6. Add importer scaffold (`dry-run` + transactional `apply`, immutable external ID guard via `sourceRef`). ✅
 7. Add importer structured issue report (`path/rule/reason`) and CI dry-run guard. ✅
 8. Add dependency graph contract (`depends_on/requires/excludes`) with import-time consistency checks. ✅

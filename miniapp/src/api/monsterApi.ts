@@ -33,6 +33,7 @@ type MonsterTemplateUpsertInput = {
 
 type StatusTemplateUpsertInput = {
   name: string;
+  shortLabel?: string;
   statusType?: 'DAMAGE' | 'CONTROL' | 'DEBUFF';
   statusElement?: 'FIRE' | 'POISON' | 'PHYSICAL';
   rounds?: number;

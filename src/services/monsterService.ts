@@ -33,6 +33,7 @@ type MonsterTemplateInput = {
 
 type StatusTemplateInput = {
   name: string;
+  shortLabel?: string;
   statusType?: 'DAMAGE' | 'CONTROL' | 'DEBUFF';
   statusElement?: 'FIRE' | 'POISON' | 'PHYSICAL';
   rounds?: number;
@@ -127,11 +128,17 @@ export class MonsterService {
 
   private prepareStatusTemplateData(input: StatusTemplateInput) {
     const name = String(input.name || '').trim();
+    const shortLabelRaw = String(input.shortLabel || '').trim();
     const statusType = String(input.statusType || 'DAMAGE').toUpperCase();
     const statusElement = String(input.statusElement || 'POISON').toUpperCase();
 
     if (!name || name.length < 2 || name.length > 80) {
       throw new Error('Validation: status template name length must be between 2 and 80 characters');
+    }
+
+    const shortLabel = shortLabelRaw ? shortLabelRaw.toUpperCase() : '';
+    if (shortLabel.length > 8) {
+      throw new Error('Validation: shortLabel length must be at most 8 characters');
     }
 
     if (statusType !== 'DAMAGE' && statusType !== 'CONTROL' && statusType !== 'DEBUFF') {
@@ -197,6 +204,7 @@ export class MonsterService {
       meta: {
         statusType,
         statusElement,
+        shortLabel,
         colorHex,
       },
       ...(statusType === 'DAMAGE'
@@ -260,6 +268,7 @@ export class MonsterService {
 
     return {
       name: existing.name,
+      shortLabel: String(meta.shortLabel || ''),
       statusType: String(meta.statusType || (automation.kind ? 'DAMAGE' : 'CONTROL')).toUpperCase() as 'DAMAGE' | 'CONTROL' | 'DEBUFF',
       statusElement: String(meta.statusElement || 'POISON').toUpperCase() as 'FIRE' | 'POISON' | 'PHYSICAL',
       rounds: Number(automation.roundsLeft ?? 3),

@@ -1124,12 +1124,30 @@ export class SessionService {
         throw new Error('Validation: status template not found');
       }
 
+      const basePayload = template.payload && typeof template.payload === 'object' && !Array.isArray(template.payload)
+        ? JSON.parse(JSON.stringify(template.payload)) as Record<string, unknown>
+        : {};
+      const meta = basePayload.meta && typeof basePayload.meta === 'object' && !Array.isArray(basePayload.meta)
+        ? basePayload.meta as Record<string, unknown>
+        : {};
+
+      basePayload.meta = {
+        ...meta,
+        templateSnapshot: {
+          id: template.id,
+          key: template.key,
+          name: template.name,
+          effectType: template.effectType,
+          defaultDuration: template.defaultDuration,
+          payload: template.payload,
+          capturedAt: new Date().toISOString(),
+        },
+      };
+
       return {
         effectType: template.effectType,
         duration: duration && duration.trim() ? duration : template.defaultDuration,
-        payload: (effectPayload && typeof effectPayload === 'object' && !Array.isArray(effectPayload) && Object.keys(effectPayload as Record<string, unknown>).length > 0)
-          ? effectPayload
-          : (template.payload as Prisma.InputJsonValue),
+        payload: basePayload as Prisma.InputJsonValue,
       };
     }
 
@@ -2811,7 +2829,8 @@ export class SessionService {
       sessionId,
       'effect_applied',
       `Эффект ${effect.effectType} применён к ${sessionCharacter.character.name}`,
-      telegramUserId
+      telegramUserId,
+      'COMBAT'
     );
 
     return effect;
@@ -2861,7 +2880,8 @@ export class SessionService {
       sessionId,
       'monster_effect_applied',
       `Эффект ${effect.effectType} применён к монстру ${sessionMonster.nameSnapshot}`,
-      telegramUserId
+      telegramUserId,
+      'COMBAT'
     );
 
     return effect;

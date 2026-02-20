@@ -239,6 +239,21 @@ export function SessionViewPage() {
     return details;
   };
 
+  const isInteractionUiJournalMessage = (message: string) => {
+    const normalized = String(message || '').trim().toLowerCase();
+    if (!normalized) {
+      return false;
+    }
+
+    return normalized.includes('урон')
+      || normalized.includes('эффект')
+      || normalized.includes('статус')
+      || normalized.includes('налож')
+      || normalized.includes('снят')
+      || normalized.includes('реакц')
+      || normalized.includes('авто-тик');
+  };
+
   const renderStatusBadges = (effects: Array<SessionEffect | SessionMonsterEffect>) => {
     const visible = effects.slice(0, 3);
 
@@ -1165,7 +1180,20 @@ export function SessionViewPage() {
     return left.name.localeCompare(right.name);
   });
 
-  const combatEvents = (session?.events || []).filter((event) => event.eventCategory === 'COMBAT');
+  const interactionEventTypes = new Set([
+    'effect_applied',
+    'monster_effect_applied',
+    'effect_removed',
+    'monster_effect_removed',
+    'effect_auto_tick',
+    'monster_effect_auto_tick',
+    'reaction_available',
+    'reaction_resolved',
+  ]);
+  const combatEvents = (session?.events || [])
+    .filter((event) => event.eventCategory === 'COMBAT')
+    .filter((event) => interactionEventTypes.has(event.type));
+  const interactionUiJournal = uiJournal.filter((entry) => isInteractionUiJournalMessage(entry.message));
   const myRole = session?.players.find((player) => player.user.telegramId === userId)?.role || 'PLAYER';
   const isGmViewer = myRole === 'GM';
   const combatApiModeLabel = combatApiMode === 'legacy'
@@ -1873,11 +1901,11 @@ export function SessionViewPage() {
           </div>
           <p className="meta-row">Подробности бросков и расчётов урона. По умолчанию скрыт.</p>
           {showEvents && (
-            (combatEvents.length + uiJournal.length) === 0 ? (
+            (combatEvents.length + interactionUiJournal.length) === 0 ? (
               <StatusBox type="info" message="Боевых событий пока нет" />
             ) : (
               <div className="list-grid">
-                {uiJournal.map((entry) => (
+                {interactionUiJournal.map((entry) => (
                   <div className="list-item" key={`ui-${entry.id}`}>
                     <div>
                       <strong>{entry.message}</strong>

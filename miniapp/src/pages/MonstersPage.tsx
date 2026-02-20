@@ -16,6 +16,7 @@ export function MonstersPage() {
   const [statusSearch, setStatusSearch] = useState('');
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [statusName, setStatusName] = useState('');
+  const [statusShortLabel, setStatusShortLabel] = useState('');
   const [statusType, setStatusType] = useState<'DAMAGE' | 'CONTROL' | 'DEBUFF'>('DAMAGE');
   const [statusElement, setStatusElement] = useState<'FIRE' | 'POISON' | 'PHYSICAL'>('POISON');
   const [statusRounds, setStatusRounds] = useState(3);
@@ -97,6 +98,7 @@ export function MonstersPage() {
   const resetStatusForm = () => {
     setStatusEditingId('');
     setStatusName('');
+    setStatusShortLabel('');
     setStatusType('DAMAGE');
     setStatusElement('POISON');
     setStatusRounds(3);
@@ -125,6 +127,7 @@ export function MonstersPage() {
 
     setStatusEditingId(template.id);
     setStatusName(template.name);
+    setStatusShortLabel(String(meta.shortLabel || ''));
     setStatusType((String(meta.statusType || 'DAMAGE').toUpperCase() as 'DAMAGE' | 'CONTROL' | 'DEBUFF'));
     setStatusElement((String(meta.statusElement || 'POISON').toUpperCase() as 'FIRE' | 'POISON' | 'PHYSICAL'));
     setStatusRounds(Number(automation.roundsLeft || template.defaultDuration || 3));
@@ -157,6 +160,7 @@ export function MonstersPage() {
       setError('');
       const payload = {
         name: statusName.trim(),
+        shortLabel: statusShortLabel.trim().toUpperCase(),
         statusType,
         statusElement,
         rounds: statusRounds,
@@ -366,6 +370,7 @@ export function MonstersPage() {
               const rounds = Number(automation.roundsLeft || template.defaultDuration || 0);
               const templateStatusType = String(meta.statusType || (automation.kind ? 'DAMAGE' : 'CONTROL'));
               const templateStatusElement = String(meta.statusElement || 'POISON');
+              const shortLabel = String(meta.shortLabel || '').trim();
               const damageText = damage.mode === 'dice'
                 ? `${damage.count || 1}d${damage.sides || 6}`
                 : `${automation.damagePerTick || 1}`;
@@ -381,6 +386,7 @@ export function MonstersPage() {
                 <div className="monster-list-item" key={template.id} style={{ borderLeft: `4px solid ${colorHex}` }}>
                   <div>
                     <strong>{template.name}</strong>
+                    {shortLabel && <div className="meta-row">Бейдж: {shortLabel.toUpperCase()}</div>}
                     <div className="meta-row">{templateStatusType} / {templateStatusElement} • {rounds} раунд(ов)</div>
                     <div className="meta-row">Урон: {damageText}</div>
                     <div className="meta-row">Спасбросок: получает {saveDamagePercent}% урона, если результат {saveDiceCount}д{saveDiceSides} + {saveAbility} {saveOperator} {saveTarget}</div>
@@ -429,6 +435,13 @@ export function MonstersPage() {
                 placeholder="Название"
                 value={statusName}
                 onChange={(event) => setStatusName(event.target.value)}
+              />
+
+              <input
+                placeholder="Короткий бейдж (например, ЯД)"
+                value={statusShortLabel}
+                maxLength={8}
+                onChange={(event) => setStatusShortLabel(event.target.value.toUpperCase())}
               />
 
               <label className="meta-row">Тип статуса</label>

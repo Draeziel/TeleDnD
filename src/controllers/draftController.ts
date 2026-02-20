@@ -199,6 +199,8 @@ export class DraftController {
     } catch (error) {
       if (error instanceof Error && error.message.includes('not found')) {
         res.status(404).json({ message: error.message });
+      } else if (error instanceof Error && (error.message.includes('Invalid choice selection') || error.message.includes('not available for this draft'))) {
+        res.status(400).json({ message: error.message });
       } else {
         res.status(500).json({ message: 'Error saving choice', error });
       }
@@ -223,7 +225,7 @@ export class DraftController {
     } catch (error) {
       if (error instanceof Error && error.message.includes('not found')) {
         res.status(404).json({ message: error.message });
-      } else if (error instanceof Error && error.message.includes('Cannot finalize')) {
+      } else if (error instanceof Error && (error.message.includes('Cannot finalize') || error.message.includes('Invalid choice selection'))) {
         res.status(400).json({ message: error.message });
       } else {
         res.status(500).json({ message: 'Error finalizing draft', error });

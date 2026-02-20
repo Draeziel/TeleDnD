@@ -198,6 +198,104 @@ export class DraftService {
     return this.filterChoicesByDependencies(requiredChoices, activeRefs);
   }
 
+  private extractChoiceOptionIds(choice: any): string[] {
+    if (!Array.isArray(choice.optionsJson)) {
+      return [];
+    }
+
+    return choice.optionsJson
+      .map((option: any) => {
+        if (typeof option === 'string') {
+          return option;
+        }
+
+        if (option && typeof option.id === 'string') {
+          return option.id;
+        }
+
+        return null;
+      })
+      .filter((value: string | null): value is string => Boolean(value));
+  }
+
+  private parseSelectedOptionValues(rawSelectedOption: string | null | undefined): string[] {
+    if (!rawSelectedOption || !rawSelectedOption.trim()) {
+      return [];
+    }
+
+    const trimmed = rawSelectedOption.trim();
+
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((value) => (typeof value === 'string' ? value.trim() : ''))
+            .filter((value) => value.length > 0);
+        }
+      } catch {
+      }
+    }
+
+    if (trimmed.includes(',')) {
+      return trimmed
+        .split(',')
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0);
+    }
+
+    return [trimmed];
+  }
+
+  private validateChoiceSelection(
+    choice: any,
+    rawSelectedOption: string | null | undefined,
+    allowPartialMultiSelection: boolean
+  ): { values: string[]; isComplete: boolean } {
+    const values = this.parseSelectedOptionValues(rawSelectedOption);
+    const optionIds = this.extractChoiceOptionIds(choice);
+    const optionSet = new Set(optionIds);
+    const expectedCount = Math.max(1, choice.chooseCount || 1);
+
+    if (values.length === 0) {
+      return { values: [], isComplete: false };
+    }
+
+    const uniqueValues = Array.from(new Set(values));
+    if (uniqueValues.length !== values.length) {
+      throw new Error(`Invalid choice selection: duplicate options for choice ${choice.id}`);
+    }
+
+    for (const value of uniqueValues) {
+      if (!optionSet.has(value)) {
+        throw new Error(`Invalid choice selection: option '${value}' is not allowed for choice ${choice.id}`);
+      }
+    }
+
+    if (expectedCount === 1 && uniqueValues.length !== 1) {
+      throw new Error(`Invalid choice selection: choice ${choice.id} requires exactly 1 option`);
+    }
+
+    if (expectedCount > 1) {
+      if (allowPartialMultiSelection) {
+        if (uniqueValues.length > expectedCount) {
+          throw new Error(`Invalid choice selection: choice ${choice.id} allows at most ${expectedCount} options`);
+        }
+      } else if (uniqueValues.length !== expectedCount) {
+        throw new Error(`Invalid choice selection: choice ${choice.id} requires exactly ${expectedCount} options`);
+      }
+    }
+
+    const isComplete = expectedCount === 1
+      ? uniqueValues.length === 1
+      : uniqueValues.length === expectedCount;
+
+    return {
+      values: uniqueValues,
+      isComplete,
+    };
+  }
+
   /**
    * Create a new empty character draft
    */
@@ -245,11 +343,19 @@ export class DraftService {
     }
 
     const requiredChoices = await this.resolveRequiredChoicesForDraft(draft);
-    const selectedChoiceIds = new Set(
-      draft.characterDraftChoices.map(dc => dc.choiceId)
+    const selectedChoiceById = new Map(
+      draft.characterDraftChoices.map(dc => [dc.choiceId, dc])
     );
     const missingChoices = requiredChoices.filter(
-      choice => !selectedChoiceIds.has(choice.id)
+      choice => {
+        const selected = selectedChoiceById.get(choice.id);
+        if (!selected) {
+          return true;
+        }
+
+        const validation = this.validateChoiceSelection(choice, selected.selectedOption, true);
+        return !validation.isComplete;
+      }
     );
 
     return {
@@ -492,6 +598,31 @@ export class DraftService {
     choiceId: string,
     selectedOption: string
   ): Promise<any> {
+    const draft = await this.prisma.characterDraft.findUnique({
+      where: { id: draftId },
+      include: {
+        class: { select: { sourceRef: true } },
+        race: { select: { sourceRef: true } },
+        background: { select: { sourceRef: true } },
+      },
+    });
+
+    if (!draft) {
+      throw new Error(`Draft with ID ${draftId} not found`);
+    }
+
+    const requiredChoices = await this.resolveRequiredChoicesForDraft(draft);
+    const targetChoice = requiredChoices.find((choice) => choice.id === choiceId);
+
+    if (!targetChoice) {
+      throw new Error(`Choice ${choiceId} is not available for this draft`);
+    }
+
+    const selection = this.validateChoiceSelection(targetChoice, selectedOption, true);
+    const serializedSelectedOption = selection.values.length === 1
+      ? selection.values[0]
+      : JSON.stringify(selection.values);
+
     // Upsert: create if doesn't exist, update if it does
     await this.prisma.characterDraftChoice.upsert({
       where: {
@@ -501,12 +632,12 @@ export class DraftService {
         },
       },
       update: {
-        selectedOption,
+        selectedOption: serializedSelectedOption,
       },
       create: {
         draftId,
         choiceId,
-        selectedOption,
+        selectedOption: serializedSelectedOption,
       },
     });
 
@@ -570,12 +701,20 @@ export class DraftService {
       background: draftWithSources.background,
     });
 
-    // Check if all required choices are completed
-    const selectedChoiceIds = new Set(
-      draft.characterDraftChoices.map(dc => dc.choiceId)
+    const selectedChoiceById = new Map(
+      draft.characterDraftChoices.map(dc => [dc.choiceId, dc])
     );
+
     const missingChoiceIds = requiredChoices
-      .filter(choice => !selectedChoiceIds.has(choice.id))
+      .filter(choice => {
+        const selected = selectedChoiceById.get(choice.id);
+        if (!selected) {
+          return true;
+        }
+
+        const validation = this.validateChoiceSelection(choice, selected.selectedOption, false);
+        return !validation.isComplete;
+      })
       .map(choice => choice.id);
 
     if (missingChoiceIds.length > 0) {
@@ -593,6 +732,15 @@ export class DraftService {
       throw new Error(
         `Cannot finalize draft: ${incompleteChoices.length} choices do not have selected options`
       );
+    }
+
+    for (const requiredChoice of requiredChoices) {
+      const selected = selectedChoiceById.get(requiredChoice.id);
+      if (!selected) {
+        continue;
+      }
+
+      this.validateChoiceSelection(requiredChoice, selected.selectedOption, false);
     }
 
     // Create the character with class, race, and background

@@ -399,3 +399,4 @@ Controls:
 12. Add importer validation/ingestion for choice nodes with chooseCount constraints. ✅
 13. Add sheet resolver-first cutover flag with explicit legacy fallback isolation. ✅
 14. Add production startup warning when legacy sheet fallback is enabled. ✅
+15. Enforce fail-fast startup guard when legacy sheet fallback is enabled in production. ✅

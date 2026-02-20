@@ -197,11 +197,12 @@ const startServer = async () => {
         }
 
         if (isProduction && sheetLegacyFallbackEnabled) {
-            logger.warn('startup_configuration_warning', {
-                message: 'legacy sheet fallback is enabled in production; resolver-first cutover is not strict',
+            logger.error('startup_configuration_error', {
+                message: 'legacy sheet fallback must be disabled in production for strict resolver-first cutover',
                 sheetResolverCutoverEnabled,
                 sheetLegacyFallbackEnabled,
             });
+            process.exit(1);
         }
 
         startSessionEventsCleanupTask(prisma);

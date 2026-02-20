@@ -86,6 +86,68 @@ Determinism requirements:
 - conflict policy for stacking/overrides
 - explicit priority semantics for modifiers
 
+### Capability model (explicit)
+
+Capability is a resolved, executable/readable unit produced from rules graph.
+
+Capability categories:
+- `ACTION` (active, user-initiated)
+- `PASSIVE` (always-on feature)
+- `MODIFIER` (numeric/stat transform)
+- `CHOICE` (pending or resolved decision point)
+
+Required fields (minimum contract):
+- `id` (stable deterministic key)
+- `type` (`ACTION | PASSIVE | MODIFIER | CHOICE`)
+- `sourceType` (`class | race | feature | item | spell | system`)
+- `sourceId`
+- `scope` (`sheet | combat | exploration | social | universal`)
+- `timing` (`static | runtime`)
+- `rulesVersion`
+- `payload` (typed per capability type)
+
+Design rule:
+- UI consumes capabilities only; no class/race-specific branches.
+
+---
+
+## 5.1) Trigger model (explicit)
+
+Introduce trigger metadata for runtime-capable rules:
+
+Trigger shape:
+- `phase`: `on_apply | turn_start | turn_end | on_hit | on_damage | on_save | manual`
+- `condition`: expression/criteria object (future-safe)
+- `targeting`: `self | ally | enemy | area | explicit`
+- `cooldown` (optional)
+- `stackPolicy`: `refresh | stack | ignore | replace`
+
+Usage:
+- `ACTION` and runtime `PASSIVE` capabilities may include trigger blocks.
+- Trigger model is stored in graph payload and interpreted by runtime engines.
+
+Non-goal in current stream:
+- full combat trigger executor; only model + resolver exposure contract.
+
+---
+
+## 5.2) Static vs Runtime distinction
+
+All resolved capabilities must be explicitly marked as static or runtime.
+
+Static:
+- deterministic sheet-time values (bonuses, proficiencies, passive grants)
+- no temporal/session state required
+
+Runtime:
+- requires encounter/session context or event processing
+- examples: start-of-turn effects, reaction windows, conditional temporary modifiers
+
+Contract requirement:
+- sheet service consumes `static` directly
+- runtime engines consume `runtime` via trigger metadata
+- no ambiguous capabilities without timing classification
+
 ---
 
 ## 6) Migration and compatibility strategy (mandatory gate)
@@ -151,6 +213,8 @@ Used by future capability-to-combat action bridge.
 ### Phase 0: ADR and contracts
 - Author architecture decision record for rules graph.
 - Freeze resolver DTO contract and modifier conflict policy.
+- Freeze capability model contract (`ACTION/PASSIVE/MODIFIER/CHOICE`) and trigger shape.
+- Freeze static/runtime classification rules and validation.
 - Define migration and rollback strategy.
 
 ### Phase 1: Schema foundation
@@ -162,6 +226,7 @@ Used by future capability-to-combat action bridge.
 - Implement resolveCapabilities service.
 - Add unit tests and golden snapshots for deterministic output.
 - Add adapter from resolver to current sheet payload contract.
+- Ensure resolver emits timing classification and trigger blocks where applicable.
 
 ### Phase 3: Progression and choices
 - Move class feature loading to ClassLevelProgression.
@@ -185,6 +250,8 @@ Used by future capability-to-combat action bridge.
 Required for stream closure:
 - Prisma schema with rules graph models and migrations applied cleanly.
 - Resolver returns stable DTO with deterministic output.
+- Capability model + trigger model are documented and enforced by schema/validation.
+- Static vs runtime capability distinction is explicit and covered by tests.
 - Character sheet built from resolver capabilities path.
 - Feature/choice/progression behavior verified by tests.
 - Importer is primary content ingestion path for demo pack.
@@ -210,7 +277,7 @@ Controls:
 ## 13) Immediate execution tasks (next 1-2 days)
 
 1. Add ADR draft for rules graph and conflict policy.
-2. Define resolver DTO types in backend and miniapp shared contracts.
+2. Define resolver DTO types in backend and miniapp shared contracts (including capability type + timing + trigger block).
 3. Draft Prisma model diff for progression/action/spell/item metadata.
 4. Prepare first non-destructive migration.
 5. Add initial golden test fixtures (Barbarian level 1, Bard level 1).

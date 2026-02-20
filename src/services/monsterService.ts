@@ -217,6 +217,42 @@ export class MonsterService {
     };
   }
 
+  private extractStatusTemplateInputFromPayload(existing: {
+    name: string;
+    effectType: string;
+    defaultDuration: string;
+    isActive: boolean;
+    payload: any;
+  }): StatusTemplateInput {
+    const automation = existing.payload?.automation && typeof existing.payload.automation === 'object'
+      ? existing.payload.automation as Record<string, unknown>
+      : {};
+    const damage = automation.damage && typeof automation.damage === 'object'
+      ? automation.damage as Record<string, unknown>
+      : {};
+    const save = automation.save && typeof automation.save === 'object'
+      ? automation.save as Record<string, unknown>
+      : {};
+
+    const damageMode = String(damage.mode || '').toLowerCase() === 'dice' ? 'dice' : 'flat';
+
+    return {
+      name: existing.name,
+      effectType: existing.effectType,
+      defaultDuration: existing.defaultDuration,
+      damageMode,
+      damageFlat: Number(automation.damagePerTick ?? 1),
+      damageCount: Number(damage.count ?? 1),
+      damageSides: Number(damage.sides ?? 6),
+      damageBonus: Number(damage.bonus ?? 0),
+      rounds: Number(automation.roundsLeft ?? 3),
+      saveDieSides: Number(save.dieSides ?? 12),
+      saveThreshold: Number(save.threshold ?? save.dc ?? 10),
+      halfOnSave: save.halfOnSave === undefined ? true : Boolean(save.halfOnSave),
+      isActive: existing.isActive,
+    };
+  }
+
   private prepareTemplateData(telegramUserId: string, input: MonsterTemplateInput) {
     const name = input.name?.trim();
     if (!name || name.length < 2 || name.length > 80) {
@@ -460,20 +496,22 @@ export class MonsterService {
       throw new Error('Status template not found');
     }
 
+    const fromPayload = this.extractStatusTemplateInputFromPayload(existing);
+
     const merged = {
-      name: input.name ?? existing.name,
-      effectType: input.effectType ?? existing.effectType,
-      defaultDuration: input.defaultDuration ?? existing.defaultDuration,
-      isActive: input.isActive ?? existing.isActive,
-      damageMode: ((input as any).damageMode ?? 'dice') as 'flat' | 'dice',
-      damageFlat: (input as any).damageFlat,
-      damageCount: (input as any).damageCount,
-      damageSides: (input as any).damageSides,
-      damageBonus: (input as any).damageBonus,
-      rounds: (input as any).rounds,
-      saveDieSides: (input as any).saveDieSides,
-      saveThreshold: (input as any).saveThreshold,
-      halfOnSave: (input as any).halfOnSave,
+      name: input.name ?? fromPayload.name,
+      effectType: input.effectType ?? fromPayload.effectType,
+      defaultDuration: input.defaultDuration ?? fromPayload.defaultDuration,
+      isActive: input.isActive ?? fromPayload.isActive,
+      damageMode: ((input as any).damageMode ?? fromPayload.damageMode) as 'flat' | 'dice',
+      damageFlat: (input as any).damageFlat ?? fromPayload.damageFlat,
+      damageCount: (input as any).damageCount ?? fromPayload.damageCount,
+      damageSides: (input as any).damageSides ?? fromPayload.damageSides,
+      damageBonus: (input as any).damageBonus ?? fromPayload.damageBonus,
+      rounds: (input as any).rounds ?? fromPayload.rounds,
+      saveDieSides: (input as any).saveDieSides ?? fromPayload.saveDieSides,
+      saveThreshold: (input as any).saveThreshold ?? fromPayload.saveThreshold,
+      halfOnSave: (input as any).halfOnSave ?? fromPayload.halfOnSave,
     } as StatusTemplateInput;
 
     const data = this.prepareStatusTemplateData(merged);

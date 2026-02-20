@@ -19,7 +19,8 @@ export function MonstersPage() {
   const [statusDamageSides, setStatusDamageSides] = useState(6);
   const [statusSaveDieSides, setStatusSaveDieSides] = useState(12);
   const [statusSaveThreshold, setStatusSaveThreshold] = useState(10);
-  const [statusCreating, setStatusCreating] = useState(false);
+  const [statusEditingId, setStatusEditingId] = useState('');
+  const [statusSaving, setStatusSaving] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState('');
   const [statusDeletingId, setStatusDeletingId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -76,16 +77,42 @@ export function MonstersPage() {
     }
   };
 
-  const onCreateStatusTemplate = async () => {
+  const resetStatusForm = () => {
+    setStatusEditingId('');
+    setStatusName('');
+    setStatusEffectType('poisoned');
+    setStatusDuration('3 раунд(ов)');
+    setStatusDamageCount(1);
+    setStatusDamageSides(6);
+    setStatusSaveDieSides(12);
+    setStatusSaveThreshold(10);
+  };
+
+  const onEditStatusTemplate = (template: StatusTemplate) => {
+    const automation = (template.payload?.automation || {}) as Record<string, unknown>;
+    const damage = (automation.damage || {}) as Record<string, unknown>;
+    const save = (automation.save || {}) as Record<string, unknown>;
+
+    setStatusEditingId(template.id);
+    setStatusName(template.name);
+    setStatusEffectType(template.effectType);
+    setStatusDuration(template.defaultDuration);
+    setStatusDamageCount(Number(damage.count || 1));
+    setStatusDamageSides(Number(damage.sides || 6));
+    setStatusSaveDieSides(Number(save.dieSides || 12));
+    setStatusSaveThreshold(Number(save.threshold || save.dc || 10));
+  };
+
+  const onSubmitStatusTemplate = async () => {
     if (!statusName.trim()) {
       setError('Укажите название шаблона статуса');
       return;
     }
 
     try {
-      setStatusCreating(true);
+      setStatusSaving(true);
       setError('');
-      const created = await monsterApi.createStatusTemplate({
+      const payload = {
         name: statusName.trim(),
         effectType: statusEffectType.trim() || 'poisoned',
         defaultDuration: statusDuration.trim() || '3 раунд(ов)',
@@ -97,15 +124,24 @@ export function MonstersPage() {
         saveDieSides: statusSaveDieSides,
         saveThreshold: statusSaveThreshold,
         halfOnSave: true,
-        isActive: true,
-      });
+      } as const;
 
-      setStatusTemplates((current) => [created, ...current]);
-      setStatusName('');
+      if (!statusEditingId) {
+        const created = await monsterApi.createStatusTemplate({
+          ...payload,
+          isActive: true,
+        });
+        setStatusTemplates((current) => [created, ...current]);
+      } else {
+        const updated = await monsterApi.updateStatusTemplate(statusEditingId, payload);
+        setStatusTemplates((current) => current.map((item) => (item.id === statusEditingId ? updated : item)));
+      }
+
+      resetStatusForm();
     } catch {
-      setError('Не удалось создать шаблон статуса');
+      setError(statusEditingId ? 'Не удалось обновить шаблон статуса' : 'Не удалось создать шаблон статуса');
     } finally {
-      setStatusCreating(false);
+      setStatusSaving(false);
     }
   };
 
@@ -136,6 +172,9 @@ export function MonstersPage() {
       setError('');
       await monsterApi.deleteStatusTemplate(template.id);
       setStatusTemplates((current) => current.filter((item) => item.id !== template.id));
+      if (statusEditingId === template.id) {
+        resetStatusForm();
+      }
     } catch {
       setError('Не удалось удалить шаблон статуса');
     } finally {
@@ -286,8 +325,8 @@ export function MonstersPage() {
             value={statusDamageSides}
             onChange={(event) => setStatusDamageSides(Number(event.target.value) || 6)}
           />
-          <button className="btn btn-primary" onClick={onCreateStatusTemplate} disabled={statusCreating}>
-            {statusCreating ? 'Создаём...' : 'Создать шаблон'}
+          <button className="btn btn-primary" onClick={onSubmitStatusTemplate} disabled={statusSaving}>
+            {statusSaving ? 'Сохраняем...' : (statusEditingId ? 'Сохранить изменения' : 'Создать шаблон')}
           </button>
         </div>
 
@@ -306,7 +345,14 @@ export function MonstersPage() {
             value={statusSaveThreshold}
             onChange={(event) => setStatusSaveThreshold(Number(event.target.value) || 10)}
           />
-          <div className="meta-row">Save: d{statusSaveDieSides} + CON vs {statusSaveThreshold}</div>
+          <div className="inline-row">
+            <div className="meta-row">Save: d{statusSaveDieSides} + CON vs {statusSaveThreshold}</div>
+            {statusEditingId && (
+              <button className="btn btn-secondary btn-compact" onClick={resetStatusForm}>
+                Отмена
+              </button>
+            )}
+          </div>
         </div>
 
         {statusTemplates.length === 0 ? (
@@ -331,6 +377,12 @@ export function MonstersPage() {
                     <div className="meta-row">Урон: {damageText} • Save: d{saveDieSides}+CON vs {saveThreshold}</div>
                   </div>
                   <div className="inline-row">
+                    <button
+                      className="btn btn-secondary btn-compact"
+                      onClick={() => onEditStatusTemplate(template)}
+                    >
+                      Редактировать
+                    </button>
                     <button
                       className="btn btn-secondary btn-compact"
                       onClick={() => onToggleStatusTemplate(template)}

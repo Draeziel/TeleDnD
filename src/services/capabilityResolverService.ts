@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, RuleDependency } from '@prisma/client';
 import {
   CapabilityBaseDto,
   ResolveCapabilitiesDto,
@@ -78,6 +78,21 @@ export class CapabilityResolverService {
         classId: true,
         raceId: true,
         backgroundId: true,
+        class: {
+          select: {
+            sourceRef: true,
+          },
+        },
+        race: {
+          select: {
+            sourceRef: true,
+          },
+        },
+        background: {
+          select: {
+            sourceRef: true,
+          },
+        },
       },
     });
 
@@ -261,11 +276,34 @@ export class CapabilityResolverService {
     const normalizedModifiers = modifiers.map((capability) => this.normalizeCapability(capability));
     stages.push({ stage: 'normalize', durationMs: Date.now() - normalizeStart });
 
-    const response: ResolveCapabilitiesDto = {
+    const dependencyStart = Date.now();
+    const activeContextRefs = new Set<string>(
+      [
+        character.class?.sourceRef,
+        character.race?.sourceRef,
+        character.background?.sourceRef,
+      ].filter((value): value is string => Boolean(value))
+    );
+
+    const dependencyFiltered = await this.applyDependencyConstraints({
       actions: [],
       passiveFeatures: normalizedPassive,
       modifiers: normalizedModifiers,
       choicesRemaining: [],
+      metadata: {
+        rulesVersion,
+        resolverSchemaVersion: RESOLVER_SCHEMA_VERSION,
+        computedAt: new Date().toISOString(),
+        sourceGraphDigest,
+      },
+    }, activeContextRefs);
+    stages.push({ stage: 'dependency-filter', durationMs: Date.now() - dependencyStart });
+
+    const response: ResolveCapabilitiesDto = {
+      actions: dependencyFiltered.actions,
+      passiveFeatures: dependencyFiltered.passiveFeatures,
+      modifiers: dependencyFiltered.modifiers,
+      choicesRemaining: dependencyFiltered.choicesRemaining,
       metadata: {
         rulesVersion,
         resolverSchemaVersion: RESOLVER_SCHEMA_VERSION,
@@ -331,6 +369,95 @@ export class CapabilityResolverService {
       trigger: input.trigger,
       executionIntent: input.executionIntent,
       lifecycleState: input.lifecycleState,
+    };
+  }
+
+  private async applyDependencyConstraints(
+    capabilities: ResolveCapabilitiesDto,
+    activeContextRefs: Set<string>
+  ): Promise<ResolveCapabilitiesDto> {
+    const byBucket = [
+      ...capabilities.actions,
+      ...capabilities.passiveFeatures,
+      ...capabilities.modifiers,
+      ...capabilities.choicesRemaining,
+    ];
+
+    const capabilitySourceRefs = Array.from(
+      new Set(
+        byBucket
+          .map((capability) => capability.payload.sourceRef)
+          .filter((value): value is string => typeof value === 'string' && value.length > 0)
+      )
+    );
+
+    if (capabilitySourceRefs.length === 0) {
+      return capabilities;
+    }
+
+    const dependencies = await this.prisma.ruleDependency.findMany({
+      where: {
+        sourceRef: {
+          in: capabilitySourceRefs,
+        },
+      },
+      orderBy: [
+        { sourceRef: 'asc' },
+        { relationType: 'asc' },
+        { targetRef: 'asc' },
+      ],
+    });
+
+    if (dependencies.length === 0) {
+      return capabilities;
+    }
+
+    const dependencyBySource = new Map<string, RuleDependency[]>();
+    dependencies.forEach((dependency) => {
+      if (!dependencyBySource.has(dependency.sourceRef)) {
+        dependencyBySource.set(dependency.sourceRef, []);
+      }
+
+      dependencyBySource.get(dependency.sourceRef)!.push(dependency);
+    });
+
+    const allActiveRefs = new Set<string>([
+      ...activeContextRefs,
+      ...capabilitySourceRefs,
+    ]);
+
+    const filterBucket = (bucket: CapabilityBaseDto[]): CapabilityBaseDto[] => {
+      return bucket.filter((capability) => {
+        const sourceRef = capability.payload.sourceRef;
+        if (typeof sourceRef !== 'string' || sourceRef.length === 0) {
+          return true;
+        }
+
+        const sourceDependencies = dependencyBySource.get(sourceRef) || [];
+        if (sourceDependencies.length === 0) {
+          return true;
+        }
+
+        for (const dependency of sourceDependencies) {
+          if ((dependency.relationType === 'requires' || dependency.relationType === 'depends_on') && !allActiveRefs.has(dependency.targetRef)) {
+            return false;
+          }
+
+          if (dependency.relationType === 'excludes' && allActiveRefs.has(dependency.targetRef)) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+    };
+
+    return {
+      actions: filterBucket(capabilities.actions),
+      passiveFeatures: filterBucket(capabilities.passiveFeatures),
+      modifiers: filterBucket(capabilities.modifiers),
+      choicesRemaining: filterBucket(capabilities.choicesRemaining),
+      metadata: capabilities.metadata,
     };
   }
 

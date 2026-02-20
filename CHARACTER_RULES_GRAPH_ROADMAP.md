@@ -80,7 +80,7 @@ Stable output DTO:
 - passiveFeatures[]
 - modifiers[]
 - choicesRemaining[]
-- metadata: rulesVersion, computedAt, sourceGraphDigest
+- metadata: rulesVersion, resolverSchemaVersion, computedAt, sourceGraphDigest
 
 Determinism requirements:
 - deterministic ordering
@@ -109,6 +109,9 @@ Required fields (minimum contract):
 - `payload` (typed strictly by payloadType)
 - `executionIntent` (future placeholder; no runtime implementation in this stream)
 - `lifecycleState` (future runtime concern; `active | suspended | expired`)
+
+Capability ID policy:
+- ID generation strategy is immutable after Phase 2.
 
 Design rule:
 - UI consumes capabilities only; no class/race-specific branches.
@@ -197,6 +200,7 @@ Importer requirements:
 - idempotency by stable external IDs
 - clear error report (path, rule, reason)
 - partial-failure guard (transaction boundaries)
+- importer MUST NOT mutate existing external IDs.
 
 ---
 
@@ -262,6 +266,8 @@ Required for stream closure:
 - `payloadType` is mandatory for every capability payload.
 - Modifier operations are validated against fixed modes: `add | set | override | multiply`.
 - Capability lifecycle placeholder is mandatory in contract (`lifecycleState`).
+- Resolver DTO includes explicit `resolverSchemaVersion` independent from rules/content version.
+- Capability ID generation strategy is frozen after Phase 2.
 - Character sheet built from resolver capabilities path.
 - Feature/choice/progression behavior verified by tests.
 - Importer is primary content ingestion path for demo pack.

@@ -83,10 +83,21 @@ To prevent resolver-centric bottlenecks, the following NFRs are required:
 - partial/dirty recompute strategy,
 - observability contract (trace id, stage timings, cache-hit ratio, recompute depth).
 
+Resolver DTO must include explicit contract version field:
+- `resolverSchemaVersion` (DTO versioning, independent from `rulesVersion`).
+
+Capability ID policy:
+- ID generation strategy is immutable after Phase 2.
+
 ### 6) Event normalization guardrail (runtime-facing)
 
 For future playback and debugging consistency, execution-facing events must follow normalized envelope:
 - `type + actor + target + payload`.
+
+### 7) Import identity immutability rule
+
+Importer MUST NOT mutate existing external IDs.
+If source content changes identity, importer must fail with explicit diagnostics instead of rewriting IDs.
 
 ## Consequences
 

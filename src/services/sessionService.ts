@@ -17,6 +17,8 @@ type CombatActionType =
   | 'RESET_INITIATIVE'
   | 'APPLY_CHARACTER_EFFECT'
   | 'APPLY_MONSTER_EFFECT'
+  | 'REMOVE_CHARACTER_EFFECT'
+  | 'REMOVE_MONSTER_EFFECT'
   | 'OPEN_REACTION_WINDOW'
   | 'RESPOND_REACTION_WINDOW';
 
@@ -27,6 +29,7 @@ type CombatActionPayload = {
   initiative?: number;
   tempHp?: number | null;
   effectType?: string;
+  effectId?: string;
   duration?: string;
   effectPayload?: Record<string, unknown>;
   reactionId?: string;
@@ -79,6 +82,24 @@ type UndoActionSnapshot =
       sessionMonsterId: string;
       monsterName: string;
       effectType: string;
+    }
+  | {
+      kind: 'effect_removed';
+      effectId: string;
+      sessionCharacterId: string;
+      characterName: string;
+      effectType: string;
+      duration: string;
+      payload: Prisma.JsonValue;
+    }
+  | {
+      kind: 'monster_effect_removed';
+      effectId: string;
+      sessionMonsterId: string;
+      monsterName: string;
+      effectType: string;
+      duration: string;
+      payload: Prisma.JsonValue;
     };
 
 export class SessionService {
@@ -457,6 +478,14 @@ export class SessionService {
     return Math.floor((dexScore - 10) / 2);
   }
 
+  private abilityScoreToModifier(score: number | null | undefined): number {
+    if (score === null || score === undefined) {
+      return 0;
+    }
+
+    return Math.floor((score - 10) / 2);
+  }
+
   private rollD20(): number {
     return crypto.randomInt(1, 21);
   }
@@ -507,12 +536,22 @@ export class SessionService {
     const defaultRounds = this.parseDurationRounds(duration) ?? 3;
     const damagePerTick = Math.min(Math.max(this.parsePositiveInteger(automationRecord.damagePerTick) ?? 1, 1), 50);
     const roundsLeft = Math.min(Math.max(this.parsePositiveInteger(automationRecord.roundsLeft) ?? defaultRounds, 1), 20);
+    const saveRecord = automationRecord.save && typeof automationRecord.save === 'object' && !Array.isArray(automationRecord.save)
+      ? automationRecord.save as Record<string, unknown>
+      : {};
+    const saveDc = Math.min(Math.max(this.parsePositiveInteger(saveRecord.dc) ?? 12, 1), 30);
+    const halfOnSave = saveRecord.halfOnSave === undefined ? true : Boolean(saveRecord.halfOnSave);
 
     payloadRecord.automation = {
       kind: 'POISON_TICK',
       trigger: 'TURN_START',
       damagePerTick,
       roundsLeft,
+      save: {
+        ability: 'con',
+        dc: saveDc,
+        halfOnSave,
+      },
     };
 
     return payloadRecord as Prisma.InputJsonValue;
@@ -522,7 +561,7 @@ export class SessionService {
     effectType: string,
     duration: string,
     payload: Prisma.JsonValue
-  ): { damagePerTick: number; roundsLeft: number } | null {
+  ): { damagePerTick: number; roundsLeft: number; saveDc: number; halfOnSave: boolean } | null {
     const normalizedType = effectType.trim().toLowerCase();
     if (normalizedType !== 'poisoned' && normalizedType !== 'poisoneded') {
       return null;
@@ -544,10 +583,17 @@ export class SessionService {
     const defaultRounds = this.parseDurationRounds(duration) ?? 1;
     const damagePerTick = Math.min(Math.max(this.parsePositiveInteger(automationRecord.damagePerTick) ?? 1, 1), 50);
     const roundsLeft = Math.min(Math.max(this.parsePositiveInteger(automationRecord.roundsLeft) ?? defaultRounds, 1), 20);
+    const saveRecord = automationRecord.save && typeof automationRecord.save === 'object' && !Array.isArray(automationRecord.save)
+      ? automationRecord.save as Record<string, unknown>
+      : {};
+    const saveDc = Math.min(Math.max(this.parsePositiveInteger(saveRecord.dc) ?? 12, 1), 30);
+    const halfOnSave = saveRecord.halfOnSave === undefined ? true : Boolean(saveRecord.halfOnSave);
 
     return {
       damagePerTick,
       roundsLeft,
+      saveDc,
+      halfOnSave,
     };
   }
 
@@ -584,6 +630,11 @@ export class SessionService {
         character: {
           select: {
             name: true,
+            abilityScores: {
+              select: {
+                con: true,
+              },
+            },
           },
         },
         state: true,
@@ -606,7 +657,15 @@ export class SessionService {
           continue;
         }
 
-        const nextHp = Math.max(currentHp - rule.damagePerTick, 0);
+        const saveRoll = this.rollD20();
+        const saveModifier = this.abilityScoreToModifier(sessionCharacter.character.abilityScores?.con);
+        const saveTotal = saveRoll + saveModifier;
+        const savePassed = saveTotal >= rule.saveDc;
+        const adjustedDamage = savePassed
+          ? (rule.halfOnSave ? Math.floor(rule.damagePerTick / 2) : 0)
+          : rule.damagePerTick;
+
+        const nextHp = Math.max(currentHp - adjustedDamage, 0);
         const appliedDamage = Math.max(currentHp - nextHp, 0);
 
         if (appliedDamage > 0) {
@@ -651,6 +710,15 @@ export class SessionService {
             effectId: effect.id,
             effectType: effect.effectType,
             appliedDamage,
+            save: {
+              ability: 'con',
+              dc: rule.saveDc,
+              roll: saveRoll,
+              modifier: saveModifier,
+              total: saveTotal,
+              passed: savePassed,
+              halfOnSave: rule.halfOnSave,
+            },
             hpBefore: currentHp,
             hpAfter: nextHp,
             roundsLeftAfterTick: Math.max(nextRounds, 0),
@@ -674,6 +742,11 @@ export class SessionService {
         sessionId,
       },
       include: {
+        monsterTemplate: {
+          select: {
+            constitution: true,
+          },
+        },
         effects: {
           orderBy: {
             createdAt: 'asc',
@@ -699,7 +772,15 @@ export class SessionService {
         continue;
       }
 
-      const nextHp = Math.max(currentHp - rule.damagePerTick, 0);
+      const saveRoll = this.rollD20();
+      const saveModifier = this.abilityScoreToModifier(sessionMonster.monsterTemplate?.constitution);
+      const saveTotal = saveRoll + saveModifier;
+      const savePassed = saveTotal >= rule.saveDc;
+      const adjustedDamage = savePassed
+        ? (rule.halfOnSave ? Math.floor(rule.damagePerTick / 2) : 0)
+        : rule.damagePerTick;
+
+      const nextHp = Math.max(currentHp - adjustedDamage, 0);
       const appliedDamage = Math.max(currentHp - nextHp, 0);
 
       if (appliedDamage > 0) {
@@ -744,6 +825,15 @@ export class SessionService {
           effectId: effect.id,
           effectType: effect.effectType,
           appliedDamage,
+          save: {
+            ability: 'con',
+            dc: rule.saveDc,
+            roll: saveRoll,
+            modifier: saveModifier,
+            total: saveTotal,
+            passed: savePassed,
+            halfOnSave: rule.halfOnSave,
+          },
           hpBefore: currentHp,
           hpAfter: nextHp,
           roundsLeftAfterTick: Math.max(nextRounds, 0),
@@ -2501,6 +2591,112 @@ export class SessionService {
     return effect;
   }
 
+  async removeSessionCharacterEffect(
+    sessionId: string,
+    characterId: string,
+    effectId: string,
+    telegramUserId: string
+  ) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+
+    const sessionCharacter = await this.getSessionCharacterOrThrow(sessionId, characterId);
+
+    const effect = await this.prisma.sessionEffect.findFirst({
+      where: {
+        id: effectId,
+        sessionCharacterId: sessionCharacter.id,
+      },
+    });
+
+    if (!effect) {
+      throw new Error('Session effect not found');
+    }
+
+    await this.pushUndoSnapshot(sessionId, telegramUserId, {
+      kind: 'effect_removed',
+      effectId: effect.id,
+      sessionCharacterId: sessionCharacter.id,
+      characterName: sessionCharacter.character.name,
+      effectType: effect.effectType,
+      duration: effect.duration,
+      payload: effect.payload,
+    });
+
+    await this.prisma.sessionEffect.delete({
+      where: {
+        id: effect.id,
+      },
+    });
+
+    await this.addSessionEvent(
+      sessionId,
+      'effect_removed',
+      `Эффект ${effect.effectType} снят с ${sessionCharacter.character.name}`,
+      telegramUserId,
+      'COMBAT'
+    );
+
+    return {
+      removedEffectId: effect.id,
+      characterId,
+      effectType: effect.effectType,
+    };
+  }
+
+  async removeSessionMonsterEffect(
+    sessionId: string,
+    sessionMonsterId: string,
+    effectId: string,
+    telegramUserId: string
+  ) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+
+    const sessionMonster = await this.getSessionMonsterOrThrow(sessionId, sessionMonsterId);
+
+    const effect = await this.prisma.sessionMonsterEffect.findFirst({
+      where: {
+        id: effectId,
+        sessionMonsterId: sessionMonster.id,
+      },
+    });
+
+    if (!effect) {
+      throw new Error('Session monster effect not found');
+    }
+
+    await this.pushUndoSnapshot(sessionId, telegramUserId, {
+      kind: 'monster_effect_removed',
+      effectId: effect.id,
+      sessionMonsterId: sessionMonster.id,
+      monsterName: sessionMonster.nameSnapshot,
+      effectType: effect.effectType,
+      duration: effect.duration,
+      payload: effect.payload,
+    });
+
+    await this.prisma.sessionMonsterEffect.delete({
+      where: {
+        id: effect.id,
+      },
+    });
+
+    await this.addSessionEvent(
+      sessionId,
+      'monster_effect_removed',
+      `Эффект ${effect.effectType} снят с монстра ${sessionMonster.nameSnapshot}`,
+      telegramUserId,
+      'COMBAT'
+    );
+
+    return {
+      removedEffectId: effect.id,
+      monsterId: sessionMonsterId,
+      effectType: effect.effectType,
+    };
+  }
+
   async openReactionWindow(
     sessionId: string,
     telegramUserId: string,
@@ -2761,6 +2957,28 @@ export class SessionService {
           payload.duration,
           (payload.effectPayload || {}) as Prisma.InputJsonValue
         );
+      } else if (actionType === 'REMOVE_CHARACTER_EFFECT') {
+        if (!payload.characterId || !payload.effectId) {
+          throw new Error('Validation: characterId and effectId are required');
+        }
+
+        result = await this.removeSessionCharacterEffect(
+          sessionId,
+          payload.characterId,
+          payload.effectId,
+          telegramUserId
+        );
+      } else if (actionType === 'REMOVE_MONSTER_EFFECT') {
+        if (!payload.monsterId || !payload.effectId) {
+          throw new Error('Validation: monsterId and effectId are required');
+        }
+
+        result = await this.removeSessionMonsterEffect(
+          sessionId,
+          payload.monsterId,
+          payload.effectId,
+          telegramUserId
+        );
       } else if (actionType === 'OPEN_REACTION_WINDOW') {
         if (!payload.targetType || !payload.targetRefId || !payload.reactionType) {
           throw new Error('Validation: targetType, targetRefId, reactionType are required');
@@ -2897,6 +3115,30 @@ export class SessionService {
       });
     }
 
+    if (snapshot.kind === 'effect_removed') {
+      await this.prisma.sessionEffect.create({
+        data: {
+          id: snapshot.effectId,
+          sessionCharacterId: snapshot.sessionCharacterId,
+          effectType: snapshot.effectType,
+          duration: snapshot.duration,
+          payload: snapshot.payload as Prisma.InputJsonValue,
+        },
+      });
+    }
+
+    if (snapshot.kind === 'monster_effect_removed') {
+      await this.prisma.sessionMonsterEffect.create({
+        data: {
+          id: snapshot.effectId,
+          sessionMonsterId: snapshot.sessionMonsterId,
+          effectType: snapshot.effectType,
+          duration: snapshot.duration,
+          payload: snapshot.payload as Prisma.InputJsonValue,
+        },
+      });
+    }
+
     await this.prisma.sessionEvent.delete({
       where: {
         id: snapshotEvent.id,
@@ -2920,6 +3162,12 @@ export class SessionService {
     }
     if (snapshot.kind === 'monster_effect_applied') {
       message = `Отменено применение эффекта ${snapshot.effectType} к монстру ${snapshot.monsterName}`;
+    }
+    if (snapshot.kind === 'effect_removed') {
+      message = `Отменено снятие эффекта ${snapshot.effectType} с ${snapshot.characterName}`;
+    }
+    if (snapshot.kind === 'monster_effect_removed') {
+      message = `Отменено снятие эффекта ${snapshot.effectType} с монстра ${snapshot.monsterName}`;
     }
 
     await this.addSessionEvent(sessionId, 'combat_action_undone', message, telegramUserId);

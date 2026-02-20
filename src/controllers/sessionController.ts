@@ -798,6 +798,68 @@ export class SessionController {
     }
   }
 
+  public async removeEffect(req: Request, res: Response): Promise<void> {
+    try {
+      const telegramUserId = getTelegramUserId(res);
+      if (!telegramUserId) {
+        res.status(401).json({ message: 'Unauthorized: Telegram user context is missing' });
+        return;
+      }
+
+      const { sessionId, characterId, effectId } = req.params;
+
+      const result = await this.sessionService.removeSessionCharacterEffect(
+        sessionId,
+        characterId,
+        effectId,
+        telegramUserId
+      );
+
+      res.status(200).json(result);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('Validation:')) {
+        res.status(400).json({ message: error.message });
+      } else if (error instanceof Error && error.message.includes('Forbidden')) {
+        res.status(403).json({ message: error.message });
+      } else if (error instanceof Error && error.message.includes('not found')) {
+        res.status(404).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'Error removing effect', error });
+      }
+    }
+  }
+
+  public async removeMonsterEffect(req: Request, res: Response): Promise<void> {
+    try {
+      const telegramUserId = getTelegramUserId(res);
+      if (!telegramUserId) {
+        res.status(401).json({ message: 'Unauthorized: Telegram user context is missing' });
+        return;
+      }
+
+      const { sessionId, monsterId, effectId } = req.params;
+
+      const result = await this.sessionService.removeSessionMonsterEffect(
+        sessionId,
+        monsterId,
+        effectId,
+        telegramUserId
+      );
+
+      res.status(200).json(result);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('Validation:')) {
+        res.status(400).json({ message: error.message });
+      } else if (error instanceof Error && error.message.includes('Forbidden')) {
+        res.status(403).json({ message: error.message });
+      } else if (error instanceof Error && error.message.includes('not found')) {
+        res.status(404).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'Error removing monster effect', error });
+      }
+    }
+  }
+
   public async executeCombatAction(req: Request, res: Response): Promise<void> {
     try {
       const telegramUserId = getTelegramUserId(res);

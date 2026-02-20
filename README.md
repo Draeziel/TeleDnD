@@ -208,6 +208,8 @@ Run smoke against deployed backend with optional SLO thresholds:
 - `POST /api/sessions/:id/monsters`: GM adds monsters from template with `quantity`.
 - `POST /api/sessions/:sessionId/characters/:characterId/apply-effect`: GM only.
 - `POST /api/sessions/:sessionId/monsters/:monsterId/apply-effect`: GM only.
+- `DELETE /api/sessions/:sessionId/characters/:characterId/effects/:effectId`: GM removes effect before expiration.
+- `DELETE /api/sessions/:sessionId/monsters/:monsterId/effects/:effectId`: GM removes monster effect before expiration.
 
 ### Combat Action Contract (`POST /api/sessions/:id/combat/action`)
 
@@ -264,6 +266,8 @@ Supported `actionType` values:
 - `RESET_INITIATIVE`
 - `APPLY_CHARACTER_EFFECT`
 - `APPLY_MONSTER_EFFECT`
+- `REMOVE_CHARACTER_EFFECT`
+- `REMOVE_MONSTER_EFFECT`
 - `OPEN_REACTION_WINDOW`
 - `RESPOND_REACTION_WINDOW`
 
@@ -275,6 +279,8 @@ Payload expectations by type:
 - `ROLL_INITIATIVE_SELF`: `characterId`
 - `APPLY_CHARACTER_EFFECT`: `characterId`, `effectType`, `duration`, optional `effectPayload`
 - `APPLY_MONSTER_EFFECT`: `monsterId`, `effectType`, `duration`, optional `effectPayload`
+- `REMOVE_CHARACTER_EFFECT`: `characterId`, `effectId`
+- `REMOVE_MONSTER_EFFECT`: `monsterId`, `effectId`
 - `OPEN_REACTION_WINDOW`: `targetType` (`character|monster`), `targetRefId`, `reactionType`, optional `ttlSeconds`
 - `RESPOND_REACTION_WINDOW`: `reactionId`, optional `responsePayload`
 
@@ -286,12 +292,17 @@ MVP automation: for `effectType = poisoned` backend supports turn-start auto tic
     "kind": "POISON_TICK",
     "trigger": "TURN_START",
     "damagePerTick": 1,
-    "roundsLeft": 3
+    "roundsLeft": 3,
+    "save": {
+      "ability": "con",
+      "dc": 12,
+      "halfOnSave": true
+    }
   }
 }
 ```
 
-On each `NEXT_TURN`, if active actor has such effect, backend applies damage, decrements `roundsLeft`, and removes effect when it reaches 0.
+On each `NEXT_TURN`, if active actor has such effect, backend performs CON save (`d20 + CON mod` vs `dc`), applies full or half damage by `halfOnSave`, decrements `roundsLeft`, and removes effect when it reaches 0.
 
 #### Protected monster catalog endpoints (Telegram user required)
 - `GET /api/monsters/templates`: List available templates (`GLOBAL` + caller-owned `PERSONAL`).

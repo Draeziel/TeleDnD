@@ -325,4 +325,22 @@ export const sessionApi = {
     });
     return data;
   },
+
+  async removeEffect(
+    sessionId: string,
+    characterId: string,
+    effectId: string
+  ): Promise<{ removedEffectId: string; characterId: string; effectType: string }> {
+    const { data } = await http.delete(`/sessions/${sessionId}/characters/${characterId}/effects/${effectId}`);
+    return data as { removedEffectId: string; characterId: string; effectType: string };
+  },
+
+  async removeMonsterEffect(
+    sessionId: string,
+    monsterId: string,
+    effectId: string
+  ): Promise<{ removedEffectId: string; monsterId: string; effectType: string }> {
+    const { data } = await http.delete(`/sessions/${sessionId}/monsters/${monsterId}/effects/${effectId}`);
+    return data as { removedEffectId: string; monsterId: string; effectType: string };
+  },
 };

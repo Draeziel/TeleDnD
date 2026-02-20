@@ -61,6 +61,7 @@ export function SessionViewPage() {
   const [effectTypeInput, setEffectTypeInput] = useState('');
   const [effectDurationInput, setEffectDurationInput] = useState('1 раунд');
   const [effectApplyingKey, setEffectApplyingKey] = useState<string | null>(null);
+  const [effectRemovingKey, setEffectRemovingKey] = useState<string | null>(null);
   const [toastNotifications, setToastNotifications] = useState<Array<{ id: string; type: 'success' | 'error' | 'info'; message: string }>>([]);
   const [uiJournal, setUiJournal] = useState<Array<{ id: string; message: string; createdAt: string }>>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
@@ -146,6 +147,11 @@ export function SessionViewPage() {
         trigger: 'TURN_START',
         damagePerTick: 1,
         roundsLeft,
+        save: {
+          ability: 'con',
+          dc: 12,
+          halfOnSave: true,
+        },
       },
     };
   };
@@ -938,6 +944,46 @@ export function SessionViewPage() {
     }
   };
 
+  const onRemoveCombatEffect = async (
+    target:
+      | { kind: 'character'; characterId: string; name: string }
+      | { kind: 'monster'; monsterId: string; name: string },
+    effectId: string,
+    effectType: string,
+    panelKey: string
+  ) => {
+    try {
+      setEffectRemovingKey(`${panelKey}:${effectId}`);
+
+      if (target.kind === 'character') {
+        await executeCombatActionWithFallback(
+          'REMOVE_CHARACTER_EFFECT',
+          {
+            characterId: target.characterId,
+            effectId,
+          },
+          () => sessionApi.removeEffect(id, target.characterId, effectId)
+        );
+      } else {
+        await executeCombatActionWithFallback(
+          'REMOVE_MONSTER_EFFECT',
+          {
+            monsterId: target.monsterId,
+            effectId,
+          },
+          () => sessionApi.removeMonsterEffect(id, target.monsterId, effectId)
+        );
+      }
+
+      await load();
+      notify('success', `Эффект ${effectType} снят с ${target.name}`);
+    } catch (unknownError) {
+      notify('error', formatErrorMessage('Не удалось снять эффект (нужна роль GM)', unknownError));
+    } finally {
+      setEffectRemovingKey(null);
+    }
+  };
+
   const onRemoveMonster = async (monsterId: string) => {
     try {
       setRemovingMonsterId(monsterId);
@@ -1442,6 +1488,53 @@ export function SessionViewPage() {
                     </div>
 
                     <div className="combat-modal-body">
+                      <div className="status-preset-row">
+                        {(activeCombatPanelEntry.effects || []).length === 0 ? (
+                          <span className="meta-row">Активных статусов нет</span>
+                        ) : (
+                          (activeCombatPanelEntry.effects || []).map((effect) => {
+                            const removeKey = `${activeCombatPanelKeyValue}:${effect.id}`;
+
+                            return (
+                              <button
+                                key={effect.id}
+                                className="btn btn-secondary btn-compact"
+                                disabled={!session.hasActiveGm || effectRemovingKey === removeKey}
+                                title={`Снять ${effect.effectType}`}
+                                onClick={() => {
+                                  if (activeCombatPanelEntry.kind === 'character' && activeCombatPanelEntry.characterId) {
+                                    void onRemoveCombatEffect(
+                                      {
+                                        kind: 'character',
+                                        characterId: activeCombatPanelEntry.characterId,
+                                        name: activeCombatPanelEntry.name,
+                                      },
+                                      effect.id,
+                                      effect.effectType,
+                                      activeCombatPanelKeyValue
+                                    );
+                                    return;
+                                  }
+
+                                  void onRemoveCombatEffect(
+                                    {
+                                      kind: 'monster',
+                                      monsterId: activeCombatPanelEntry.id,
+                                      name: activeCombatPanelEntry.name,
+                                    },
+                                    effect.id,
+                                    effect.effectType,
+                                    activeCombatPanelKeyValue
+                                  );
+                                }}
+                              >
+                                {effectRemovingKey === removeKey ? 'Снимаем...' : `✕ ${effect.effectType}`}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+
                       <div className="status-preset-row">
                         {STATUS_PRESETS.map((preset) => (
                           <button

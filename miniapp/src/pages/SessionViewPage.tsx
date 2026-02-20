@@ -33,6 +33,7 @@ const STATUS_COLOR_BY_KEY: Record<string, string> = {
 };
 
 export function SessionViewPage() {
+  const combatApiMode = String(import.meta.env.VITE_COMBAT_API_MODE || 'auto').toLowerCase();
   const { id = '' } = useParams();
   const { userId } = useTelegram();
   const [session, setSession] = useState<SessionViewModel | null>(null);
@@ -69,6 +70,7 @@ export function SessionViewPage() {
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [silentPollFailures, setSilentPollFailures] = useState(0);
   const [lastEventSeq, setLastEventSeq] = useState<string | null>(null);
+  const [legacyFallbackNoticeShown, setLegacyFallbackNoticeShown] = useState(false);
 
   const formatErrorMessage = (fallback: string, unknownError: unknown) => {
     const responsePayload = (unknownError as { response?: { data?: { message?: string; requestId?: string } } })?.response?.data;
@@ -372,6 +374,57 @@ export function SessionViewPage() {
     }
   };
 
+  const createIdempotencyKey = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  const shouldFallbackToLegacy = (unknownError: unknown) => {
+    if (combatApiMode !== 'auto') {
+      return false;
+    }
+
+    const status = (unknownError as { response?: { status?: number } })?.response?.status;
+    const networkCode = (unknownError as { code?: string })?.code;
+
+    return status === 404
+      || status === 405
+      || status === 500
+      || status === 501
+      || status === 503
+      || status === 504
+      || networkCode === 'ERR_NETWORK';
+  };
+
+  const executeCombatActionWithFallback = async <T,>(
+    actionType: string,
+    payload: Record<string, unknown>,
+    legacyCall: () => Promise<T>
+  ): Promise<T> => {
+    if (combatApiMode === 'legacy') {
+      return legacyCall();
+    }
+
+    try {
+      const response = await sessionApi.executeCombatAction(id, {
+        idempotencyKey: createIdempotencyKey(),
+        actionType,
+        payload,
+      });
+
+      await pollEventsCursor();
+      return response.result as T;
+    } catch (unknownError) {
+      if (shouldFallbackToLegacy(unknownError)) {
+        if (!legacyFallbackNoticeShown) {
+          notify('info', 'Выполнен fallback на legacy endpoint для боевого действия', false);
+          setLegacyFallbackNoticeShown(true);
+        }
+
+        return legacyCall();
+      }
+
+      throw unknownError;
+    }
+  };
+
   useEffect(() => {
     setLastEventSeq(null);
     load();
@@ -509,7 +562,11 @@ export function SessionViewPage() {
 
   const onSetHp = async (characterId: string, hp: number) => {
     try {
-      await sessionApi.setHp(id, characterId, hp);
+      await executeCombatActionWithFallback(
+        'SET_CHARACTER_HP',
+        { characterId, currentHp: hp },
+        () => sessionApi.setHp(id, characterId, hp)
+      );
       await load();
     } catch (unknownError) {
       notify('error', formatErrorMessage('Не удалось изменить HP (нужна роль GM)', unknownError));
@@ -518,7 +575,11 @@ export function SessionViewPage() {
 
   const onSetMonsterHp = async (monsterId: string, hp: number) => {
     try {
-      await sessionApi.setMonsterHp(id, monsterId, hp);
+      await executeCombatActionWithFallback(
+        'SET_MONSTER_HP',
+        { monsterId, currentHp: hp },
+        () => sessionApi.setMonsterHp(id, monsterId, hp)
+      );
       await load();
     } catch (unknownError) {
       notify('error', formatErrorMessage('Не удалось изменить HP монстра (нужна роль GM)', unknownError));
@@ -631,7 +692,11 @@ export function SessionViewPage() {
   const onStartEncounter = async () => {
     try {
       setEncounterActionLoading(true);
-      const result = await sessionApi.startEncounter(id);
+      const result = await executeCombatActionWithFallback(
+        'START_ENCOUNTER',
+        {},
+        () => sessionApi.startEncounter(id)
+      );
       await load();
       notify('success', `Encounter запущен. Раунд ${result.combatRound}`);
     } catch (unknownError) {
@@ -644,7 +709,11 @@ export function SessionViewPage() {
   const onNextTurn = async () => {
     try {
       setEncounterActionLoading(true);
-      const result = await sessionApi.nextEncounterTurn(id);
+      const result = await executeCombatActionWithFallback(
+        'NEXT_TURN',
+        {},
+        () => sessionApi.nextEncounterTurn(id)
+      );
       await load();
       notify('success', `Ход передан. Текущий раунд: ${result.combatRound}`);
     } catch (unknownError) {
@@ -657,7 +726,11 @@ export function SessionViewPage() {
   const onEndEncounter = async () => {
     try {
       setEncounterActionLoading(true);
-      await sessionApi.endEncounter(id);
+      await executeCombatActionWithFallback(
+        'END_ENCOUNTER',
+        {},
+        () => sessionApi.endEncounter(id)
+      );
       await load();
       setCombatInterfaceRequested(false);
       notify('success', 'Encounter завершён');
@@ -671,7 +744,11 @@ export function SessionViewPage() {
   const onUndoLastCombatAction = async () => {
     try {
       setUndoActionLoading(true);
-      const result = await sessionApi.undoLastCombatAction(id);
+      const result = await executeCombatActionWithFallback(
+        'UNDO_LAST',
+        {},
+        () => sessionApi.undoLastCombatAction(id)
+      );
       await load();
       notify('success', result.message);
     } catch (unknownError) {
@@ -715,9 +792,27 @@ export function SessionViewPage() {
     try {
       setEffectApplyingKey(panelKey);
       if (target.kind === 'character') {
-        await sessionApi.applyEffect(id, target.characterId, effectType, duration, {});
+        await executeCombatActionWithFallback(
+          'APPLY_CHARACTER_EFFECT',
+          {
+            characterId: target.characterId,
+            effectType,
+            duration,
+            effectPayload: {},
+          },
+          () => sessionApi.applyEffect(id, target.characterId, effectType, duration, {})
+        );
       } else {
-        await sessionApi.applyMonsterEffect(id, target.monsterId, effectType, duration, {});
+        await executeCombatActionWithFallback(
+          'APPLY_MONSTER_EFFECT',
+          {
+            monsterId: target.monsterId,
+            effectType,
+            duration,
+            effectPayload: {},
+          },
+          () => sessionApi.applyMonsterEffect(id, target.monsterId, effectType, duration, {})
+        );
       }
       await load();
       notify('success', `Эффект ${effectType} применён к ${target.name}`);

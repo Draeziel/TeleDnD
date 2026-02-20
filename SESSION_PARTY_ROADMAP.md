@@ -286,9 +286,9 @@ Build a multiplayer session (party) system where:
 - [x] Status template editor: add short badge label field (e.g., `ЯД`) and persist it in template payload/meta.
 - [x] Combat journal filter pass: show only participant interactions (damage, apply/remove effect, reaction results), hide system/flow lines (`turn advanced`, `round counter`, etc.) in combat-phase log.
 - [x] Effect immutability: persist full template-rule snapshot into applied effect payload at apply time, so later template edits do not retroactively change active effects.
-- [ ] SessionView refactor: split large combat page logic into focused components/hooks to reduce regression risk and improve maintainability.
+- [~] SessionView refactor: split large combat page logic into focused components/hooks to reduce regression risk and improve maintainability.
 - [ ] Combat/status automation tests: cover save ability selection, dice rolls, damage percent mapping, rounds decrement/expiry, and event payload shape.
-- [ ] CSS cleanup: remove/merge stale card/status styles left after combat card redesign to keep UI layer predictable.
+- [x] CSS cleanup: remove/merge stale card/status styles left after combat card redesign to keep UI layer predictable.
 
 ---
 
@@ -346,3 +346,4 @@ Build a multiplayer session (party) system where:
 - 2026-02-20: Added deferred roadmap item to filter combat-phase journal to interaction-only entries and hide technical system events (`turn passed`, `round advanced`, etc.) from that view.
 - 2026-02-20: Added explicit `TD1 — Tech debt return` block with agreed priorities: status short-label field, combat log filtering, effect-rule immutability snapshot, SessionView decomposition, automation tests, and CSS cleanup.
 - 2026-02-20: Completed first TD1 batch: status template `shortLabel` (meta persistence + editor field), combat journal interaction-only filtering, and immutable template snapshot persisted into applied effect payload.
+- 2026-02-20: Started SessionView decomposition by extracting combat journal into dedicated miniapp component (`CombatJournal`), and completed CSS cleanup for stale status-dot/combat-card legacy selectors.

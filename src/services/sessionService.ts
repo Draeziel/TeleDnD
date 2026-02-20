@@ -22,7 +22,8 @@ type CombatActionType =
   | 'REMOVE_CHARACTER_EFFECT'
   | 'REMOVE_MONSTER_EFFECT'
   | 'OPEN_REACTION_WINDOW'
-  | 'RESPOND_REACTION_WINDOW';
+  | 'RESPOND_REACTION_WINDOW'
+  | 'DECLARE_CAPABILITY_ACTION';
 
 type CombatActionPayload = {
   characterId?: string;
@@ -41,6 +42,11 @@ type CombatActionPayload = {
   targetRefId?: string;
   ttlSeconds?: number;
   responsePayload?: Record<string, unknown>;
+  sessionCharacterId?: string;
+  capabilityId?: string;
+  capabilityPayloadType?: string;
+  capabilityName?: string;
+  capabilityPayload?: Record<string, unknown>;
 };
 
 type SaveAbility = 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
@@ -2079,6 +2085,132 @@ export class SessionService {
     };
   }
 
+  async executeCombatCapability(
+    sessionId: string,
+    telegramUserId: string,
+    input: {
+      idempotencyKey?: string;
+      sessionCharacterId: string;
+      capabilityId: string;
+      targetType?: 'character' | 'monster';
+      targetRefId?: string;
+      payloadOverride?: Record<string, unknown>;
+    }
+  ) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    const membership = await this.requireSessionMember(sessionId, user.id);
+
+    const normalizedSessionCharacterId = String(input.sessionCharacterId || '').trim();
+    const normalizedCapabilityId = String(input.capabilityId || '').trim();
+    if (!normalizedSessionCharacterId) {
+      throw new Error('Validation: sessionCharacterId is required');
+    }
+
+    if (!normalizedCapabilityId) {
+      throw new Error('Validation: capabilityId is required');
+    }
+
+    const sessionCharacter = await this.prisma.sessionCharacter.findUnique({
+      where: { id: normalizedSessionCharacterId },
+      select: {
+        id: true,
+        sessionId: true,
+        characterId: true,
+        character: {
+          select: {
+            ownerUserId: true,
+            owner: {
+              select: {
+                telegramId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!sessionCharacter || sessionCharacter.sessionId !== sessionId) {
+      throw new Error('Validation: sessionCharacterId is invalid for this session');
+    }
+
+    const isOwner = sessionCharacter.character.ownerUserId === user.id;
+    const isGM = membership.role === 'GM';
+    if (!isOwner && !isGM) {
+      throw new Error('Forbidden: only owner or GM can execute capability');
+    }
+
+    const resolverTelegramId = sessionCharacter.character.owner?.telegramId || telegramUserId;
+    const capabilitySet = await this.capabilityResolverService.resolveCharacterCapabilities(
+      sessionCharacter.characterId,
+      resolverTelegramId,
+      { dirtyNodeIds: ['combat:execute'] }
+    );
+
+    const capability = capabilitySet.actions.find((entry) => entry.id === normalizedCapabilityId);
+    if (!capability) {
+      throw new Error('Validation: capability is not available for this character');
+    }
+
+    if (capability.scope !== 'combat' && capability.scope !== 'universal') {
+      throw new Error('Validation: capability is not combat-executable');
+    }
+
+    const payloadOverride =
+      input.payloadOverride && typeof input.payloadOverride === 'object' && !Array.isArray(input.payloadOverride)
+        ? input.payloadOverride
+        : {};
+    const mergedPayload = {
+      ...(capability.payload as Record<string, unknown>),
+      ...payloadOverride,
+    };
+
+    const normalizedIdempotencyKey = String(input.idempotencyKey || '').trim();
+    const idempotencyKey =
+      normalizedIdempotencyKey ||
+      `capability:${normalizedSessionCharacterId}:${normalizedCapabilityId}:${crypto.randomUUID()}`;
+
+    if (capability.payloadType === 'RUNTIME_EFFECT') {
+      const effectType = String(mergedPayload.effectType || '').trim();
+      const duration = String(mergedPayload.duration || '').trim();
+      if (!effectType || !duration) {
+        throw new Error('Validation: capability payload must include effectType and duration');
+      }
+
+      const resolvedTargetType = input.targetType || 'character';
+      const resolvedTargetRefId = String(input.targetRefId || '').trim() || normalizedSessionCharacterId;
+
+      if (resolvedTargetType === 'monster') {
+        return this.executeCombatAction(sessionId, telegramUserId, idempotencyKey, 'APPLY_MONSTER_EFFECT', {
+          monsterId: resolvedTargetRefId,
+          effectType,
+          duration,
+          effectPayload: mergedPayload,
+        });
+      }
+
+      return this.executeCombatAction(sessionId, telegramUserId, idempotencyKey, 'APPLY_CHARACTER_EFFECT', {
+        characterId: resolvedTargetRefId,
+        effectType,
+        duration,
+        effectPayload: mergedPayload,
+      });
+    }
+
+    if (capability.payloadType === 'ACTION_ATTACK') {
+      return this.executeCombatAction(sessionId, telegramUserId, idempotencyKey, 'DECLARE_CAPABILITY_ACTION', {
+        sessionCharacterId: normalizedSessionCharacterId,
+        capabilityId: normalizedCapabilityId,
+        capabilityName: typeof capability.payload?.name === 'string' ? capability.payload.name : capability.id,
+        capabilityPayloadType: capability.payloadType,
+        capabilityPayload: mergedPayload,
+        targetType: input.targetType,
+        targetRefId: input.targetRefId,
+      });
+    }
+
+    throw new Error(`Validation: capability payloadType ${capability.payloadType} is not supported for execution`);
+  }
+
   async getSessionMonsters(sessionId: string, telegramUserId: string) {
     const user = await this.resolveUserByTelegramId(telegramUserId);
     await this.requireSessionMember(sessionId, user.id);
@@ -3427,6 +3559,35 @@ export class SessionService {
           telegramUserId,
           (payload.responsePayload || {}) as Prisma.InputJsonValue
         );
+      } else if (actionType === 'DECLARE_CAPABILITY_ACTION') {
+        if (!payload.sessionCharacterId || !payload.capabilityId) {
+          throw new Error('Validation: sessionCharacterId and capabilityId are required');
+        }
+
+        const capabilityLabel = String(payload.capabilityName || payload.capabilityId).trim();
+
+        await this.addSessionEvent(
+          sessionId,
+          'capability_action_declared',
+          `Заявлено действие способности: ${capabilityLabel}`,
+          telegramUserId,
+          'COMBAT',
+          {
+            sessionCharacterId: payload.sessionCharacterId,
+            capabilityId: payload.capabilityId,
+            capabilityPayloadType: payload.capabilityPayloadType || null,
+            targetType: payload.targetType || null,
+            targetRefId: payload.targetRefId || null,
+            payload: payload.capabilityPayload || {},
+          } as Prisma.InputJsonValue
+        );
+
+        result = {
+          declared: true,
+          capabilityId: payload.capabilityId,
+          sessionCharacterId: payload.sessionCharacterId,
+          capabilityPayloadType: payload.capabilityPayloadType || null,
+        };
       } else {
         throw new Error('Validation: unsupported combat action type');
       }

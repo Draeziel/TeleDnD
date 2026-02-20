@@ -30,6 +30,7 @@ export default function sessionRoutes(prisma: PrismaClient) {
   router.post('/:id/encounter/next-turn', sessionController.nextEncounterTurn.bind(sessionController));
   router.post('/:id/combat/undo-last', sessionController.undoLastCombatAction.bind(sessionController));
   router.post('/:id/combat/action', sessionController.executeCombatAction.bind(sessionController));
+  router.post('/:id/combat/execute-capability', sessionController.executeCombatCapability.bind(sessionController));
   router.post('/:id/combat/reactions', sessionController.openReactionWindow.bind(sessionController));
   router.post('/:id/combat/reactions/:reactionId/respond', sessionController.respondReactionWindow.bind(sessionController));
   router.post('/:id/encounter/end', sessionController.endEncounter.bind(sessionController));

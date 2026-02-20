@@ -319,6 +319,37 @@ if ($Smoke) {
             }
 
             try {
+                $combatCapabilitiesResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/combat/capabilities" -Method Get -Headers $smokeHeaders -UseBasicParsing -ErrorAction Stop
+                $combatCapabilities = $combatCapabilitiesResponse.Content | ConvertFrom-Json
+                $actorWithAction = $combatCapabilities.actors | Where-Object {
+                    $_.characterId -eq $characterId -and $_.actions -is [System.Array] -and $_.actions.Count -gt 0
+                } | Select-Object -First 1
+
+                if ($null -eq $actorWithAction) {
+                    Add-SmokeResult "Session execute capability" $true "Skipped: no combat capability actions available"
+                } else {
+                    $selectedCapability = $actorWithAction.actions | Select-Object -First 1
+                    $executeCapabilityBody = @{
+                        idempotencyKey = "smoke-cap-$(Get-Random)"
+                        sessionCharacterId = $actorWithAction.sessionCharacterId
+                        capabilityId = $selectedCapability.capabilityId
+                    } | ConvertTo-Json
+
+                    $executeCapabilityResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/combat/execute-capability" `
+                        -Method Post `
+                        -Headers $smokeHeaders `
+                        -Body $executeCapabilityBody `
+                        -UseBasicParsing -ErrorAction Stop
+
+                    $executeCapabilityPayload = $executeCapabilityResponse.Content | ConvertFrom-Json
+                    $executeCapabilityOk = $null -ne $executeCapabilityPayload.actionType -and ($executeCapabilityPayload.combatEvents -is [System.Array])
+                    Add-SmokeResult "Session execute capability" $executeCapabilityOk "POST /api/sessions/:id/combat/execute-capability actionTypePresent=$($null -ne $executeCapabilityPayload.actionType), eventsArray=$($executeCapabilityPayload.combatEvents -is [System.Array])"
+                }
+            } catch {
+                Add-SmokeResult "Session execute capability" $false "POST /api/sessions/:id/combat/execute-capability failed: $($_.Exception.Message)"
+            }
+
+            try {
                 $rollSelfPayload = ConvertTo-Json @{ characterId = $characterId }
                 $rollSelfResponse = Invoke-WebRequest -Uri "$BaseUrl/api/sessions/$sessionId/initiative/roll-self" `
                     -Method Post `
@@ -434,6 +465,7 @@ if ($Smoke) {
         } else {
             Add-SmokeResult "Session attach character" $true "Skipped: no characterId available (likely auth-gated create)"
             Add-SmokeResult "Session combat capabilities" $true "Skipped: no characterId available (likely auth-gated create)"
+            Add-SmokeResult "Session execute capability" $true "Skipped: no characterId available (likely auth-gated create)"
             Add-SmokeResult "Initiative roll self" $true "Skipped: no characterId available (likely auth-gated create)"
             Add-SmokeResult "Initiative roll all" $true "Skipped: no characterId available (likely auth-gated create)"
             Add-SmokeResult "Encounter start" $true "Skipped: no characterId available (likely auth-gated create)"
@@ -457,6 +489,7 @@ if ($Smoke) {
         Add-SmokeResult "Session events" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Session attach character" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Session combat capabilities" $true "Skipped: no sessionId available (likely auth-gated create)"
+        Add-SmokeResult "Session execute capability" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Initiative roll self" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Initiative roll all" $true "Skipped: no sessionId available (likely auth-gated create)"
         Add-SmokeResult "Encounter start" $true "Skipped: no sessionId available (likely auth-gated create)"

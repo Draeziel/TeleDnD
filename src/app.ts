@@ -173,36 +173,17 @@ const startServer = async () => {
         const requireAuth = isProduction ? true : (requireAuthEnv ? requireAuthEnv === 'true' : false);
         const fallbackEnv = process.env.ALLOW_TELEGRAM_USER_ID_FALLBACK;
         const allowFallback = !isProduction && !requireAuth && fallbackEnv === 'true';
-        const sheetResolverAdapterEnabled = process.env.SHEET_RESOLVER_ADAPTER_ENABLED === 'true';
-        const sheetResolverCutoverEnabled = process.env.SHEET_RESOLVER_CUTOVER_ENABLED === 'true';
-        const sheetLegacyFallbackEnabledEnv = process.env.SHEET_LEGACY_FALLBACK_ENABLED;
-        const sheetLegacyFallbackEnabled =
-            sheetLegacyFallbackEnabledEnv !== undefined
-                ? sheetLegacyFallbackEnabledEnv === 'true'
-                : !sheetResolverCutoverEnabled;
 
         logger.info('startup_ready', {
             env: nodeEnv,
             requireTelegramAuth: requireAuth,
             allowTelegramUserIdFallback: allowFallback,
-            sheetResolverAdapterEnabled,
-            sheetResolverCutoverEnabled,
-            sheetLegacyFallbackEnabled,
         });
 
         if (!isProduction && allowFallback) {
             logger.warn('startup_security_notice', {
                 message: 'x-telegram-user-id fallback is enabled; use only in dev/test',
             });
-        }
-
-        if (isProduction && sheetLegacyFallbackEnabled) {
-            logger.error('startup_configuration_error', {
-                reason: 'legacy sheet fallback must be disabled in production for strict resolver-first cutover',
-                sheetResolverCutoverEnabled,
-                sheetLegacyFallbackEnabled,
-            });
-            process.exit(1);
         }
 
         startSessionEventsCleanupTask(prisma);

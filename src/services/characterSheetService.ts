@@ -103,27 +103,6 @@ export class CharacterSheetService {
     return 2;
   }
 
-  private static isResolverSheetAdapterEnabled(): boolean {
-    return process.env.SHEET_RESOLVER_ADAPTER_ENABLED === 'true';
-  }
-
-  private static isResolverSheetCutoverEnabled(): boolean {
-    return process.env.SHEET_RESOLVER_CUTOVER_ENABLED === 'true';
-  }
-
-  private static isResolverPathEnabled(): boolean {
-    return CharacterSheetService.isResolverSheetAdapterEnabled() || CharacterSheetService.isResolverSheetCutoverEnabled();
-  }
-
-  private static isLegacySheetFallbackEnabled(): boolean {
-    const explicitValue = process.env.SHEET_LEGACY_FALLBACK_ENABLED;
-    if (explicitValue !== undefined) {
-      return explicitValue === 'true';
-    }
-
-    return !CharacterSheetService.isResolverSheetCutoverEnabled();
-  }
-
   private static mapResolverPassiveFeatures(passiveFeatures: CapabilityBaseDto[]) {
     return passiveFeatures.map((capability) => {
       const payloadName = capability.payload.name;
@@ -158,13 +137,9 @@ export class CharacterSheetService {
     };
   }
 
-  private async resolveSheetCapabilities(characterId: string, ownerTelegramId?: string | null): Promise<ResolveCapabilitiesDto | null> {
-    if (!CharacterSheetService.isResolverPathEnabled()) {
-      return null;
-    }
-
+  private async resolveSheetCapabilities(characterId: string, ownerTelegramId?: string | null): Promise<ResolveCapabilitiesDto> {
     if (!ownerTelegramId) {
-      return null;
+      throw new Error('Unable to resolve sheet capabilities without owner telegram id');
     }
 
     return this.capabilityResolverService.resolveCharacterCapabilities(characterId, ownerTelegramId, {
@@ -209,84 +184,10 @@ export class CharacterSheetService {
       throw new Error(`Character with ID ${characterId} not found`);
     }
 
-    const resolverCutoverEnabled = CharacterSheetService.isResolverSheetCutoverEnabled();
-    const legacySheetFallbackEnabled = CharacterSheetService.isLegacySheetFallbackEnabled();
-
-    let resolvedCapabilities: ResolveCapabilitiesDto | null = null;
-    try {
-      resolvedCapabilities = await this.resolveSheetCapabilities(characterId, character.owner?.telegramId);
-    } catch (error) {
-      if (resolverCutoverEnabled && !legacySheetFallbackEnabled) {
-        throw error;
-      }
-    }
-
-    if (resolverCutoverEnabled && !legacySheetFallbackEnabled && !resolvedCapabilities) {
-      throw new Error('Resolver cutover is enabled and legacy sheet fallback is disabled, but resolver capabilities are unavailable');
-    }
+    const resolvedCapabilities = await this.resolveSheetCapabilities(characterId, character.owner?.telegramId);
 
     // 2. Fetch granted class features (features unlocked for this character's level)
-    let allGrantedFeatures: Array<{ id: string; name: string; description?: string; source: string }> = [];
-    if (resolvedCapabilities) {
-      allGrantedFeatures = CharacterSheetService.mapResolverPassiveFeatures(resolvedCapabilities.passiveFeatures);
-    } else {
-      const classFeatures = await this.prisma.classFeature.findMany({
-        where: {
-          classId: character.classId,
-          levelRequired: {
-            lte: character.level,
-          },
-        },
-        include: {
-          feature: true,
-        },
-        orderBy: {
-          levelRequired: 'asc',
-        },
-      });
-
-      let raceFeatures: any[] = [];
-      if (character.raceId) {
-        raceFeatures = await this.prisma.raceFeature.findMany({
-          where: {
-            raceId: character.raceId,
-          },
-          include: {
-            feature: true,
-          },
-        });
-      }
-
-      let backgroundFeatures: any[] = [];
-      if (character.backgroundId) {
-        backgroundFeatures = await this.prisma.backgroundFeature.findMany({
-          where: {
-            backgroundId: character.backgroundId,
-          },
-          include: {
-            feature: true,
-          },
-        });
-      }
-
-      allGrantedFeatures = [
-        ...classFeatures,
-        ...raceFeatures,
-        ...backgroundFeatures,
-      ].map(f => {
-        const feature = f.feature || (f as any);
-        return {
-          id: feature.id,
-          name: feature.name,
-          description: feature.description,
-          source: classFeatures.find(cf => cf.feature.id === feature.id)
-            ? 'class'
-            : raceFeatures.find(rf => rf.feature.id === feature.id)
-            ? 'race'
-            : 'background',
-        };
-      });
-    }
+    const allGrantedFeatures = CharacterSheetService.mapResolverPassiveFeatures(resolvedCapabilities.passiveFeatures);
 
     // 5. Fetch required choices for class, race, and background
     const choiceFilters = [
@@ -325,9 +226,7 @@ export class CharacterSheetService {
     );
 
     // 8. Aggregate raw modifiers available to the character and compute effective ability scores.
-    const modifiers = resolvedCapabilities
-      ? resolvedCapabilities.modifiers.map(capability => CharacterSheetService.mapResolverModifierCapability(capability))
-      : await this.modifierService.getCharacterModifiers(characterId);
+    const modifiers = resolvedCapabilities.modifiers.map(capability => CharacterSheetService.mapResolverModifierCapability(capability));
 
     const mapAbilityScores = (scores: AbilityScoreSet | null) =>
       scores

@@ -11,6 +11,7 @@
     "seed": "ts-node scripts/seed.ts",
     "test:resolver:golden": "ts-node scripts/verifyResolverGolden.ts",
     "test:character:unit": "ts-node tests/unit/characterAssembler.test.ts",
+    "test:integration:draft": "ts-node tests/integration/draftFinalizeAssemble.test.ts",
     "test:resolver:golden:update": "ts-node scripts/verifyResolverGolden.ts --update",
     "import:rules:dry-run": "ts-node scripts/importRulesContent.ts --dry-run --file content/rules-pack.demo.json",
     "import:rules:ci": "ts-node scripts/importRulesContent.ts --dry-run --strict-warnings --file content/rules-pack.demo.json --report-file .artifacts/import-rules-report.json",

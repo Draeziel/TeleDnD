@@ -75,6 +75,16 @@ export class CharacterAssemblerService {
       unresolvedChoices: Array.isArray(sheet.missingChoices) ? sheet.missingChoices.length : 0,
     };
 
+        // Equipment validation: ensure no slot conflicts (only one equipped item per slot)
+        const slotCounts: Record<string, number> = {};
+        for (const e of assembled.equipment) {
+          const slot = e?.item?.slot ?? 'unspecified';
+          slotCounts[slot] = (slotCounts[slot] || 0) + 1;
+          if (slotCounts[slot] > 1) {
+            throw new Error(`Invalid equipment: multiple items equipped in slot '${slot}'`);
+          }
+        }
+
     const missing: string[] = [];
     if (!assembled.header || !assembled.header.id) missing.push('header');
     if (!assembled.abilities || !assembled.abilities.base || !assembled.abilities.effective) missing.push('abilities');

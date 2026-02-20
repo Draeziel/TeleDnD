@@ -438,3 +438,5 @@ Controls:
 18. Freeze importer content pack schema (`schemaVersion=1.0.0`) and reject unknown top-level keys. ✅
 19. Add session combat capabilities endpoint backed by resolver (`GET /api/sessions/:id/combat/capabilities`). ✅
 20. Harden importer action-definition validation (`payloadType` + trigger schema contract). ✅
+21. Harden importer item-metadata validation contract (`slot/weaponCategory/attackAbility/damageFormula/armorType`). ✅
+22. Add strict importer tooling mode (`--strict-warnings`) and enable it in CI dry-run. ✅

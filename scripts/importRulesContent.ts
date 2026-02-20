@@ -30,6 +30,17 @@ const ALLOWED_TRIGGER_PHASES = new Set([
 
 const ALLOWED_TRIGGER_TARGETING = new Set(['self', 'ally', 'enemy', 'area', 'explicit']);
 const ALLOWED_TRIGGER_STACK_POLICY = new Set(['refresh', 'stack', 'ignore', 'replace']);
+const ALLOWED_ITEM_SLOTS = new Set(['weapon', 'armor', 'shield', 'accessory', 'consumable', 'tool', 'focus', 'wondrous', 'ammo']);
+const ALLOWED_ITEM_WEAPON_CATEGORIES = new Set([
+  'simple_melee',
+  'simple_ranged',
+  'martial_melee',
+  'martial_ranged',
+  'natural',
+  'improvised',
+]);
+const ALLOWED_ITEM_ATTACK_ABILITIES = new Set(['str', 'dex', 'con', 'int', 'wis', 'cha']);
+const ALLOWED_ITEM_ARMOR_TYPES = new Set(['light', 'medium', 'heavy', 'shield', 'natural']);
 
 type CoreNode = {
   externalId: string;
@@ -174,6 +185,7 @@ function parseArgs() {
   let filePath = path.resolve(process.cwd(), 'content', 'rules-pack.demo.json');
   let dryRun = true;
   let reportFile: string | undefined;
+  let strictWarnings = false;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -199,9 +211,14 @@ function parseArgs() {
       i++;
       continue;
     }
+
+    if (arg === '--strict-warnings') {
+      strictWarnings = true;
+      continue;
+    }
   }
 
-  return { filePath, dryRun, reportFile };
+  return { filePath, dryRun, reportFile, strictWarnings };
 }
 
 function ensureArray<T>(value: T[] | undefined): T[] {
@@ -391,6 +408,153 @@ function validatePack(pack: ContentPack): ImportIssue[] {
         path: `choices[${index}].options`,
         rule: 'choice_option_id_unique',
         reason: 'choice option ids must be unique within a choice node',
+      });
+    }
+  });
+
+  ensureArray(pack.items).forEach((node, index) => {
+    if (!node.name?.trim()) {
+      issues.push({
+        severity: 'error',
+        path: `items[${index}].name`,
+        rule: 'required_field',
+        reason: 'item name is required',
+      });
+    }
+
+    if (node.slot !== undefined) {
+      if (!node.slot.trim()) {
+        issues.push({
+          severity: 'error',
+          path: `items[${index}].slot`,
+          rule: 'non_empty_string',
+          reason: 'item slot must be a non-empty string when provided',
+        });
+      } else if (!ALLOWED_ITEM_SLOTS.has(node.slot)) {
+        issues.push({
+          severity: 'error',
+          path: `items[${index}].slot`,
+          rule: 'allowed_item_slot',
+          reason: `Unsupported item slot '${node.slot}'`,
+        });
+      }
+    }
+
+    if (node.weaponCategory !== undefined) {
+      if (!node.weaponCategory.trim()) {
+        issues.push({
+          severity: 'error',
+          path: `items[${index}].weaponCategory`,
+          rule: 'non_empty_string',
+          reason: 'weaponCategory must be a non-empty string when provided',
+        });
+      } else if (!ALLOWED_ITEM_WEAPON_CATEGORIES.has(node.weaponCategory)) {
+        issues.push({
+          severity: 'error',
+          path: `items[${index}].weaponCategory`,
+          rule: 'allowed_weapon_category',
+          reason: `Unsupported weaponCategory '${node.weaponCategory}'`,
+        });
+      }
+
+      if (node.slot && node.slot !== 'weapon') {
+        issues.push({
+          severity: 'error',
+          path: `items[${index}].weaponCategory`,
+          rule: 'weapon_category_requires_weapon_slot',
+          reason: "weaponCategory is only allowed when slot='weapon'",
+        });
+      }
+    }
+
+    if (node.attackAbility !== undefined) {
+      if (!node.attackAbility.trim()) {
+        issues.push({
+          severity: 'error',
+          path: `items[${index}].attackAbility`,
+          rule: 'non_empty_string',
+          reason: 'attackAbility must be a non-empty string when provided',
+        });
+      } else if (!ALLOWED_ITEM_ATTACK_ABILITIES.has(node.attackAbility)) {
+        issues.push({
+          severity: 'error',
+          path: `items[${index}].attackAbility`,
+          rule: 'allowed_attack_ability',
+          reason: `Unsupported attackAbility '${node.attackAbility}'`,
+        });
+      }
+
+      if (node.slot && node.slot !== 'weapon') {
+        issues.push({
+          severity: 'error',
+          path: `items[${index}].attackAbility`,
+          rule: 'attack_ability_requires_weapon_slot',
+          reason: "attackAbility is only allowed when slot='weapon'",
+        });
+      }
+    }
+
+    if (node.damageFormula !== undefined) {
+      if (!node.damageFormula.trim()) {
+        issues.push({
+          severity: 'error',
+          path: `items[${index}].damageFormula`,
+          rule: 'non_empty_string',
+          reason: 'damageFormula must be a non-empty string when provided',
+        });
+      } else if (!/^\d+d\d+(?:[+-](?:str|dex|con|int|wis|cha|\d+))?$/i.test(node.damageFormula.trim())) {
+        issues.push({
+          severity: 'error',
+          path: `items[${index}].damageFormula`,
+          rule: 'damage_formula_format',
+          reason: "damageFormula must match dice format like '1d8' or '1d8+str'",
+        });
+      }
+
+      if (node.slot && node.slot !== 'weapon') {
+        issues.push({
+          severity: 'error',
+          path: `items[${index}].damageFormula`,
+          rule: 'damage_formula_requires_weapon_slot',
+          reason: "damageFormula is only allowed when slot='weapon'",
+        });
+      }
+    }
+
+    if (node.armorType !== undefined) {
+      if (!node.armorType.trim()) {
+        issues.push({
+          severity: 'error',
+          path: `items[${index}].armorType`,
+          rule: 'non_empty_string',
+          reason: 'armorType must be a non-empty string when provided',
+        });
+      } else if (!ALLOWED_ITEM_ARMOR_TYPES.has(node.armorType)) {
+        issues.push({
+          severity: 'error',
+          path: `items[${index}].armorType`,
+          rule: 'allowed_armor_type',
+          reason: `Unsupported armorType '${node.armorType}'`,
+        });
+      }
+
+      if (node.slot && node.slot !== 'armor' && node.slot !== 'shield') {
+        issues.push({
+          severity: 'error',
+          path: `items[${index}].armorType`,
+          rule: 'armor_type_requires_armor_slot',
+          reason: "armorType is only allowed when slot='armor' or slot='shield'",
+        });
+      }
+    }
+
+    if (node.proficiencyRequirements !== undefined &&
+      (!node.proficiencyRequirements || typeof node.proficiencyRequirements !== 'object' || Array.isArray(node.proficiencyRequirements))) {
+      issues.push({
+        severity: 'error',
+        path: `items[${index}].proficiencyRequirements`,
+        rule: 'proficiency_requirements_object',
+        reason: 'proficiencyRequirements must be an object when provided',
       });
     }
   });
@@ -1066,7 +1230,7 @@ async function runImport(pack: ContentPack, dryRun: boolean, filePath: string, i
 }
 
 async function main() {
-  const { filePath, dryRun, reportFile } = parseArgs();
+  const { filePath, dryRun, reportFile, strictWarnings } = parseArgs();
   const pack = loadPack(filePath);
   const validationIssues = validatePack(pack);
 
@@ -1081,6 +1245,10 @@ async function main() {
 
   if (report.issues.some(issue => issue.severity === 'error')) {
     throw new ImportReportError(report, 'Import validation failed');
+  }
+
+  if (strictWarnings && report.issues.some(issue => issue.severity === 'warning')) {
+    throw new ImportReportError(report, 'Import validation failed due to warnings in strict mode');
   }
 }
 

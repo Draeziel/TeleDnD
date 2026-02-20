@@ -181,6 +181,8 @@ npm run import:rules:apply
 - Importer validates dependency graph contract entries (`depends_on`, `requires`, `excludes`) and fails on unresolved refs.
 - Importer validates choice nodes (`chooseCount > 0`, `chooseCount <= options.length`, unique option ids, resolvable `sourceExternalId`).
 - Importer validates action definitions (`payloadType` allowlist, object payload, trigger schema with phase/targeting/stackPolicy and optional cooldown contract).
+- Importer validates item combat metadata (`slot`, `weaponCategory`, `attackAbility`, `damageFormula`, `armorType`, `proficiencyRequirements`) with consistency checks.
+- Add `--strict-warnings` to fail import when report contains warnings.
 
 Report format includes structured `issues[]` entries:
 - `severity`: `error | warning`

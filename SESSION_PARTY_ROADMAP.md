@@ -1,7 +1,7 @@
 # Session / Party System Roadmap
 
 **Last Updated**: 2026-02-20  
-**Status**: Phase 1 implemented and stabilized for production MVP; combat automation foundation and MVP status automation are live
+**Status**: Phase 1 implemented and stabilized for production MVP; combat automation foundation and MVP status automation are live. New feature focus is handed off to character sheet/creation overhaul (session track stays in support mode).
 
 ---
 
@@ -290,6 +290,11 @@ Build a multiplayer session (party) system where:
 - [x] Combat/status automation tests: cover save ability selection, dice rolls, damage percent mapping, rounds decrement/expiry, and event payload shape.
 - [x] CSS cleanup: remove/merge stale card/status styles left after combat card redesign to keep UI layer predictable.
 
+### Cross-track handoff (2026-02-20)
+
+- [x] Session/combat UX refinement reaches maintenance baseline (bugfix + compactness polish).
+- [ ] Start dedicated stream: **Character Sheet & Creation Overhaul** (separate roadmap/doc), with session track limited to compatibility fixes.
+
 ---
 
 ## Open Questions
@@ -355,3 +360,4 @@ Build a multiplayer session (party) system where:
 - 2026-02-20: Added idempotent schema-repair migration `20260220170000_repair_sessions_initiative_locked` to backfill missing `sessions.initiative_locked` in drifted local databases and stabilize local smoke/combat test setup.
 - 2026-02-20: Completed mobile ergonomics pass for combat UI (`SessionView`): larger touch targets for control clusters, 2-column combat/precombat grids on small screens, and compact mobile action layouts for monster add and in-card HP controls.
 - 2026-02-20: Synchronized roadmap statuses for completed status-template stream and migration baseline (`P1.7` and Phase 1 migration apply), removing stale in-progress/deferred markers already covered by implemented backend/frontend/test work.
+- 2026-02-20: Session roadmap updated with cross-track handoff: next major product investment moves to character sheet/creation overhaul; session/combat scope switched to support mode until the new stream baseline is defined.

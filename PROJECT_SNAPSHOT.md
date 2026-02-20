@@ -1,7 +1,7 @@
 # RPG Character Service - Project Snapshot
 
 **Last Updated**: 2026-02-20  
-**Status**: Beta - Sessions + ownership + no-GM policy + initiative/encounter + monster catalog MVP + combat UX v2 + resilience/undo improvements deployed  
+**Status**: Beta - Sessions/combat baseline stabilized; next priority is character sheet and character-creation overhaul  
 **Tech Stack**: Node.js + TypeScript, Express, PostgreSQL, Prisma ORM, React + Vite + TypeScript, Cloudflare Pages, Render
 
 ---
@@ -365,10 +365,12 @@ The project is functionally complete for MVP usage with:
 ## 7. Next Planned Steps
 
 ### Immediate Next Sprint
-- Decide whether to consume `/api/sessions/:id/events` directly in miniapp polling path
-- Add retention policy (TTL/archival) for `session_events`
-- Add optional explicit GM reassignment action
-- Expand production smoke checklist for post-deploy validation cadence
+- Launch **Character Sheet & Creation Overhaul** stream:
+  - move from draft-like sheet representation to stable character-sheet domain model and API contract,
+  - redesign creation flow UX for clearer step state, validation visibility, and recovery,
+  - align finalize/save semantics to avoid confusion between draft and playable character sheet,
+  - define migration/backward-compatibility approach for existing character records.
+- Keep session/combat work in maintenance mode (bugfix-only) until overhaul baseline is approved.
 
 ### Near-term Improvements
 - Structured request logging and correlation IDs
@@ -592,7 +594,7 @@ When adding new features:
 
 ---
 
-**Last verified**: 2026-02-17  
+**Last verified**: 2026-02-20  
 **Migration status**: ✅ includes `add_class_saving_throw_proficiencies` and prior content migrations  
 **Build status**: ✅ backend and miniapp compile successfully  
 **Deployment status**: ✅ frontend (Cloudflare Pages) + backend/db (Render) live

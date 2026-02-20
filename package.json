@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "migrate": "prisma migrate dev",
     "seed": "ts-node scripts/seed.ts",
-    "deploy:trigger": "powershell -ExecutionPolicy Bypass -File ./trigger-deploy.ps1"
+    "deploy:trigger": "powershell -ExecutionPolicy Bypass -File ./trigger-deploy.ps1",
+    "test:combat:automation": "powershell -ExecutionPolicy Bypass -File ./test-combat-automation.ps1"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

@@ -294,6 +294,7 @@ Build a multiplayer session (party) system where:
 
 - [x] Session/combat UX refinement reaches maintenance baseline (bugfix + compactness polish).
 - [ ] Start dedicated stream: **Character Sheet & Creation Overhaul** (separate roadmap/doc), with session track limited to compatibility fixes.
+- Reference document: [Character Rules Graph Overhaul Roadmap](CHARACTER_RULES_GRAPH_ROADMAP.md)
 
 ---
 

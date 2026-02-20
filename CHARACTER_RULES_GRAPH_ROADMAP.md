@@ -4,6 +4,8 @@
 **Status**: In progress (core resolver/content hardening milestones completed; runtime execution depth remains)  
 **Scope**: Backend/domain architecture and data pipeline only (no UI redesign in this stream)
 
+**Примечание:** общение со мной должно быть на русском языке.
+
 ---
 
 ## 1) Objective

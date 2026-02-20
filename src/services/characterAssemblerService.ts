@@ -71,7 +71,7 @@ export class CharacterAssemblerService {
       inventory: sheet.inventory ?? [],
       equipment: sheet.equippedItems ?? [],
       capabilities,
-      activeEffects: sheet.activeEffects ?? [],
+      activeEffects: [],
       unresolvedChoices: Array.isArray(sheet.missingChoices) ? sheet.missingChoices.length : 0,
     };
 

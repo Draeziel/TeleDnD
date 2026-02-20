@@ -183,8 +183,37 @@ if ($Smoke) {
         } catch {
             Add-SmokeResult "Character sheet" $false "GET /api/characters/:id/sheet failed: $($_.Exception.Message)"
         }
+
+        try {
+            $capabilitiesResponse = Invoke-WebRequest -Uri "$BaseUrl/api/characters/$characterId/capabilities" -Method Get -Headers $smokeHeaders -UseBasicParsing -ErrorAction Stop
+            $capabilities = $capabilitiesResponse.Content | ConvertFrom-Json
+
+            $hasMetadata = $capabilities.metadata -and `
+                           -not [string]::IsNullOrWhiteSpace($capabilities.metadata.rulesVersion) -and `
+                           -not [string]::IsNullOrWhiteSpace($capabilities.metadata.resolverSchemaVersion)
+            $hasBuckets = $null -ne $capabilities.actions -and `
+                          $null -ne $capabilities.passiveFeatures -and `
+                          $null -ne $capabilities.modifiers -and `
+                          $null -ne $capabilities.choicesRemaining
+
+            $capabilitiesOk = $hasMetadata -and $hasBuckets
+            Add-SmokeResult "Character capabilities" $capabilitiesOk "GET /api/characters/:id/capabilities metadata=$hasMetadata, buckets=$hasBuckets"
+        } catch {
+            Add-SmokeResult "Character capabilities" $false "GET /api/characters/:id/capabilities failed: $($_.Exception.Message)"
+        }
+
+        try {
+            $capabilitiesDirtyResponse = Invoke-WebRequest -Uri "$BaseUrl/api/characters/$characterId/capabilities?dirtyNodeId=feature:smoke" -Method Get -Headers $smokeHeaders -UseBasicParsing -ErrorAction Stop
+            $capabilitiesDirty = $capabilitiesDirtyResponse.Content | ConvertFrom-Json
+            $dirtyOk = $capabilitiesDirty.metadata -and -not [string]::IsNullOrWhiteSpace($capabilitiesDirty.metadata.sourceGraphDigest)
+            Add-SmokeResult "Character capabilities dirty hint" $dirtyOk "GET /api/characters/:id/capabilities?dirtyNodeId=feature:smoke digestPresent=$dirtyOk"
+        } catch {
+            Add-SmokeResult "Character capabilities dirty hint" $false "GET /api/characters/:id/capabilities?dirtyNodeId=... failed: $($_.Exception.Message)"
+        }
     } else {
         Add-SmokeResult "Character sheet" $true "Skipped: no characterId available (likely auth-gated create)"
+        Add-SmokeResult "Character capabilities" $true "Skipped: no characterId available (likely auth-gated create)"
+        Add-SmokeResult "Character capabilities dirty hint" $true "Skipped: no characterId available (likely auth-gated create)"
     }
 
     # 5) Sessions list/create/get/delete flow

@@ -809,6 +809,46 @@ td {
   padding: 6px 8px;
 }
 
+.combat-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(17, 24, 39, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+}
+
+.combat-modal {
+  width: min(420px, 100%);
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.combat-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.combat-modal-meta {
+  font-size: 13px;
+  color: #374151;
+}
+
+.combat-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .session-list {
   display: flex;
   flex-direction: column;

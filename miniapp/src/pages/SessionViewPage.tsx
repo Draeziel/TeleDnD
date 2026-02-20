@@ -49,6 +49,8 @@ export function SessionViewPage() {
   const [isOffline, setIsOffline] = useState<boolean>(typeof navigator !== 'undefined' ? !navigator.onLine : false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [silentPollFailures, setSilentPollFailures] = useState(0);
+  const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
+  const [nowTick, setNowTick] = useState<number>(Date.now());
 
   const formatErrorMessage = (fallback: string, unknownError: unknown) => {
     const responsePayload = (unknownError as { response?: { data?: { message?: string; requestId?: string } } })?.response?.data;
@@ -167,6 +169,7 @@ export function SessionViewPage() {
 
       setIsOffline(false);
       setIsReconnecting(false);
+      setLastSyncAt(new Date());
       if (error) {
         setError('');
       }
@@ -278,6 +281,11 @@ export function SessionViewPage() {
       window.removeEventListener('offline', handleOffline);
     };
   }, [id]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!session) {
@@ -639,6 +647,22 @@ export function SessionViewPage() {
   const isGmViewer = myRole === 'GM';
   const selectedCharacter = session.characters.find((entry) => entry.character.id === selectedCharacterId) || null;
   const isCombatInterfaceOpen = session.encounterActive || combatInterfaceRequested;
+  const activeCombatPanelEntry = activeCombatPanelKey
+    ? initiativeQueue.find((entry) => `${entry.kind}:${entry.id}` === activeCombatPanelKey) || null
+    : null;
+  const activeCombatPanelKeyValue = activeCombatPanelEntry ? `${activeCombatPanelEntry.kind}:${activeCombatPanelEntry.id}` : '';
+  const lastSyncSecondsAgo = lastSyncAt ? Math.max(0, Math.floor((nowTick - lastSyncAt.getTime()) / 1000)) : null;
+
+  useEffect(() => {
+    if (!activeCombatPanelKey) {
+      return;
+    }
+
+    const exists = initiativeQueue.some((entry) => `${entry.kind}:${entry.id}` === activeCombatPanelKey);
+    if (!exists) {
+      setActiveCombatPanelKey(null);
+    }
+  }, [activeCombatPanelKey, initiativeQueue]);
 
   return (
     <div className="page-stack">
@@ -681,6 +705,11 @@ export function SessionViewPage() {
           <span className="session-chip session-chip-players" title={`Игроков: ${session.playersCount ?? session.players.length}`}>
             👥 {session.playersCount ?? session.players.length}
           </span>
+          {lastSyncSecondsAgo !== null && (
+            <span className="session-chip" title="Последняя успешная синхронизация">
+              ⟳ {lastSyncSecondsAgo}с
+            </span>
+          )}
         </div>
       </div>
 
@@ -946,7 +975,6 @@ export function SessionViewPage() {
                     <div className={`combat-actor-card combat-turn-card ${entry.kind === 'character' ? 'combat-actor-character' : 'combat-actor-monster'} ${entry.isActive ? 'active-turn' : ''}`} key={`initiative-${entry.kind}-${entry.id}`}>
                       {(() => {
                         const panelKey = `${entry.kind}:${entry.id}`;
-                        const panelOpen = activeCombatPanelKey === panelKey;
 
                         return (
                           <>
@@ -966,7 +994,7 @@ export function SessionViewPage() {
                           className="btn btn-inline combat-hp-toggle"
                           onClick={() => {
                             setActiveCombatPanelKey((current) => (current === panelKey ? null : panelKey));
-                            if (!panelOpen) {
+                            if (activeCombatPanelKey !== panelKey) {
                               setEffectTypeInput('');
                               setEffectDurationInput('1 раунд');
                             }
@@ -979,76 +1007,90 @@ export function SessionViewPage() {
                       )}
                       <div className="combat-actor-meta">🛡 {entry.armorClass ?? '—'}</div>
                       <div className="combat-actor-meta">🎲 {entry.initiative}</div>
-                      {isGmViewer && panelOpen && (
-                        <div className="combat-interaction-panel">
-                          <div className="inline-row">
-                            {entry.kind === 'character' ? (
-                              <>
-                                <button
-                                  className="btn btn-secondary"
-                                  disabled={!session.hasActiveGm || !entry.characterId}
-                                  onClick={() => onSetHp(entry.characterId as string, Math.max(entry.currentHp - 1, 0))}
-                                >
-                                  HP -1
-                                </button>
-                                <button
-                                  className="btn btn-secondary"
-                                  disabled={!session.hasActiveGm || !entry.characterId}
-                                  onClick={() => onSetHp(entry.characterId as string, entry.currentHp + 1)}
-                                >
-                                  HP +1
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button
-                                  className="btn btn-secondary"
-                                  disabled={!session.hasActiveGm}
-                                  onClick={() => onSetMonsterHp(entry.id, Math.max(entry.currentHp - 1, 0))}
-                                >
-                                  HP -1
-                                </button>
-                                <button
-                                  className="btn btn-secondary"
-                                  disabled={!session.hasActiveGm}
-                                  onClick={() => onSetMonsterHp(entry.id, entry.currentHp + 1)}
-                                >
-                                  HP +1
-                                </button>
-                              </>
-                            )}
-                          </div>
-
-                          {entry.kind === 'character' && entry.characterId && (
-                            <>
-                              <input
-                                value={effectTypeInput}
-                                onChange={(event) => setEffectTypeInput(event.target.value)}
-                                placeholder="Эффект (например, poisoned)"
-                                disabled={effectApplyingKey === panelKey || !session.hasActiveGm}
-                              />
-                              <input
-                                value={effectDurationInput}
-                                onChange={(event) => setEffectDurationInput(event.target.value)}
-                                placeholder="Длительность"
-                                disabled={effectApplyingKey === panelKey || !session.hasActiveGm}
-                              />
-                              <button
-                                className="btn btn-secondary"
-                                disabled={effectApplyingKey === panelKey || !session.hasActiveGm}
-                                onClick={() => onApplyCombatEffect(entry.characterId as string, entry.name, panelKey)}
-                              >
-                                {effectApplyingKey === panelKey ? 'Применение...' : 'Добавить статус'}
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      )}
                           </>
                         );
                       })()}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {isGmViewer && activeCombatPanelEntry && (
+                <div className="combat-modal-backdrop" onClick={() => setActiveCombatPanelKey(null)}>
+                  <div className="combat-modal" onClick={(event) => event.stopPropagation()}>
+                    <div className="combat-modal-head">
+                      <strong>{activeCombatPanelEntry.name}</strong>
+                      <button className="btn btn-secondary btn-icon" onClick={() => setActiveCombatPanelKey(null)} aria-label="Закрыть окно">
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="combat-modal-meta">
+                      ❤️ {activeCombatPanelEntry.currentHp} / {activeCombatPanelEntry.maxHp ?? '—'}
+                    </div>
+
+                    <div className="inline-row">
+                      {activeCombatPanelEntry.kind === 'character' ? (
+                        <>
+                          <button
+                            className="btn btn-secondary"
+                            disabled={!session.hasActiveGm || !activeCombatPanelEntry.characterId}
+                            onClick={() => onSetHp(activeCombatPanelEntry.characterId as string, Math.max(activeCombatPanelEntry.currentHp - 1, 0))}
+                          >
+                            HP -1
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            disabled={!session.hasActiveGm || !activeCombatPanelEntry.characterId}
+                            onClick={() => onSetHp(activeCombatPanelEntry.characterId as string, activeCombatPanelEntry.currentHp + 1)}
+                          >
+                            HP +1
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            className="btn btn-secondary"
+                            disabled={!session.hasActiveGm}
+                            onClick={() => onSetMonsterHp(activeCombatPanelEntry.id, Math.max(activeCombatPanelEntry.currentHp - 1, 0))}
+                          >
+                            HP -1
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            disabled={!session.hasActiveGm}
+                            onClick={() => onSetMonsterHp(activeCombatPanelEntry.id, activeCombatPanelEntry.currentHp + 1)}
+                          >
+                            HP +1
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    {activeCombatPanelEntry.kind === 'character' && activeCombatPanelEntry.characterId && (
+                      <div className="combat-modal-body">
+                        <input
+                          value={effectTypeInput}
+                          onChange={(event) => setEffectTypeInput(event.target.value)}
+                          placeholder="Эффект (например, poisoned)"
+                          disabled={effectApplyingKey === activeCombatPanelKey || !session.hasActiveGm}
+                        />
+                        <input
+                          value={effectDurationInput}
+                          onChange={(event) => setEffectDurationInput(event.target.value)}
+                          placeholder="Длительность"
+                          disabled={effectApplyingKey === activeCombatPanelKey || !session.hasActiveGm}
+                        />
+                        <button
+                          className="btn btn-secondary"
+                          disabled={effectApplyingKey === activeCombatPanelKeyValue || !session.hasActiveGm}
+                          onClick={() => onApplyCombatEffect(activeCombatPanelEntry.characterId as string, activeCombatPanelEntry.name, activeCombatPanelKeyValue)}
+                        >
+                          {effectApplyingKey === activeCombatPanelKeyValue ? 'Применение...' : 'Добавить статус'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </>

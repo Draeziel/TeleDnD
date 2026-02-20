@@ -367,6 +367,43 @@ export class SessionController {
     }
   }
 
+  public async setMonsterHp(req: Request, res: Response): Promise<void> {
+    try {
+      const telegramUserId = getTelegramUserId(res);
+      if (!telegramUserId) {
+        res.status(401).json({ message: 'Unauthorized: Telegram user context is missing' });
+        return;
+      }
+
+      const { sessionId, monsterId } = req.params;
+      const { currentHp } = req.body;
+
+      if (currentHp === undefined) {
+        res.status(400).json({ message: 'currentHp is required' });
+        return;
+      }
+
+      const monster = await this.sessionService.setSessionMonsterHp(
+        sessionId,
+        monsterId,
+        telegramUserId,
+        currentHp
+      );
+
+      res.status(200).json(monster);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('Validation:')) {
+        res.status(400).json({ message: error.message });
+      } else if (error instanceof Error && error.message.includes('Forbidden')) {
+        res.status(403).json({ message: error.message });
+      } else if (error instanceof Error && error.message.includes('not found')) {
+        res.status(404).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'Error setting session monster HP', error });
+      }
+    }
+  }
+
   public async setInitiative(req: Request, res: Response): Promise<void> {
     try {
       const telegramUserId = getTelegramUserId(res);

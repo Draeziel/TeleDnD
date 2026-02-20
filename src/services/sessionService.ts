@@ -1061,6 +1061,51 @@ export class SessionService {
     };
   }
 
+  async setSessionMonsterHp(
+    sessionId: string,
+    sessionMonsterId: string,
+    telegramUserId: string,
+    currentHp: number
+  ) {
+    const user = await this.resolveUserByTelegramId(telegramUserId);
+    await this.requireSessionGM(sessionId, user.id);
+
+    this.validateCurrentHp(currentHp);
+
+    const monster = await this.prisma.sessionMonster.findFirst({
+      where: {
+        id: sessionMonsterId,
+        sessionId,
+      },
+      select: {
+        id: true,
+        nameSnapshot: true,
+      },
+    });
+
+    if (!monster) {
+      throw new Error('Session monster not found');
+    }
+
+    const updatedMonster = await this.prisma.sessionMonster.update({
+      where: {
+        id: monster.id,
+      },
+      data: {
+        currentHp,
+      },
+    });
+
+    await this.addSessionEvent(
+      sessionId,
+      'monster_hp_updated',
+      `HP монстра ${monster.nameSnapshot} изменён на ${currentHp}`,
+      telegramUserId
+    );
+
+    return updatedMonster;
+  }
+
   async rollInitiativeForAll(sessionId: string, telegramUserId: string) {
     const user = await this.resolveUserByTelegramId(telegramUserId);
     await this.requireSessionGM(sessionId, user.id);

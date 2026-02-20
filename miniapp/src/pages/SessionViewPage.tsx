@@ -284,6 +284,15 @@ export function SessionViewPage() {
     }
   };
 
+  const onSetMonsterHp = async (monsterId: string, hp: number) => {
+    try {
+      await sessionApi.setMonsterHp(id, monsterId, hp);
+      await load();
+    } catch (unknownError) {
+      notify('error', formatErrorMessage('Не удалось изменить HP монстра (нужна роль GM)', unknownError));
+    }
+  };
+
   const onSetInitiative = async (characterId: string, initiative: number) => {
     try {
       await sessionApi.setInitiative(id, characterId, initiative);
@@ -740,6 +749,24 @@ export function SessionViewPage() {
                     <div className="combat-actor-meta">🛡 {monster.template?.armorClass ?? '—'}</div>
                     <div className="combat-actor-meta">🎲 {monster.initiative ?? '—'}</div>
                     {isGmViewer && (
+                      <div className="inline-row">
+                        <button
+                          className="btn btn-secondary"
+                          disabled={!session.hasActiveGm}
+                          onClick={() => onSetMonsterHp(monster.id, Math.max(monster.currentHp - 1, 0))}
+                        >
+                          HP -1
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          disabled={!session.hasActiveGm}
+                          onClick={() => onSetMonsterHp(monster.id, monster.currentHp + 1)}
+                        >
+                          HP +1
+                        </button>
+                      </div>
+                    )}
+                    {isGmViewer && (
                       <button
                         className="btn btn-danger btn-icon combat-actor-remove"
                         aria-label={`Удалить ${monster.nameSnapshot}`}
@@ -790,6 +817,24 @@ export function SessionViewPage() {
                       <div className="combat-actor-meta">❤️ {entry.currentHp} / {entry.maxHp ?? '—'}</div>
                       <div className="combat-actor-meta">🛡 {entry.armorClass ?? '—'}</div>
                       <div className="combat-actor-meta">🎲 {entry.initiative}</div>
+                      {entry.kind === 'monster' && isGmViewer && (
+                        <div className="inline-row">
+                          <button
+                            className="btn btn-secondary"
+                            disabled={!session.hasActiveGm}
+                            onClick={() => onSetMonsterHp(entry.id, Math.max(entry.currentHp - 1, 0))}
+                          >
+                            HP -1
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            disabled={!session.hasActiveGm}
+                            onClick={() => onSetMonsterHp(entry.id, entry.currentHp + 1)}
+                          >
+                            HP +1
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

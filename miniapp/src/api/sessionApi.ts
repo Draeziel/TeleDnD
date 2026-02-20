@@ -70,6 +70,13 @@ export const sessionApi = {
     return data as { message: string; monsterId: string };
   },
 
+  async setMonsterHp(sessionId: string, monsterId: string, currentHp: number): Promise<SessionMonster> {
+    const { data } = await http.post<SessionMonster>(`/sessions/${sessionId}/monsters/${monsterId}/set-hp`, {
+      currentHp,
+    });
+    return data;
+  },
+
   async attachCharacter(
     sessionId: string,
     characterId: string,

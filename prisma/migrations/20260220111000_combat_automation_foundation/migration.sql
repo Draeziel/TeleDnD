@@ -7,7 +7,7 @@ ALTER TABLE "session_events"
   ADD CONSTRAINT "session_events_event_seq_key" UNIQUE ("event_seq");
 
 CREATE INDEX "session_events_session_id_event_seq_idx"
-  ON "session_events"("session_id", "event_seq");
+  ON "session_events"("sessionId", "event_seq");
 
 CREATE TABLE "session_combat_snapshots" (
   "id" TEXT NOT NULL,

@@ -147,6 +147,18 @@ Run smoke against deployed backend with optional SLO thresholds:
 - `MaxSlowRatePct` validates `metrics.totals.slow / metrics.totals.requests`.
 - Leave thresholds at default `-1` to disable SLO assertions and run functional smoke only.
 
+Before local smoke runs, you can verify schema compatibility:
+
+```powershell
+npm run verify:localdb
+```
+
+If local drift is only `sessions.initiative_locked`, run auto-fix:
+
+```powershell
+npm run verify:localdb:fix
+```
+
 ### Automated production monitor
 
 - GitHub Actions workflow `.github/workflows/production-monitor.yml` runs every 30 minutes.

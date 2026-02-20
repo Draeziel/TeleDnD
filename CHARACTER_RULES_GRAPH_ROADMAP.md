@@ -398,3 +398,4 @@ Controls:
 11. Enforce chooseCount and selectedOption consistency in draft domain validation/finalization. ✅
 12. Add importer validation/ingestion for choice nodes with chooseCount constraints. ✅
 13. Add sheet resolver-first cutover flag with explicit legacy fallback isolation. ✅
+14. Add production startup warning when legacy sheet fallback is enabled. ✅

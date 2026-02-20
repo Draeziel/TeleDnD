@@ -196,6 +196,14 @@ const startServer = async () => {
             });
         }
 
+        if (isProduction && sheetLegacyFallbackEnabled) {
+            logger.warn('startup_configuration_warning', {
+                message: 'legacy sheet fallback is enabled in production; resolver-first cutover is not strict',
+                sheetResolverCutoverEnabled,
+                sheetLegacyFallbackEnabled,
+            });
+        }
+
         startSessionEventsCleanupTask(prisma);
     } catch (error) {
         logger.error('database_connection_error', {

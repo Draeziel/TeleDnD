@@ -198,7 +198,7 @@ const startServer = async () => {
 
         if (isProduction && sheetLegacyFallbackEnabled) {
             logger.error('startup_configuration_error', {
-                message: 'legacy sheet fallback must be disabled in production for strict resolver-first cutover',
+                reason: 'legacy sheet fallback must be disabled in production for strict resolver-first cutover',
                 sheetResolverCutoverEnabled,
                 sheetLegacyFallbackEnabled,
             });

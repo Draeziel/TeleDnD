@@ -319,3 +319,32 @@ export interface SessionSummary {
     effectsCount: number;
   }>;
 }
+
+export interface CombatSummaryActor {
+  kind: 'character' | 'monster';
+  id: string;
+  name: string;
+  currentHp: number | null;
+  maxHpSnapshot: number | null;
+  initiative: number | null;
+  effectsCount: number;
+}
+
+export interface CombatSummary {
+  sessionId: string;
+  encounterActive: boolean;
+  combatRound: number;
+  activeTurnSessionCharacterId: string | null;
+  initiativeOrder: string[];
+  actors: CombatSummaryActor[];
+  snapshotUpdatedAt: string | null;
+  lastEventSeq: string | null;
+  pendingReactions: Array<{
+    id: string;
+    targetType: string;
+    targetRefId: string;
+    reactionType: string;
+    status: string;
+    deadlineAt: string;
+  }>;
+}

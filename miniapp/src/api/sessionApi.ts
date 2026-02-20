@@ -5,6 +5,7 @@ import type {
   SessionCharacterState,
   SessionEffect,
   SessionSummary,
+  CombatSummary,
   SessionEvent,
   SessionMonster,
   SessionMonsterEffect,
@@ -38,6 +39,11 @@ export const sessionApi = {
 
   async getSessionSummary(sessionId: string): Promise<SessionSummary> {
     const { data } = await http.get<SessionSummary>(`/sessions/${sessionId}/summary`);
+    return data;
+  },
+
+  async getCombatSummary(sessionId: string): Promise<CombatSummary> {
+    const { data } = await http.get<CombatSummary>(`/sessions/${sessionId}/combat-summary`);
     return data;
   },
 

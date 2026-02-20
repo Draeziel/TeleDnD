@@ -4,7 +4,7 @@ import { sessionApi } from '../api/sessionApi';
 import { characterApi } from '../api/characterApi';
 import { monsterApi } from '../api/monsterApi';
 import { StatusBox } from '../components/StatusBox';
-import type { CharacterSummary, MonsterTemplate, SessionDetails, SessionSummary, SessionEffect, SessionMonsterEffect } from '../types/models';
+import type { CharacterSummary, MonsterTemplate, SessionDetails, SessionSummary, SessionEffect, SessionMonsterEffect, CombatSummary } from '../types/models';
 import { useTelegram } from '../hooks/useTelegram';
 
 type SessionCharacterView = SessionDetails['characters'][number] & { effectsCount?: number };
@@ -239,6 +239,54 @@ export function SessionViewPage() {
     };
   };
 
+  const mergeCombatSummaryIntoSession = (prev: SessionViewModel | null, combatSummary: CombatSummary): SessionViewModel | null => {
+    if (!prev) {
+      return prev;
+    }
+
+    const actorById = new Map(combatSummary.actors.map((actor) => [actor.id, actor]));
+
+    return {
+      ...prev,
+      encounterActive: combatSummary.encounterActive,
+      combatRound: combatSummary.combatRound,
+      activeTurnSessionCharacterId: combatSummary.activeTurnSessionCharacterId,
+      characters: prev.characters.map((entry) => {
+        const actor = actorById.get(entry.id);
+        if (!actor || actor.kind !== 'character') {
+          return entry;
+        }
+
+        return {
+          ...entry,
+          state: entry.state
+            ? {
+                ...entry.state,
+                currentHp: actor.currentHp ?? entry.state.currentHp,
+                maxHpSnapshot: actor.maxHpSnapshot ?? entry.state.maxHpSnapshot,
+                initiative: actor.initiative,
+              }
+            : entry.state,
+          effectsCount: actor.effectsCount,
+        };
+      }),
+      monsters: prev.monsters.map((entry) => {
+        const actor = actorById.get(entry.id);
+        if (!actor || actor.kind !== 'monster') {
+          return entry;
+        }
+
+        return {
+          ...entry,
+          currentHp: actor.currentHp ?? entry.currentHp,
+          maxHpSnapshot: actor.maxHpSnapshot ?? entry.maxHpSnapshot,
+          initiative: actor.initiative,
+          effectsCount: actor.effectsCount,
+        };
+      }),
+    };
+  };
+
   const load = async (silent = false) => {
     if (!id) return;
     try {
@@ -250,11 +298,19 @@ export function SessionViewPage() {
       }
 
       if (silent) {
-        const summary = await sessionApi.getSessionSummary(id);
-        setSession((prev) => mergeSummaryIntoSession(prev, summary));
-        const seqFromSummary = pickLatestEventSeq(summary.events || []);
-        if (seqFromSummary) {
-          setLastEventSeq((prev) => (compareEventSeq(seqFromSummary, prev) > 0 ? seqFromSummary : prev));
+        if (session?.encounterActive) {
+          const combatSummary = await sessionApi.getCombatSummary(id);
+          setSession((prev) => mergeCombatSummaryIntoSession(prev, combatSummary));
+          if (combatSummary.lastEventSeq) {
+            setLastEventSeq((prev) => (compareEventSeq(combatSummary.lastEventSeq, prev) > 0 ? combatSummary.lastEventSeq : prev));
+          }
+        } else {
+          const summary = await sessionApi.getSessionSummary(id);
+          setSession((prev) => mergeSummaryIntoSession(prev, summary));
+          const seqFromSummary = pickLatestEventSeq(summary.events || []);
+          if (seqFromSummary) {
+            setLastEventSeq((prev) => (compareEventSeq(seqFromSummary, prev) > 0 ? seqFromSummary : prev));
+          }
         }
       } else {
         const data = await sessionApi.getSession(id);
@@ -636,7 +692,11 @@ export function SessionViewPage() {
   const onRollInitiativeSelf = async (characterId: string) => {
     try {
       setRollingSelfId(characterId);
-      const result = await sessionApi.rollInitiativeSelf(id, characterId);
+      const result = await executeCombatActionWithFallback(
+        'ROLL_INITIATIVE_SELF',
+        { characterId },
+        () => sessionApi.rollInitiativeSelf(id, characterId)
+      );
       await load();
       notify('success', `${result.characterName}: бросок ${result.roll}${result.dexModifier >= 0 ? '+' : ''}${result.dexModifier} = ${result.initiative}`);
     } catch (unknownError) {

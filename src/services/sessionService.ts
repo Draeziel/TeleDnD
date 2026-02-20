@@ -11,6 +11,7 @@ type CombatActionType =
   | 'SET_CHARACTER_INITIATIVE'
   | 'ROLL_INITIATIVE_CHARACTERS'
   | 'ROLL_INITIATIVE_MONSTERS'
+  | 'ROLL_INITIATIVE_SELF'
   | 'LOCK_INITIATIVE'
   | 'UNLOCK_INITIATIVE'
   | 'RESET_INITIATIVE'
@@ -2415,6 +2416,12 @@ export class SessionService {
         result = await this.rollInitiativeForCharacters(sessionId, telegramUserId);
       } else if (actionType === 'ROLL_INITIATIVE_MONSTERS') {
         result = await this.rollInitiativeForMonsters(sessionId, telegramUserId);
+      } else if (actionType === 'ROLL_INITIATIVE_SELF') {
+        if (!payload.characterId) {
+          throw new Error('Validation: characterId is required');
+        }
+
+        result = await this.rollInitiativeForOwnedCharacter(sessionId, payload.characterId, telegramUserId);
       } else if (actionType === 'LOCK_INITIATIVE') {
         result = await this.lockSessionInitiative(sessionId, telegramUserId);
       } else if (actionType === 'UNLOCK_INITIATIVE') {

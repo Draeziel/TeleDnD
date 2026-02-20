@@ -515,13 +515,25 @@ export class SessionService {
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
   }
 
+  private isPoisonEffectType(effectType: string): boolean {
+    const normalized = String(effectType || '').trim().toLowerCase();
+    if (!normalized) {
+      return false;
+    }
+
+    return normalized === 'poisoned'
+      || normalized === 'poisoneded'
+      || normalized.includes('poison')
+      || normalized.includes('отрав')
+      || normalized === 'яд';
+  }
+
   private normalizePoisonEffectPayload(
     effectType: string,
     duration: string,
     payload: Prisma.InputJsonValue
   ): Prisma.InputJsonValue {
-    const normalizedType = effectType.trim().toLowerCase();
-    if (normalizedType !== 'poisoned' && normalizedType !== 'poisoneded') {
+    if (!this.isPoisonEffectType(effectType)) {
       return payload;
     }
 
@@ -562,11 +574,6 @@ export class SessionService {
     duration: string,
     payload: Prisma.JsonValue
   ): { damagePerTick: number; roundsLeft: number; saveDc: number; halfOnSave: boolean } | null {
-    const normalizedType = effectType.trim().toLowerCase();
-    if (normalizedType !== 'poisoned' && normalizedType !== 'poisoneded') {
-      return null;
-    }
-
     const payloadRecord = payload && typeof payload === 'object' && !Array.isArray(payload)
       ? payload as Record<string, unknown>
       : {};
@@ -574,6 +581,12 @@ export class SessionService {
     const automationRecord = payloadRecord.automation && typeof payloadRecord.automation === 'object' && !Array.isArray(payloadRecord.automation)
       ? payloadRecord.automation as Record<string, unknown>
       : {};
+
+    const automationKind = String(automationRecord.kind || '').toUpperCase();
+    const isPoisonAutomation = automationKind === 'POISON_TICK';
+    if (!isPoisonAutomation && !this.isPoisonEffectType(effectType)) {
+      return null;
+    }
 
     const trigger = String(automationRecord.trigger || 'TURN_START').toUpperCase();
     if (trigger !== 'TURN_START') {

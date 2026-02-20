@@ -135,7 +135,13 @@ export function SessionViewPage() {
 
   const buildEffectPayload = (effectType: string, duration: string): Record<string, unknown> => {
     const normalized = normalizeStatusKey(effectType);
-    if (normalized !== 'poisoned' && normalized !== 'poisoneded') {
+    const isPoison = normalized === 'poisoned'
+      || normalized === 'poisoneded'
+      || normalized.includes('poison')
+      || normalized.includes('отрав')
+      || normalized === 'яд';
+
+    if (!isPoison) {
       return {};
     }
 
@@ -833,7 +839,15 @@ export function SessionViewPage() {
         () => sessionApi.nextEncounterTurn(id)
       );
       await load();
-      notify('success', `Ход передан. Текущий раунд: ${result.combatRound}`);
+      const automation = (result as { automation?: { tickCount: number; totalDamage: number } }).automation;
+      if (automation && automation.tickCount > 0) {
+        notify(
+          'success',
+          `Ход передан. Раунд: ${result.combatRound}. Автотики: ${automation.tickCount}, суммарный урон: ${automation.totalDamage}`
+        );
+      } else {
+        notify('success', `Ход передан. Текущий раунд: ${result.combatRound}. Автотики: 0`);
+      }
     } catch (unknownError) {
       notify('error', formatErrorMessage('Не удалось передать ход (нужна роль GM и активный encounter)', unknownError));
     } finally {

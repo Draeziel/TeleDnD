@@ -269,12 +269,20 @@ export const sessionApi = {
     encounterActive: boolean;
     combatRound: number;
     activeTurnSessionCharacterId: string | null;
+    automation?: {
+      tickCount: number;
+      totalDamage: number;
+    };
   }> {
     const { data } = await http.post(`/sessions/${sessionId}/encounter/next-turn`);
     return data as {
       encounterActive: boolean;
       combatRound: number;
       activeTurnSessionCharacterId: string | null;
+      automation?: {
+        tickCount: number;
+        totalDamage: number;
+      };
     };
   },
 

@@ -1,7 +1,7 @@
 # RPG Character Service - Project Snapshot
 
-**Last Updated**: 2026-02-19  
-**Status**: Beta - Sessions + ownership + no-GM policy + initiative/encounter + monster catalog MVP + combat interface v2 deployed  
+**Last Updated**: 2026-02-20  
+**Status**: Beta - Sessions + ownership + no-GM policy + initiative/encounter + monster catalog MVP + combat UX v2 + resilience/undo improvements deployed  
 **Tech Stack**: Node.js + TypeScript, Express, PostgreSQL, Prisma ORM, React + Vite + TypeScript, Cloudflare Pages, Render
 
 ---
@@ -164,10 +164,17 @@ CharacterDraft
 - Actor-aware remove messages and lightweight session event journal
 - Session list shows GM activity status (`active` / `no active GM`)
 - Dedicated events feed endpoint for session journal polling
-- Initiative automation endpoints: GM roll-all and player self-roll
+- Initiative automation endpoints: GM roll-all, roll-characters, roll-monsters and player self-roll
 - Initiative lock/unlock/reset policy for encounter control
 - Encounter turn flow: start/next/end encounter with active turn marker and round progression
 - Session view has dedicated combat interface mode with pre-start actor board and in-combat turn queue cards
+- Active turn pointer and highlight now work for both characters and monsters in queue
+- GM can set monster HP directly in session combat flow
+- GM can undo last combat action (HP/initiative/effect)
+- Player self-roll is limited to one roll per active encounter
+- In-combat heart interaction uses popup editor (HP/status) without expanding turn cards
+- Session header shows last successful sync age (`⟳ Ns`)
+- Session polling resilience includes GET retry/backoff, offline/reconnect banners and adaptive poll backoff
 - Session UI polish: consistent button hierarchy and improved mobile layout in session screen
 - Contextual controls in session screen: tap name to refresh, tap join code to copy, compact initiative/round controls in combat block
 - Contextual actions now use compact inline buttons (instead of text-link style) for cleaner and more consistent visual UX
@@ -273,9 +280,12 @@ CharacterDraft
 | `GET` | `/api/sessions/:id/monsters` | List session monsters |
 | `POST` | `/api/sessions/:id/monsters` | GM: add monsters from template + quantity |
 | `DELETE` | `/api/sessions/:id/monsters/:monsterId` | GM: remove monster from session |
+| `POST` | `/api/sessions/:sessionId/monsters/:monsterId/set-hp` | GM: set monster HP |
 | `POST` | `/api/sessions/:id/characters` | Attach owned character to session |
 | `DELETE` | `/api/sessions/:id/characters/:characterId` | Detach character from session |
 | `POST` | `/api/sessions/:id/initiative/roll-all` | GM: roll initiative for all attached characters |
+| `POST` | `/api/sessions/:id/initiative/roll-characters` | GM: roll initiative for characters only |
+| `POST` | `/api/sessions/:id/initiative/roll-monsters` | GM: roll initiative for monsters only |
 | `POST` | `/api/sessions/:id/initiative/roll-self` | Player: roll initiative for owned attached character |
 | `POST` | `/api/sessions/:id/initiative/lock` | GM: lock initiative updates/re-rolls |
 | `POST` | `/api/sessions/:id/initiative/unlock` | GM: unlock initiative updates/re-rolls |
@@ -283,6 +293,7 @@ CharacterDraft
 | `POST` | `/api/sessions/:id/encounter/start` | GM: start encounter |
 | `POST` | `/api/sessions/:id/encounter/next-turn` | GM: advance turn order |
 | `POST` | `/api/sessions/:id/encounter/end` | GM: end encounter |
+| `POST` | `/api/sessions/:id/combat/undo-last` | GM: undo last combat action |
 | `POST` | `/api/sessions/:sessionId/characters/:characterId/set-hp` | GM: set HP |
 | `POST` | `/api/sessions/:sessionId/characters/:characterId/set-initiative` | GM: set initiative |
 | `POST` | `/api/sessions/:sessionId/characters/:characterId/apply-effect` | GM: apply effect |
@@ -331,10 +342,15 @@ The project is functionally complete for MVP usage with:
 - Session event journal and actor-aware remove notifications
 - Initiative roll automation (`roll-self`, `roll-all`) and session timeline logging
 - Initiative lock/unlock/reset controls in miniapp
+- Initiative split controls in miniapp (`🎲🧑`, `🎲👾`)
 - Dedicated combat interface flow: `Начать бой!` opens combat mode, then encounter starts via `Начать сражение`
 - Pre-start combat actor board (3 columns) for characters and monsters with remove actions
 - In-combat turn order rendered as participant-style 3-column cards
+- In-combat active turn card highlight (characters + monsters)
+- In-combat GM popup editor on heart tap (HP and status apply)
+- Status presets and color-coded status chips (`poisoned`, `cursed`, `stunned`)
 - Active-combat UI now hides session monsters list and focuses on round/queue controls
+- Network resilience UX in miniapp (retry/backoff, offline/reconnecting banners, adaptive polling)
 - Smoke scripts support real Telegram `initData` (`-TelegramInitData`)
 - Owned-character deletion from miniapp list
 

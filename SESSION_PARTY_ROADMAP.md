@@ -211,8 +211,8 @@ Build a multiplayer session (party) system where:
 ### P1 — Gameplay and UX robustness
 
 - [x] Add encounter flow primitives: start encounter, active turn marker, next turn, finish encounter.
-- [ ] Add safe “undo last combat action” for GM (HP/initiative/effect mutations).
-- [ ] Add network resilience UX in miniapp (retry/backoff and clearer offline recovery).
+- [x] Add safe “undo last combat action” for GM (HP/initiative/effect mutations).
+- [x] Add network resilience UX in miniapp (retry/backoff and clearer offline recovery).
 - [ ] Improve small-screen ergonomics (tap targets, dense combat layout, minimal scroll friction).
 - [x] Define and implement retention policy for `session_events` (TTL/archive + cleanup task).
 
@@ -247,13 +247,13 @@ Build a multiplayer session (party) system where:
    - show only avatar, HP heart, AC shield, status icons
    - grayscale tile when HP is 0
    - open full character card on tile click
-- [~] B3: Combat block separation and initiative flow
+- [x] B3: Combat block separation and initiative flow
    - separate "Start combat" block when encounter not active
    - lock icon instead of initiative text status
    - add monster initiative roll action
    - build encounter queue row with active-turn highlight and force-next-turn
    - disallow repeated player self-roll after first roll within encounter
-- [ ] B4: In-combat HP/status interaction panel (GM-only edits)
+- [x] B4: In-combat HP/status interaction panel (GM-only edits)
    - tap heart opens HP/status panel
    - HP and status modifications restricted to GM
 - [x] B5: Visibility and attach-flow tightening
@@ -306,3 +306,8 @@ Build a multiplayer session (party) system where:
 - 2026-02-19: Added pre-start unified actors board (characters + monsters) with 3-column cards and removal actions; added backend+API support for removing session monsters (`DELETE /api/sessions/:id/monsters/:monsterId`).
 - 2026-02-19: During active encounter hidden `Монстры в сессии`; `Порядок ходов` switched to 3-column participant-style cards; fixed monster template stat loss on summary polling by normalizing summary monster shape (`template`).
 - 2026-02-19: Documentation synchronized after Combat UX v2 updates (`PROJECT_SNAPSHOT.md` + roadmap statuses/log).
+- 2026-02-20: Added GM split initiative actions (`🎲🧑`, `🎲👾`) and monster HP edit endpoint/UI (`POST /api/sessions/:sessionId/monsters/:monsterId/set-hp`).
+- 2026-02-20: Implemented safe combat undo for GM (`POST /api/sessions/:id/combat/undo-last`) with rollback for HP/initiative/effect and hidden internal undo snapshots.
+- 2026-02-20: Fixed active-turn model for monsters in encounter queue, added explicit active card highlight, and blocked repeated player self-roll during active encounter.
+- 2026-02-20: Implemented network resilience in miniapp session view (GET retry with backoff+jitter, offline/reconnecting banners, adaptive polling backoff, online/offline recovery hooks).
+- 2026-02-20: Reworked in-combat heart interaction to GM popup editor (no card height expansion), added sync-age chip in session header, and introduced status presets + color-coded status dots (`poisoned/cursed/stunned`).

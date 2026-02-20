@@ -187,8 +187,11 @@ Run smoke against deployed backend with optional SLO thresholds:
 - `POST /api/sessions/:id/characters`: Attach owned character to session.
 - `DELETE /api/sessions/:id/characters/:characterId`: Remove character from session (owner or GM).
 - `POST /api/sessions/:sessionId/characters/:characterId/set-hp`: GM only.
+- `POST /api/sessions/:sessionId/monsters/:monsterId/set-hp`: GM only.
 - `POST /api/sessions/:sessionId/characters/:characterId/set-initiative`: GM only.
 - `POST /api/sessions/:id/initiative/roll-all`: GM rolls initiative for all attached characters.
+- `POST /api/sessions/:id/initiative/roll-characters`: GM rolls initiative for attached characters only.
+- `POST /api/sessions/:id/initiative/roll-monsters`: GM rolls initiative for attached monsters only.
 - `POST /api/sessions/:id/initiative/roll-self`: Player rolls initiative for owned attached character.
 - `POST /api/sessions/:id/initiative/lock`: GM locks initiative changes/re-rolls.
 - `POST /api/sessions/:id/initiative/unlock`: GM unlocks initiative changes/re-rolls.
@@ -196,6 +199,7 @@ Run smoke against deployed backend with optional SLO thresholds:
 - `POST /api/sessions/:id/encounter/start`: GM starts encounter and sets first active turn by initiative.
 - `POST /api/sessions/:id/encounter/next-turn`: GM advances active turn and increments round on wrap.
 - `POST /api/sessions/:id/encounter/end`: GM ends encounter and clears active turn.
+- `POST /api/sessions/:id/combat/undo-last`: GM undoes last combat action.
 - `GET /api/sessions/:id/monsters`: List monsters currently attached to session.
 - `POST /api/sessions/:id/monsters`: GM adds monsters from template with `quantity`.
 - `POST /api/sessions/:sessionId/characters/:characterId/apply-effect`: GM only.
@@ -939,6 +943,168 @@ curl -X POST http://localhost:4000/api/drafts/$DRAFT_ID/finalize
 - ✅ **Error handling**: Clear validation errors for invalid score distributions
 - ✅ **Extensibility**: Ready for future modifiers from racial bonuses and items
 - ⏳ **Future enhancements**: Modifier system for automatic adjustments from class/race/item bonuses
+
+## Content Authoring Guide
+
+This is the practical checklist for adding new game content with the current backend and miniapp architecture.
+
+### 1) Create or reuse a content source
+
+Use `ContentSource` to group one ruleset pack (SRD/homebrew).
+
+```typescript
+const source = await prisma.contentSource.upsert({
+  where: { name: 'Homebrew Pack A' },
+  update: {},
+  create: { name: 'Homebrew Pack A' },
+});
+```
+
+### 2) Add class, race, background
+
+```typescript
+const ranger = await prisma.class.create({
+  data: { name: 'Ranger', contentSourceId: source.id },
+});
+
+const elf = await prisma.race.create({
+  data: { name: 'Elf', contentSourceId: source.id },
+});
+
+const scout = await prisma.background.create({
+  data: { name: 'Scout', contentSourceId: source.id },
+});
+```
+
+### 3) Add features and bind to source entities
+
+```typescript
+const darkvision = await prisma.feature.create({
+  data: {
+    name: 'Darkvision',
+    description: 'See in dim light within 60 feet as if it were bright light.',
+    contentSourceId: source.id,
+  },
+});
+
+await prisma.raceFeature.create({
+  data: { raceId: elf.id, featureId: darkvision.id },
+});
+
+await prisma.classFeature.create({
+  data: { classId: ranger.id, featureId: darkvision.id, levelRequired: 2 },
+});
+```
+
+### 4) Add choices for class/race/background
+
+`Choice.optionsJson` is intentionally flexible and stores payload used by draft flow.
+
+```typescript
+await prisma.choice.create({
+  data: {
+    contentSourceId: source.id,
+    sourceType: 'class',
+    sourceId: ranger.id,
+    chooseCount: 2,
+    optionsJson: [
+      { id: 'survival', name: 'Survival' },
+      { id: 'nature', name: 'Nature' },
+      { id: 'stealth', name: 'Stealth' },
+    ],
+  },
+});
+```
+
+### 5) Add class saving throw proficiencies
+
+```typescript
+await prisma.classSavingThrowProficiency.createMany({
+  data: [
+    { classId: ranger.id, ability: 'dex' },
+    { classId: ranger.id, ability: 'wis' },
+  ],
+  skipDuplicates: true,
+});
+```
+
+### 6) Add skills for sheet calculations
+
+```typescript
+await prisma.skill.createMany({
+  data: [
+    { name: 'Survival', ability: 'wis', contentSourceId: source.id },
+    { name: 'Nature', ability: 'int', contentSourceId: source.id },
+  ],
+  skipDuplicates: true,
+});
+```
+
+### 7) Add items and item modifiers
+
+```typescript
+const amulet = await prisma.item.create({
+  data: {
+    name: 'Amulet of Protection',
+    description: '+1 armor class while equipped',
+    slot: 'neck',
+    contentSourceId: source.id,
+  },
+});
+
+await prisma.modifier.create({
+  data: {
+    sourceType: 'item',
+    sourceId: amulet.id,
+    target: 'armor_class',
+    operation: 'add',
+    value: 1,
+  },
+});
+```
+
+### 8) Add monster templates for session combat
+
+`scope` values:
+- `PERSONAL` — regular user templates
+- `GLOBAL` — admin templates (`TELEGRAM_ADMIN_IDS`)
+
+```typescript
+await prisma.monsterTemplate.create({
+  data: {
+    name: 'Swamp Ghoul',
+    armorClass: 13,
+    maxHp: 36,
+    initiativeModifier: 2,
+    strength: 14,
+    dexterity: 14,
+    constitution: 12,
+    intelligence: 7,
+    wisdom: 10,
+    charisma: 6,
+    scope: 'PERSONAL',
+    ownerUserId: '<user-id>',
+    source: 'Homebrew Pack A',
+  },
+});
+```
+
+### 9) Extend combat status presets in miniapp
+
+Status application pipeline is already active via `POST /api/sessions/:sessionId/characters/:characterId/apply-effect` and GM popup controls.
+
+To add a new preset:
+1. Add preset entry in `STATUS_PRESETS` in `miniapp/src/pages/SessionViewPage.tsx`.
+2. Add color mapping key in `STATUS_COLOR_BY_KEY` in `miniapp/src/pages/SessionViewPage.tsx`.
+3. Reuse an existing status color class in `miniapp/src/index.css` (or add a new class following current naming pattern).
+
+### 10) Recommended content workflow
+
+1. Put content changes in `scripts/seed.ts` (or a dedicated helper in `scripts/`).
+2. Run local seed (`npm run seed`).
+3. Validate draft + character sheet + session combat flows.
+4. Run build (`npm run build`) and smoke checks.
+5. Update docs (`README.md`, `PROJECT_SNAPSHOT.md`, roadmap logs).
 
 ### Usage
 Once the application is running, you can use tools like Postman or curl to interact with the API endpoints.

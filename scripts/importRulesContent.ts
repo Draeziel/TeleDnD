@@ -58,6 +58,17 @@ type SpellNode = {
   rulesVersion?: string;
 };
 
+type DependencyRelationType = 'depends_on' | 'requires' | 'excludes';
+
+type DependencyNode = {
+  sourceRef: string;
+  sourceType?: string;
+  targetRef: string;
+  targetType?: string;
+  relationType: DependencyRelationType;
+  rulesVersion?: string;
+};
+
 type ContentPack = {
   contentSource: {
     name: string;
@@ -71,6 +82,7 @@ type ContentPack = {
   classLevelProgressions?: ClassLevelProgressionNode[];
   actions?: ActionNode[];
   spells?: SpellNode[];
+  dependencies?: DependencyNode[];
 };
 
 type ImportReport = {
@@ -150,6 +162,7 @@ function buildCounts(pack: ContentPack): Record<string, number> {
     classLevelProgressions: ensureArray(pack.classLevelProgressions).length,
     actions: ensureArray(pack.actions).length,
     spells: ensureArray(pack.spells).length,
+    dependencies: ensureArray(pack.dependencies).length,
   };
 }
 
@@ -195,6 +208,7 @@ function loadPack(filePath: string): ContentPack {
 
 function validatePack(pack: ContentPack): ImportIssue[] {
   const issues: ImportIssue[] = [];
+  const allowedDependencyRelations: DependencyRelationType[] = ['depends_on', 'requires', 'excludes'];
 
   if (!pack.contentSource?.name) {
     issues.push({
@@ -233,7 +247,50 @@ function validatePack(pack: ContentPack): ImportIssue[] {
     }
   });
 
+  ensureArray(pack.dependencies).forEach((node, index) => {
+    if (!node.sourceRef?.trim()) {
+      issues.push({
+        severity: 'error',
+        path: `dependencies[${index}].sourceRef`,
+        rule: 'required_relation_ref',
+        reason: 'sourceRef is required',
+      });
+    }
+
+    if (!node.targetRef?.trim()) {
+      issues.push({
+        severity: 'error',
+        path: `dependencies[${index}].targetRef`,
+        rule: 'required_relation_ref',
+        reason: 'targetRef is required',
+      });
+    }
+
+    if (!allowedDependencyRelations.includes(node.relationType)) {
+      issues.push({
+        severity: 'error',
+        path: `dependencies[${index}].relationType`,
+        rule: 'allowed_dependency_relation',
+        reason: `Unsupported relationType '${node.relationType}'. Allowed: ${allowedDependencyRelations.join(', ')}`,
+      });
+    }
+  });
+
   return issues;
+}
+
+async function referenceExists(tx: Prisma.TransactionClient, sourceRef: string): Promise<boolean> {
+  const checks = await Promise.all([
+    tx.class.findFirst({ where: { sourceRef }, select: { id: true } }),
+    tx.race.findFirst({ where: { sourceRef }, select: { id: true } }),
+    tx.background.findFirst({ where: { sourceRef }, select: { id: true } }),
+    tx.feature.findFirst({ where: { sourceRef }, select: { id: true } }),
+    tx.item.findFirst({ where: { sourceRef }, select: { id: true } }),
+    tx.action.findFirst({ where: { sourceRef }, select: { id: true } }),
+    tx.spell.findFirst({ where: { sourceRef }, select: { id: true } }),
+  ]);
+
+  return checks.some((entry) => Boolean(entry));
 }
 
 function defaultRulesVersion(value: string | undefined): string {
@@ -305,6 +362,7 @@ async function runImport(pack: ContentPack, dryRun: boolean, filePath: string, i
   const progressions = ensureArray(pack.classLevelProgressions);
   const actions = ensureArray(pack.actions);
   const spells = ensureArray(pack.spells);
+  const dependencies = ensureArray(pack.dependencies);
 
   const counts = buildCounts(pack);
 
@@ -594,6 +652,61 @@ async function runImport(pack: ContentPack, dryRun: boolean, filePath: string, i
         },
       });
     }
+
+    const knownPackRefs = new Set<string>([
+      ...classes.map((entry) => entry.externalId),
+      ...races.map((entry) => entry.externalId),
+      ...backgrounds.map((entry) => entry.externalId),
+      ...features.map((entry) => entry.externalId),
+      ...items.map((entry) => entry.externalId),
+      ...actions.map((entry) => entry.externalId),
+      ...spells.map((entry) => entry.externalId),
+    ]);
+
+    for (const dependency of dependencies) {
+      const sourceKnown = knownPackRefs.has(dependency.sourceRef) || (await referenceExists(tx, dependency.sourceRef));
+      if (!sourceKnown) {
+        throw new ImportIssueError({
+          severity: 'error',
+          path: `dependencies[sourceRef=${dependency.sourceRef}]`,
+          rule: 'dependency_ref_exists',
+          reason: `Dependency sourceRef '${dependency.sourceRef}' does not exist in pack or DB`,
+        });
+      }
+
+      const targetKnown = knownPackRefs.has(dependency.targetRef) || (await referenceExists(tx, dependency.targetRef));
+      if (!targetKnown) {
+        throw new ImportIssueError({
+          severity: 'error',
+          path: `dependencies[targetRef=${dependency.targetRef}]`,
+          rule: 'dependency_ref_exists',
+          reason: `Dependency targetRef '${dependency.targetRef}' does not exist in pack or DB`,
+        });
+      }
+
+      await tx.ruleDependency.upsert({
+        where: {
+          sourceRef_targetRef_relationType: {
+            sourceRef: dependency.sourceRef,
+            targetRef: dependency.targetRef,
+            relationType: dependency.relationType,
+          },
+        },
+        update: {
+          sourceType: dependency.sourceType || null,
+          targetType: dependency.targetType || null,
+          rulesVersion: defaultRulesVersion(dependency.rulesVersion),
+        },
+        create: {
+          sourceRef: dependency.sourceRef,
+          sourceType: dependency.sourceType || null,
+          targetRef: dependency.targetRef,
+          targetType: dependency.targetType || null,
+          relationType: dependency.relationType,
+          rulesVersion: defaultRulesVersion(dependency.rulesVersion),
+        },
+      });
+    }
   });
 
   return report;
@@ -634,6 +747,7 @@ main()
           classLevelProgressions: 0,
           actions: 0,
           spells: 0,
+          dependencies: 0,
         },
         issues: [error.issue],
       };

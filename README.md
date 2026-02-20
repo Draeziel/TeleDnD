@@ -178,6 +178,7 @@ npm run import:rules:apply
 - `dry-run` validates pack structure and prints import report without DB writes.
 - `apply` runs transactional import with idempotent upserts by immutable `sourceRef`/external ID.
 - Importer guard prevents external ID mutation for already bound entities.
+- Importer validates dependency graph contract entries (`depends_on`, `requires`, `excludes`) and fails on unresolved refs.
 
 Report format includes structured `issues[]` entries:
 - `severity`: `error | warning`

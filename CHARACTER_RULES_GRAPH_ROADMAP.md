@@ -392,3 +392,4 @@ Controls:
 5. Add initial golden test fixtures (Barbarian level 1, Bard level 1).
 6. Add importer scaffold (`dry-run` + transactional `apply`, immutable external ID guard via `sourceRef`). ✅
 7. Add importer structured issue report (`path/rule/reason`) and CI dry-run guard. ✅
+8. Add dependency graph contract (`depends_on/requires/excludes`) with import-time consistency checks. ✅

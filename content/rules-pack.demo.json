@@ -82,5 +82,23 @@
       },
       "rulesVersion": "v1"
     }
+  ],
+  "dependencies": [
+    {
+      "sourceRef": "action.rage.activate",
+      "sourceType": "action",
+      "targetRef": "feature.rage",
+      "targetType": "feature",
+      "relationType": "requires",
+      "rulesVersion": "v1"
+    },
+    {
+      "sourceRef": "feature.unarmored-defense",
+      "sourceType": "feature",
+      "targetRef": "item.longsword",
+      "targetType": "item",
+      "relationType": "depends_on",
+      "rulesVersion": "v1"
+    }
   ]
 }

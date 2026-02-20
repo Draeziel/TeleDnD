@@ -267,6 +267,22 @@ model Spell {
   @@map("spells")
 }
 
+model RuleDependency {
+  id           String   @id @default(uuid())
+  sourceRef    String
+  sourceType   String?
+  targetRef    String
+  targetType   String?
+  relationType String
+  rulesVersion String   @default("v1")
+  createdAt    DateTime @default(now())
+
+  @@unique([sourceRef, targetRef, relationType])
+  @@index([sourceRef, relationType])
+  @@index([targetRef, relationType])
+  @@map("rule_dependencies")
+}
+
 model BackgroundFeature {
   id           String     @id @default(uuid())
   backgroundId String

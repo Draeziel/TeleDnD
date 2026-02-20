@@ -28,12 +28,21 @@ Current stream does **not** implement execution runtime, but reserves contract e
 `executionIntent` purpose:
 - declare how a capability is expected to be executed/interpreted by runtime engines,
 - prevent resolver payload redesign when combat engine starts consuming capabilities.
+- align runtime lifecycle transitions (`active -> suspended -> expired`) with execution semantics later.
 
 ### 2) Capability payload typing
 
 Every capability must include both:
 - `payloadType` (required discriminator)
 - `payload` (typed by payloadType)
+
+Capability lifecycle placeholder is required in contract:
+- `lifecycleState` (future runtime concern)
+
+Allowed lifecycle states (contract-level, no runtime implementation in this stream):
+- `active`
+- `suspended`
+- `expired`
 
 No anonymous JSON payloads allowed in resolver contract.
 
@@ -71,6 +80,7 @@ Trade-offs:
 Phase 0 deliverables:
 - publish payloadType registry draft,
 - define executionIntent placeholder schema,
+- define lifecycleState placeholder schema (`active | suspended | expired`),
 - lock modifier precedence semantics for add/set/override/multiply.
 
 Phase 2+:

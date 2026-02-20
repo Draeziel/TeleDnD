@@ -108,6 +108,7 @@ Required fields (minimum contract):
 - `payloadType` (required discriminator)
 - `payload` (typed strictly by payloadType)
 - `executionIntent` (future placeholder; no runtime implementation in this stream)
+- `lifecycleState` (future runtime concern; `active | suspended | expired`)
 
 Design rule:
 - UI consumes capabilities only; no class/race-specific branches.
@@ -149,6 +150,7 @@ Runtime:
 Contract requirement:
 - sheet service consumes `static` directly
 - runtime engines consume `runtime` via trigger metadata
+- runtime lifecycle is represented in contract via `lifecycleState` placeholder
 - no ambiguous capabilities without timing classification
 
 ---
@@ -220,6 +222,7 @@ Used by future capability-to-combat action bridge.
 - Freeze static/runtime classification rules and validation.
 - Define migration and rollback strategy.
 - ADR-0001 accepted: [docs/adr/0001-rules-graph-capability-contract.md](docs/adr/0001-rules-graph-capability-contract.md)
+- Include capability lifecycle placeholder in contract: `lifecycleState` (`active | suspended | expired`), no execution implementation yet.
 
 ### Phase 1: Schema foundation
 - Add/extend Prisma models and relations for graph.
@@ -258,6 +261,7 @@ Required for stream closure:
 - Static vs runtime capability distinction is explicit and covered by tests.
 - `payloadType` is mandatory for every capability payload.
 - Modifier operations are validated against fixed modes: `add | set | override | multiply`.
+- Capability lifecycle placeholder is mandatory in contract (`lifecycleState`).
 - Character sheet built from resolver capabilities path.
 - Feature/choice/progression behavior verified by tests.
 - Importer is primary content ingestion path for demo pack.

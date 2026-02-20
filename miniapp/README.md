@@ -37,12 +37,12 @@ cp .env.example .env
 
 ```env
 VITE_API_URL=/api
-VITE_COMBAT_API_MODE=auto
+VITE_COMBAT_API_MODE=action
 ```
 
-`VITE_COMBAT_API_MODE` поддерживает значения:
+`VITE_COMBAT_API_MODE` поддерживает значения (по умолчанию: `action`):
+- `action` — использовать только `POST /combat/action` (строгий режим, рекомендуется по умолчанию).
 - `auto` — сначала `POST /combat/action`, при инфраструктурной ошибке fallback на legacy endpoint.
-- `action` — использовать только `POST /combat/action` (строгий режим).
 - `legacy` — использовать только старые endpoint'ы (быстрый откат без изменения кода).
 
 3. В dev-режиме запросы на `/api` автоматически проксируются Vite на backend:

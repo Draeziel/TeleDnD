@@ -33,7 +33,7 @@ const STATUS_COLOR_BY_KEY: Record<string, string> = {
 };
 
 export function SessionViewPage() {
-  const combatApiMode = String(import.meta.env.VITE_COMBAT_API_MODE || 'auto').toLowerCase();
+  const combatApiMode = String(import.meta.env.VITE_COMBAT_API_MODE || 'action').toLowerCase();
   const { id = '' } = useParams();
   const { userId } = useTelegram();
   const [session, setSession] = useState<SessionViewModel | null>(null);

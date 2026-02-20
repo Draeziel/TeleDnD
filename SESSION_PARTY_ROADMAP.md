@@ -270,6 +270,7 @@ Build a multiplayer session (party) system where:
 - [ ] Persist rule snapshot to applied session effect at apply time (immutability for existing effects).
 - [~] Extend GM Toolkit miniapp with simple status-template editor and picker.
 - [ ] Add combat log payload fields for rolled dice and save breakdown from template rules.
+- [ ] Combat journal readability pass (deferred): in combat-phase journal show only participant interactions (damage/effects/actions), hide technical system lines like turn-advance and round counters.
 
 ### P2 — Companion product depth
 
@@ -333,3 +334,4 @@ Build a multiplayer session (party) system where:
 - 2026-02-20: Added status template foundation (DB model + migration + session status-template endpoint + dice-based automation support in combat engine).
 - 2026-02-20: Extended GM Toolkit (`Монстры`) with status template management CRUD.
 - 2026-02-20: Reworked statuses UX in toolkit: collapsed `Статусы` block (`Просмотр`, `+`, search), modal create/edit form, numeric rounds input, effect-category options, save-condition constructor (`%`, `XdY`, operator, target), configurable status color, and compact colored summary cards with edit/delete icons.
+- 2026-02-20: Added deferred roadmap item to filter combat-phase journal to interaction-only entries and hide technical system events (`turn passed`, `round advanced`, etc.) from that view.

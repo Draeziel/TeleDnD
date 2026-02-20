@@ -9,7 +9,7 @@ import { CombatTurnGrid } from '../components/CombatTurnGrid';
 import { CombatActorModal } from '../components/CombatActorModal';
 import type { CombatActorEntry } from '../components/CombatTypes';
 import { PrecombatActorsGrid } from '../components/PrecombatActorsGrid';
-import type { CharacterSummary, MonsterTemplate, SessionDetails, SessionSummary, SessionEffect, SessionMonsterEffect, CombatSummary, StatusTemplate } from '../types/models';
+import type { CharacterSummary, MonsterTemplate, SessionDetails, SessionSummary, SessionEffect, SessionMonsterEffect, CombatSummary, SessionCombatCapabilities, StatusTemplate } from '../types/models';
 import { useTelegram } from '../hooks/useTelegram';
 
 type SessionCharacterView = SessionDetails['characters'][number] & { effectsCount?: number };
@@ -65,6 +65,7 @@ export function SessionViewPage() {
   const [silentPollFailures, setSilentPollFailures] = useState(0);
   const [lastEventSeq, setLastEventSeq] = useState<string | null>(null);
   const [legacyFallbackNoticeShown, setLegacyFallbackNoticeShown] = useState(false);
+  const [combatCapabilities, setCombatCapabilities] = useState<SessionCombatCapabilities | null>(null);
 
   const formatErrorMessage = (fallback: string, unknownError: unknown) => {
     const responsePayload = (unknownError as { response?: { data?: { message?: string; requestId?: string } } })?.response?.data;
@@ -445,21 +446,29 @@ export function SessionViewPage() {
 
       if (silent) {
         if (session?.encounterActive) {
-          const combatSummary = await sessionApi.getCombatSummary(id);
+          const [combatSummary, combatCapabilitiesSnapshot] = await Promise.all([
+            sessionApi.getCombatSummary(id),
+            sessionApi.getCombatCapabilities(id),
+          ]);
           setSession((prev) => mergeCombatSummaryIntoSession(prev, combatSummary));
+          setCombatCapabilities(combatCapabilitiesSnapshot);
           if (combatSummary.lastEventSeq) {
             setLastEventSeq((prev) => (compareEventSeq(combatSummary.lastEventSeq, prev) > 0 ? combatSummary.lastEventSeq : prev));
           }
         } else {
           const summary = await sessionApi.getSessionSummary(id);
           setSession((prev) => mergeSummaryIntoSession(prev, summary));
+          setCombatCapabilities(null);
           const seqFromSummary = pickLatestEventSeq(summary.events || []);
           if (seqFromSummary) {
             setLastEventSeq((prev) => (compareEventSeq(seqFromSummary, prev) > 0 ? seqFromSummary : prev));
           }
         }
       } else {
-        const data = await sessionApi.getSession(id);
+        const [data, combatCapabilitiesSnapshot] = await Promise.all([
+          sessionApi.getSession(id),
+          sessionApi.getCombatCapabilities(id),
+        ]);
         setSession({
           ...data,
           playersCount: data.players.length,
@@ -474,6 +483,7 @@ export function SessionViewPage() {
             effectsCount: entry.effects.length,
           })),
         });
+        setCombatCapabilities(combatCapabilitiesSnapshot);
 
         const seqFromFullLoad = pickLatestEventSeq(data.events || []);
         setLastEventSeq(seqFromFullLoad);
@@ -1221,6 +1231,7 @@ export function SessionViewPage() {
     ? initiativeQueue.find((entry) => `${entry.kind}:${entry.id}` === activeCombatPanelKey) || null
     : null;
   const activeCombatPanelKeyValue = activeCombatPanelEntry ? `${activeCombatPanelEntry.kind}:${activeCombatPanelEntry.id}` : '';
+  const combatCapabilitiesActors = combatCapabilities?.actors || [];
 
   const handleApplyStatusForActiveEntry = () => {
     if (!activeCombatPanelEntry) {
@@ -1521,6 +1532,30 @@ export function SessionViewPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="list-item" style={{ marginTop: '8px' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '8px' }}>Боевые возможности (resolver)</h3>
+            {combatCapabilitiesActors.length === 0 ? (
+              <div className="meta-row">Нет данных по capability actions</div>
+            ) : (
+              <div className="list-stack">
+                {combatCapabilitiesActors.map((actor) => (
+                  <div key={actor.sessionCharacterId} className="list-item">
+                    <div className="meta-row" style={{ fontWeight: 600 }}>{actor.characterName}</div>
+                    {actor.unavailableReason ? (
+                      <div className="meta-row">Недоступно: {actor.unavailableReason}</div>
+                    ) : actor.actions.length === 0 ? (
+                      <div className="meta-row">Нет доступных боевых actions</div>
+                    ) : (
+                      <div className="meta-row">
+                        {actor.actions.map((action) => action.name).join(' · ')}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {!session.encounterActive && (

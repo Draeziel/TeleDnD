@@ -6,6 +6,7 @@ import type {
   SessionEffect,
   SessionSummary,
   CombatSummary,
+  SessionCombatCapabilities,
   SessionEvent,
   SessionMonster,
   SessionMonsterEffect,
@@ -45,6 +46,11 @@ export const sessionApi = {
 
   async getCombatSummary(sessionId: string): Promise<CombatSummary> {
     const { data } = await http.get<CombatSummary>(`/sessions/${sessionId}/combat-summary`);
+    return data;
+  },
+
+  async getCombatCapabilities(sessionId: string): Promise<SessionCombatCapabilities> {
+    const { data } = await http.get<SessionCombatCapabilities>(`/sessions/${sessionId}/combat/capabilities`);
     return data;
   },
 

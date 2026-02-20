@@ -361,4 +361,41 @@ export interface CombatSummary {
   lastEventSeq: string | null;
 }
 
+export interface CombatCapabilityAction {
+  capabilityId: string;
+  sourceType: string;
+  sourceId: string;
+  sourceRef: string | null;
+  payloadType: string;
+  scope: string;
+  timing: string;
+  lifecycleState: string;
+  executionIntent?: Record<string, unknown>;
+  trigger?: Record<string, unknown> | null;
+  name: string;
+  description: string | null;
+  payload: Record<string, unknown>;
+}
+
+export interface SessionCombatCapabilitiesActor {
+  sessionCharacterId: string;
+  characterId: string;
+  characterName: string;
+  actions: CombatCapabilityAction[];
+  metadata: {
+    rulesVersion: string;
+    resolverSchemaVersion: string;
+    computedAt: string;
+    sourceGraphDigest: string;
+  } | null;
+  unavailableReason: string | null;
+}
+
+export interface SessionCombatCapabilities {
+  sessionId: string;
+  encounterActive: boolean;
+  activeTurnSessionCharacterId: string | null;
+  actors: SessionCombatCapabilitiesActor[];
+}
+
 export * from './capabilities';

@@ -183,6 +183,7 @@ CharacterDraft
 - Session supports monster removal from session (`DELETE /api/sessions/:id/monsters/:monsterId`)
 - Session journal persisted in database (`session_events`)
 - Session exposes resolver-backed combat capabilities feed (`GET /api/sessions/:id/combat/capabilities`)
+- Miniapp combat view consumes resolver-backed combat capabilities feed and renders available action names per attached character
 
 ### ✅ Monster Catalog MVP
 - Monster template catalog with scopes: `GLOBAL` (admin-managed) and `PERSONAL` (owner-managed)

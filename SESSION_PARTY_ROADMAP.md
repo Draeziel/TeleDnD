@@ -64,7 +64,7 @@ Build a multiplayer session (party) system where:
 - [x] Add `SessionCharacterState` model (`currentHp`, `maxHpSnapshot`, `tempHp`, `initiative`, `notes`, `updatedAt`)
 - [x] Add `SessionEffect` model (`effectType`, `duration`, `payload`, `updatedAt`)
 - [x] Add unique constraints and required indexes
-- [~] Create and apply Prisma migration
+- [x] Create and apply Prisma migration
 - [x] Regenerate Prisma client
 
 ### B) Backend auth context & permissions
@@ -267,10 +267,10 @@ Build a multiplayer session (party) system where:
 - [x] Add status template catalog model (GM-configurable presets with trigger/duration rules).
 - [x] Add dice-based damage config for templates (e.g., `1d6`, `2d4+1`).
 - [x] Add save config in template (`die`, `threshold`, `ability`, `half/full/none on success`).
-- [ ] Persist rule snapshot to applied session effect at apply time (immutability for existing effects).
-- [~] Extend GM Toolkit miniapp with simple status-template editor and picker.
-- [ ] Add combat log payload fields for rolled dice and save breakdown from template rules.
-- [ ] Combat journal readability pass (deferred): in combat-phase journal show only participant interactions (damage/effects/actions), hide technical system lines like turn-advance and round counters.
+- [x] Persist rule snapshot to applied session effect at apply time (immutability for existing effects).
+- [x] Extend GM Toolkit miniapp with simple status-template editor and picker.
+- [x] Add combat log payload fields for rolled dice and save breakdown from template rules.
+- [x] Combat journal readability pass (deferred): in combat-phase journal show only participant interactions (damage/effects/actions), hide technical system lines like turn-advance and round counters.
 
 ### P2 — Companion product depth
 
@@ -354,3 +354,4 @@ Build a multiplayer session (party) system where:
 - 2026-02-20: Hardened `test-combat-automation.ps1` for auth-gated smoke runs: protected-path preflight now treats 401 without Telegram `initData` as explicit skip/pass, enabling stable `run-smoke.ps1 -RunCombatAutomation` in production probe mode.
 - 2026-02-20: Added idempotent schema-repair migration `20260220170000_repair_sessions_initiative_locked` to backfill missing `sessions.initiative_locked` in drifted local databases and stabilize local smoke/combat test setup.
 - 2026-02-20: Completed mobile ergonomics pass for combat UI (`SessionView`): larger touch targets for control clusters, 2-column combat/precombat grids on small screens, and compact mobile action layouts for monster add and in-card HP controls.
+- 2026-02-20: Synchronized roadmap statuses for completed status-template stream and migration baseline (`P1.7` and Phase 1 migration apply), removing stale in-progress/deferred markers already covered by implemented backend/frontend/test work.

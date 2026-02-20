@@ -45,6 +45,8 @@ VITE_COMBAT_API_MODE=action
 - `auto` — сначала `POST /combat/action`, при инфраструктурной ошибке fallback на legacy endpoint.
 - `legacy` — использовать только старые endpoint'ы (быстрый откат без изменения кода).
 
+В `SessionView` для GM отображается чип `API: ACTION|AUTO|LEGACY`, чтобы сразу видеть фактически активный режим в рантайме.
+
 3. В dev-режиме запросы на `/api` автоматически проксируются Vite на backend:
 
 ```ts

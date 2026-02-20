@@ -977,6 +977,11 @@ export function SessionViewPage() {
   });
   const myRole = session?.players.find((player) => player.user.telegramId === userId)?.role || 'PLAYER';
   const isGmViewer = myRole === 'GM';
+  const combatApiModeLabel = combatApiMode === 'legacy'
+    ? 'LEGACY'
+    : combatApiMode === 'auto'
+      ? 'AUTO'
+      : 'ACTION';
   const selectedCharacter = session?.characters.find((entry) => entry.character.id === selectedCharacterId) || null;
   const isCombatInterfaceOpen = (session?.encounterActive || false) || combatInterfaceRequested;
   const activeCombatPanelEntry = activeCombatPanelKey
@@ -1039,6 +1044,14 @@ export function SessionViewPage() {
           <span className="session-chip session-chip-players" title={`Игроков: ${session.playersCount ?? session.players.length}`}>
             👥 {session.playersCount ?? session.players.length}
           </span>
+          {isGmViewer && (
+            <span
+              className={`session-chip ${combatApiModeLabel === 'ACTION' ? 'session-chip-role' : 'session-chip-players'}`}
+              title="Текущий режим боевого API"
+            >
+              API: {combatApiModeLabel}
+            </span>
+          )}
         </div>
       </div>
 

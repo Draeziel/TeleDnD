@@ -107,6 +107,23 @@ export class CharacterSheetService {
     return process.env.SHEET_RESOLVER_ADAPTER_ENABLED === 'true';
   }
 
+  private static isResolverSheetCutoverEnabled(): boolean {
+    return process.env.SHEET_RESOLVER_CUTOVER_ENABLED === 'true';
+  }
+
+  private static isResolverPathEnabled(): boolean {
+    return CharacterSheetService.isResolverSheetAdapterEnabled() || CharacterSheetService.isResolverSheetCutoverEnabled();
+  }
+
+  private static isLegacySheetFallbackEnabled(): boolean {
+    const explicitValue = process.env.SHEET_LEGACY_FALLBACK_ENABLED;
+    if (explicitValue !== undefined) {
+      return explicitValue === 'true';
+    }
+
+    return !CharacterSheetService.isResolverSheetCutoverEnabled();
+  }
+
   private static mapResolverPassiveFeatures(passiveFeatures: CapabilityBaseDto[]) {
     return passiveFeatures.map((capability) => {
       const payloadName = capability.payload.name;
@@ -142,7 +159,7 @@ export class CharacterSheetService {
   }
 
   private async resolveSheetCapabilities(characterId: string, ownerTelegramId?: string | null): Promise<ResolveCapabilitiesDto | null> {
-    if (!CharacterSheetService.isResolverSheetAdapterEnabled()) {
+    if (!CharacterSheetService.isResolverPathEnabled()) {
       return null;
     }
 
@@ -192,7 +209,21 @@ export class CharacterSheetService {
       throw new Error(`Character with ID ${characterId} not found`);
     }
 
-    const resolvedCapabilities = await this.resolveSheetCapabilities(characterId, character.owner?.telegramId);
+    const resolverCutoverEnabled = CharacterSheetService.isResolverSheetCutoverEnabled();
+    const legacySheetFallbackEnabled = CharacterSheetService.isLegacySheetFallbackEnabled();
+
+    let resolvedCapabilities: ResolveCapabilitiesDto | null = null;
+    try {
+      resolvedCapabilities = await this.resolveSheetCapabilities(characterId, character.owner?.telegramId);
+    } catch (error) {
+      if (resolverCutoverEnabled && !legacySheetFallbackEnabled) {
+        throw error;
+      }
+    }
+
+    if (resolverCutoverEnabled && !legacySheetFallbackEnabled && !resolvedCapabilities) {
+      throw new Error('Resolver cutover is enabled and legacy sheet fallback is disabled, but resolver capabilities are unavailable');
+    }
 
     // 2. Fetch granted class features (features unlocked for this character's level)
     let allGrantedFeatures: Array<{ id: string; name: string; description?: string; source: string }> = [];

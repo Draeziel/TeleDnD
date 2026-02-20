@@ -102,6 +102,8 @@ SESSION_EVENTS_CLEANUP_ENABLED=true
 SESSION_EVENTS_RETENTION_DAYS=30
 SESSION_EVENTS_CLEANUP_INTERVAL_MIN=60
 SHEET_RESOLVER_ADAPTER_ENABLED=false
+SHEET_RESOLVER_CUTOVER_ENABLED=false
+SHEET_LEGACY_FALLBACK_ENABLED=true
 ```
 
 - `TELEGRAM_BOT_TOKEN` – Telegram bot token used for signature verification.
@@ -118,6 +120,8 @@ SHEET_RESOLVER_ADAPTER_ENABLED=false
 - `SESSION_EVENTS_RETENTION_DAYS` – keep session events for this many days before deletion (default: `30`).
 - `SESSION_EVENTS_CLEANUP_INTERVAL_MIN` – cleanup task interval in minutes (default: `60`).
 - `SHEET_RESOLVER_ADAPTER_ENABLED` – when `true`, `GET /api/characters/:id/sheet` uses capability resolver adapter for feature/modifier projection; keep `false` until parity rollout is approved.
+- `SHEET_RESOLVER_CUTOVER_ENABLED` – enables resolver-first sheet mode; resolver becomes mandatory unless legacy fallback is explicitly enabled.
+- `SHEET_LEGACY_FALLBACK_ENABLED` – controls whether sheet build may fall back to legacy branch when resolver path is unavailable (`true` by default when cutover is off, `false` when cutover is on).
 
 Protected groups:
 - `/api/drafts/*`

@@ -1,5 +1,6 @@
 # Combat automation smoke test
-# Covers: template shortLabel, immutable template snapshot on apply, auto-tick decrement/expiry, combat event payloads
+# Covers: template shortLabel, immutable template snapshot on apply, idempotent replay,
+# remove/undo flow, auto-tick decrement/expiry, combat event payloads
 
 param(
     [string]$BaseUrl = "http://localhost:4000",
@@ -143,8 +144,9 @@ try {
     $templateShortLabel = $template.payload.meta.shortLabel
     Add-TestResult "Create status template with shortLabel" (-not [string]::IsNullOrWhiteSpace($templateId) -and $templateShortLabel -eq "POI") ("templateId=$templateId shortLabel=$templateShortLabel")
 
+    $applyIdempotencyKey = New-IdempotencyKey
     $applyAction = Invoke-Json -Uri "$BaseUrl/api/sessions/$sessionId/combat/action" -Method "POST" -Headers $authHeaders -Body @{
-        idempotencyKey = New-IdempotencyKey
+        idempotencyKey = $applyIdempotencyKey
         actionType = "APPLY_CHARACTER_EFFECT"
         payload = @{
             characterId = $characterId
@@ -156,6 +158,18 @@ try {
     $snapshot = $appliedEffect.payload.meta.templateSnapshot
     $snapshotOk = $snapshot -and $snapshot.id -eq $templateId -and $snapshot.name -eq "Automation Poison Test"
     Add-TestResult "Persist template snapshot on apply" $snapshotOk ("snapshotId=" + $snapshot.id)
+
+    $applyReplayAction = Invoke-Json -Uri "$BaseUrl/api/sessions/$sessionId/combat/action" -Method "POST" -Headers $authHeaders -Body @{
+        idempotencyKey = $applyIdempotencyKey
+        actionType = "APPLY_CHARACTER_EFFECT"
+        payload = @{
+            characterId = $characterId
+            templateId = $templateId
+        }
+    }
+
+    $idempotentReplayOk = ($applyReplayAction.idempotentReplay -eq $true) -and ($applyReplayAction.result.id -eq $appliedEffect.id)
+    Add-TestResult "Idempotent replay returns same effect" $idempotentReplayOk ("effectId=" + $applyReplayAction.result.id)
 
     $startEncounterAction = Invoke-Json -Uri "$BaseUrl/api/sessions/$sessionId/combat/action" -Method "POST" -Headers $authHeaders -Body @{
         idempotencyKey = New-IdempotencyKey
@@ -172,8 +186,38 @@ try {
 
     $sessionAfterTick1 = Invoke-Json -Uri "$BaseUrl/api/sessions/$sessionId" -Method "GET" -Headers $authHeaders
     $entry1 = $sessionAfterTick1.characters | Where-Object { $_.character.id -eq $characterId } | Select-Object -First 1
-    $duration1 = if ($entry1.effects.Count -gt 0) { $entry1.effects[0].duration } else { "<none>" }
-    Add-TestResult "Effect remains after 1st tick" ($entry1.effects.Count -eq 1) ("duration=" + $duration1)
+    $effectAfterTick1 = if ($entry1 -and $entry1.effects.Count -gt 0) { $entry1.effects[0] } else { $null }
+    $duration1 = if ($effectAfterTick1) { $effectAfterTick1.duration } else { "<none>" }
+    Add-TestResult "Effect remains after 1st tick" ($entry1 -and $entry1.effects.Count -eq 1) ("duration=" + $duration1)
+
+    if (-not $effectAfterTick1) {
+        throw "Effect missing after first tick; cannot continue remove/undo checks"
+    }
+
+    $removeAction = Invoke-Json -Uri "$BaseUrl/api/sessions/$sessionId/combat/action" -Method "POST" -Headers $authHeaders -Body @{
+        idempotencyKey = New-IdempotencyKey
+        actionType = "REMOVE_CHARACTER_EFFECT"
+        payload = @{
+            characterId = $characterId
+            effectId = $effectAfterTick1.id
+        }
+    }
+    Add-TestResult "Remove effect action" ($removeAction.result.removedEffectId -eq $effectAfterTick1.id) ("removedEffectId=" + $removeAction.result.removedEffectId)
+
+    $sessionAfterRemove = Invoke-Json -Uri "$BaseUrl/api/sessions/$sessionId" -Method "GET" -Headers $authHeaders
+    $entryAfterRemove = $sessionAfterRemove.characters | Where-Object { $_.character.id -eq $characterId } | Select-Object -First 1
+    Add-TestResult "Effect list empty after remove" ($entryAfterRemove -and $entryAfterRemove.effects.Count -eq 0) "effects=0"
+
+    $undoAction = Invoke-Json -Uri "$BaseUrl/api/sessions/$sessionId/combat/action" -Method "POST" -Headers $authHeaders -Body @{
+        idempotencyKey = New-IdempotencyKey
+        actionType = "UNDO_LAST"
+        payload = @{}
+    }
+    Add-TestResult "Undo last action succeeds" ($null -ne $undoAction.result) "UNDO_LAST executed"
+
+    $sessionAfterUndo = Invoke-Json -Uri "$BaseUrl/api/sessions/$sessionId" -Method "GET" -Headers $authHeaders
+    $entryAfterUndo = $sessionAfterUndo.characters | Where-Object { $_.character.id -eq $characterId } | Select-Object -First 1
+    Add-TestResult "Effect restored after undo" ($entryAfterUndo -and $entryAfterUndo.effects.Count -eq 1) ("effects=" + $entryAfterUndo.effects.Count)
 
     $nextTurn2 = Invoke-Json -Uri "$BaseUrl/api/sessions/$sessionId/combat/action" -Method "POST" -Headers $authHeaders -Body @{
         idempotencyKey = New-IdempotencyKey
@@ -183,13 +227,17 @@ try {
 
     $sessionAfterTick2 = Invoke-Json -Uri "$BaseUrl/api/sessions/$sessionId" -Method "GET" -Headers $authHeaders
     $entry2 = $sessionAfterTick2.characters | Where-Object { $_.character.id -eq $characterId } | Select-Object -First 1
-    Add-TestResult "Effect expires after 2nd tick" ($entry2.effects.Count -eq 0) "effects=0"
+    Add-TestResult "Effect expires after post-undo tick" ($entry2.effects.Count -eq 0) "effects=0"
 
-    $events = Invoke-Json -Uri "$BaseUrl/api/sessions/$sessionId/events?limit=100" -Method "GET" -Headers $authHeaders
+    $events = Invoke-Json -Uri "$BaseUrl/api/sessions/$sessionId/events?limit=150" -Method "GET" -Headers $authHeaders
     $effectAppliedEvent = $events | Where-Object { $_.type -eq "effect_applied" } | Select-Object -First 1
+    $effectRemovedEvent = $events | Where-Object { $_.type -eq "effect_removed" } | Select-Object -First 1
     $autoTickEvent = $events | Where-Object { $_.type -eq "effect_auto_tick" } | Select-Object -First 1
+    $undoEvent = $events | Where-Object { $_.type -eq "combat_action_undone" } | Select-Object -First 1
 
     Add-TestResult "effect_applied is COMBAT event" ($effectAppliedEvent -and $effectAppliedEvent.eventCategory -eq "COMBAT") ("eventCategory=" + $effectAppliedEvent.eventCategory)
+    Add-TestResult "effect_removed is COMBAT event" ($effectRemovedEvent -and $effectRemovedEvent.eventCategory -eq "COMBAT") ("eventCategory=" + $effectRemovedEvent.eventCategory)
+    Add-TestResult "Undo event emitted" ($null -ne $undoEvent) "combat_action_undone present"
 
     $autoTickPayload = $autoTickEvent.payload
     $hasTickDetails = $autoTickPayload -and $autoTickPayload.save -and $autoTickPayload.damage

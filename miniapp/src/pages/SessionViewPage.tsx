@@ -46,6 +46,9 @@ export function SessionViewPage() {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [characterArmorClass, setCharacterArmorClass] = useState<Record<string, number | null>>({});
   const [error, setError] = useState('');
+  const [isOffline, setIsOffline] = useState<boolean>(typeof navigator !== 'undefined' ? !navigator.onLine : false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [silentPollFailures, setSilentPollFailures] = useState(0);
 
   const formatErrorMessage = (fallback: string, unknownError: unknown) => {
     const responsePayload = (unknownError as { response?: { data?: { message?: string; requestId?: string } } })?.response?.data;
@@ -161,7 +164,28 @@ export function SessionViewPage() {
           })),
         });
       }
+
+      setIsOffline(false);
+      setIsReconnecting(false);
+      if (error) {
+        setError('');
+      }
+      if (silent) {
+        setSilentPollFailures(0);
+      }
     } catch (unknownError) {
+      const networkError = Boolean((unknownError as { isNetworkError?: boolean })?.isNetworkError);
+      const offlineNow = typeof navigator !== 'undefined' ? !navigator.onLine : false;
+
+      if (networkError || offlineNow) {
+        setIsOffline(offlineNow || networkError);
+        setIsReconnecting(true);
+      }
+
+      if (silent) {
+        setSilentPollFailures((prev) => Math.min(prev + 1, 6));
+      }
+
       if (!silent || !session) {
         setError(formatErrorMessage('Не удалось загрузить данные сессии', unknownError));
       }
@@ -201,8 +225,58 @@ export function SessionViewPage() {
     load();
     loadMyCharacters();
     loadMonsterTemplates();
-    const timer = setInterval(() => load(true), 7000);
-    return () => clearInterval(timer);
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) {
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const schedulePoll = () => {
+      if (cancelled) {
+        return;
+      }
+
+      const baseInterval = 7000;
+      const backoffInterval = Math.min(baseInterval * (2 ** Math.min(silentPollFailures, 2)), 28000);
+      timer = setTimeout(async () => {
+        await load(true);
+        schedulePoll();
+      }, backoffInterval);
+    };
+
+    schedulePoll();
+
+    return () => {
+      cancelled = true;
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [id, silentPollFailures]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      setIsReconnecting(true);
+      void load(true);
+    };
+
+    const handleOffline = () => {
+      setIsOffline(true);
+      setIsReconnecting(true);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, [id]);
 
   useEffect(() => {
@@ -614,6 +688,20 @@ export function SessionViewPage() {
         <StatusBox
           type="info"
           message="В сессии сейчас нет активного ГМа. GM-действия временно недоступны."
+        />
+      )}
+
+      {isOffline && (
+        <StatusBox
+          type="info"
+          message="Нет сети. Пытаемся переподключиться…"
+        />
+      )}
+
+      {!isOffline && isReconnecting && (
+        <StatusBox
+          type="info"
+          message="Связь восстанавливается, обновление данных продолжается…"
         />
       )}
 

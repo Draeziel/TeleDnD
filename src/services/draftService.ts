@@ -697,17 +697,18 @@ export class DraftService {
 
     // Create the character and validate assembly inside a transaction.
     const createdCharacter = await this.prisma.$transaction(async (tx) => {
-      const character = await tx.character.create({
-        data: {
-          name: draft.name,
-          level: draft.level,
-          ownerUserId: user.id,
-          classId: draft.classId,
-          raceId: draft.raceId || undefined,
-          backgroundId: draft.backgroundId || undefined,
-          abilityScoreSetId: draft.abilityScoreSetId || undefined,
-        },
-      });
+      const createData: any = {
+        name: draft.name,
+        level: draft.level,
+        owner: { connect: { id: user.id } },
+      };
+
+      if (draft.classId) createData.class = { connect: { id: draft.classId } };
+      if (draft.raceId) createData.race = { connect: { id: draft.raceId } };
+      if (draft.backgroundId) createData.background = { connect: { id: draft.backgroundId } };
+      if (draft.abilityScoreSetId) createData.abilityScoreSet = { connect: { id: draft.abilityScoreSetId } };
+
+      const character = await tx.character.create({ data: createData as any });
 
       // Create character choices from draft choices
       if (draft.characterDraftChoices && draft.characterDraftChoices.length > 0) {

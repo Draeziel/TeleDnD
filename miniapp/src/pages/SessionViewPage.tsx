@@ -936,20 +936,27 @@ export function SessionViewPage() {
                 <div className="meta-row">Инициатива: {selectedCharacter.state?.initiative ?? '—'}</div>
                 <div className="meta-row">Эффекты: {selectedCharacter.effectsCount ?? selectedCharacter.effects.length}</div>
                 <div className="inline-row">
-                  <button
-                    className="btn btn-danger"
-                    disabled={removingId === selectedCharacter.character.id}
-                    onClick={() => onRemoveCharacter(selectedCharacter.character.id)}
-                  >
-                    {removingId === selectedCharacter.character.id ? 'Открепление...' : 'Открепить'}
-                  </button>
-                  <button
-                    className="btn btn-secondary"
-                    disabled={rollingSelfId === selectedCharacter.character.id || session.initiativeLocked}
-                    onClick={() => onRollInitiativeSelf(selectedCharacter.character.id)}
-                  >
-                    {rollingSelfId === selectedCharacter.character.id ? 'Бросок...' : 'Бросок себе'}
-                  </button>
+                  {(() => {
+                    const selfRollBlockedInEncounter = session.encounterActive && selectedCharacter.state?.initiative !== null && selectedCharacter.state?.initiative !== undefined;
+                    return (
+                      <>
+                        <button
+                          className="btn btn-danger"
+                          disabled={removingId === selectedCharacter.character.id}
+                          onClick={() => onRemoveCharacter(selectedCharacter.character.id)}
+                        >
+                          {removingId === selectedCharacter.character.id ? 'Открепление...' : 'Открепить'}
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          disabled={rollingSelfId === selectedCharacter.character.id || session.initiativeLocked || selfRollBlockedInEncounter}
+                          onClick={() => onRollInitiativeSelf(selectedCharacter.character.id)}
+                        >
+                          {rollingSelfId === selectedCharacter.character.id ? 'Бросок...' : 'Бросок себе'}
+                        </button>
+                      </>
+                    );
+                  })()}
                   <button className="btn btn-secondary" disabled={!session.hasActiveGm} onClick={() => onSetHp(selectedCharacter.character.id, Math.max((selectedCharacter.state?.currentHp ?? 0) - 1, 0))}>HP -1</button>
                   <button className="btn btn-secondary" disabled={!session.hasActiveGm} onClick={() => onSetHp(selectedCharacter.character.id, (selectedCharacter.state?.currentHp ?? 0) + 1)}>HP +1</button>
                 </div>
@@ -974,20 +981,27 @@ export function SessionViewPage() {
                     <div>Эффекты: {entry.effectsCount ?? entry.effects.length}</div>
                   </div>
                   <div className="inline-row">
-                    <button
-                      className="btn btn-danger"
-                      disabled={removingId === entry.character.id}
-                      onClick={() => onRemoveCharacter(entry.character.id)}
-                    >
-                      {removingId === entry.character.id ? 'Открепление...' : 'Открепить'}
-                    </button>
-                    <button
-                      className="btn btn-secondary"
-                      disabled={rollingSelfId === entry.character.id || session.initiativeLocked}
-                      onClick={() => onRollInitiativeSelf(entry.character.id)}
-                    >
-                      {rollingSelfId === entry.character.id ? 'Бросок...' : 'Бросок себе'}
-                    </button>
+                    {(() => {
+                      const selfRollBlockedInEncounter = session.encounterActive && entry.state?.initiative !== null && entry.state?.initiative !== undefined;
+                      return (
+                        <>
+                          <button
+                            className="btn btn-danger"
+                            disabled={removingId === entry.character.id}
+                            onClick={() => onRemoveCharacter(entry.character.id)}
+                          >
+                            {removingId === entry.character.id ? 'Открепление...' : 'Открепить'}
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            disabled={rollingSelfId === entry.character.id || session.initiativeLocked || selfRollBlockedInEncounter}
+                            onClick={() => onRollInitiativeSelf(entry.character.id)}
+                          >
+                            {rollingSelfId === entry.character.id ? 'Бросок...' : 'Бросок себе'}
+                          </button>
+                        </>
+                      );
+                    })()}
                     <button className="btn btn-secondary" disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, Math.max(currentHp - 1, 0))}>HP -1</button>
                     <button className="btn btn-secondary" disabled={!session.hasActiveGm} onClick={() => onSetHp(entry.character.id, currentHp + 1)}>HP +1</button>
                     <button className="btn btn-secondary" disabled={!session.hasActiveGm || session.initiativeLocked} onClick={() => onSetInitiative(entry.character.id, initiative + 1)}>Иниц. +1</button>

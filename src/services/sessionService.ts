@@ -1436,6 +1436,17 @@ export class SessionService {
     await this.requireSessionMember(sessionId, user.id);
     await this.ensureInitiativeUnlocked(sessionId);
 
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: {
+        encounterActive: true,
+      },
+    });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
     const sessionCharacter = await this.prisma.sessionCharacter.findUnique({
       where: {
         sessionId_characterId: {
@@ -1444,6 +1455,11 @@ export class SessionService {
         },
       },
       include: {
+        state: {
+          select: {
+            initiative: true,
+          },
+        },
         character: {
           select: {
             id: true,
@@ -1465,6 +1481,10 @@ export class SessionService {
 
     if (sessionCharacter.character.ownerUserId !== user.id) {
       throw new Error('Forbidden: can roll initiative only for owned character');
+    }
+
+    if (session.encounterActive && sessionCharacter.state?.initiative !== null && sessionCharacter.state?.initiative !== undefined) {
+      throw new Error('Validation: self initiative roll is available only once per active encounter');
     }
 
     const roll = this.rollD20();

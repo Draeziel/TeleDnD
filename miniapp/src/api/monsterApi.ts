@@ -33,8 +33,8 @@ type MonsterTemplateUpsertInput = {
 
 type StatusTemplateUpsertInput = {
   name: string;
-  effectType: string;
-  effectCategory?: 'DAMAGE' | 'CONTROL' | 'DEBUFF';
+  statusType?: 'DAMAGE' | 'CONTROL' | 'DEBUFF';
+  statusElement?: 'FIRE' | 'POISON' | 'PHYSICAL';
   rounds?: number;
   damageDiceCount?: number;
   damageDiceSides?: number;

@@ -33,8 +33,8 @@ type MonsterTemplateInput = {
 
 type StatusTemplateInput = {
   name: string;
-  effectType: string;
-  effectCategory?: 'DAMAGE' | 'CONTROL' | 'DEBUFF';
+  statusType?: 'DAMAGE' | 'CONTROL' | 'DEBUFF';
+  statusElement?: 'FIRE' | 'POISON' | 'PHYSICAL';
   rounds?: number;
   damageDiceCount?: number;
   damageDiceSides?: number;
@@ -126,19 +126,19 @@ export class MonsterService {
 
   private prepareStatusTemplateData(input: StatusTemplateInput) {
     const name = String(input.name || '').trim();
-    const effectType = String(input.effectType || '').trim();
-    const effectCategory = String(input.effectCategory || 'DAMAGE').toUpperCase();
+    const statusType = String(input.statusType || 'DAMAGE').toUpperCase();
+    const statusElement = String(input.statusElement || 'POISON').toUpperCase();
 
     if (!name || name.length < 2 || name.length > 80) {
       throw new Error('Validation: status template name length must be between 2 and 80 characters');
     }
 
-    if (!effectType || effectType.length < 2 || effectType.length > 60) {
-      throw new Error('Validation: effectType length must be between 2 and 60 characters');
+    if (statusType !== 'DAMAGE' && statusType !== 'CONTROL' && statusType !== 'DEBUFF') {
+      throw new Error('Validation: statusType must be DAMAGE, CONTROL, or DEBUFF');
     }
 
-    if (effectCategory !== 'DAMAGE' && effectCategory !== 'CONTROL' && effectCategory !== 'DEBUFF') {
-      throw new Error('Validation: effectCategory must be DAMAGE, CONTROL, or DEBUFF');
+    if (statusElement !== 'FIRE' && statusElement !== 'POISON' && statusElement !== 'PHYSICAL') {
+      throw new Error('Validation: statusElement must be FIRE, POISON, or PHYSICAL');
     }
 
     const rounds = Number.isInteger(input.rounds) ? Number(input.rounds) : 3;
@@ -185,12 +185,15 @@ export class MonsterService {
       throw new Error('Validation: colorHex must be a valid hex color like #5b9cff');
     }
 
+    const effectType = `${statusType.toLowerCase()}_${statusElement.toLowerCase()}`;
+
     const payload = {
       meta: {
-        category: effectCategory,
+        statusType,
+        statusElement,
         colorHex,
       },
-      ...(effectCategory === 'DAMAGE'
+      ...(statusType === 'DAMAGE'
         ? {
             automation: {
               kind: 'POISON_TICK',
@@ -251,8 +254,8 @@ export class MonsterService {
 
     return {
       name: existing.name,
-      effectType: existing.effectType,
-      effectCategory: String(meta.category || (automation.kind ? 'DAMAGE' : 'CONTROL')).toUpperCase() as 'DAMAGE' | 'CONTROL' | 'DEBUFF',
+      statusType: String(meta.statusType || (automation.kind ? 'DAMAGE' : 'CONTROL')).toUpperCase() as 'DAMAGE' | 'CONTROL' | 'DEBUFF',
+      statusElement: String(meta.statusElement || 'POISON').toUpperCase() as 'FIRE' | 'POISON' | 'PHYSICAL',
       rounds: Number(automation.roundsLeft ?? 3),
       damageDiceCount: Number(damage.count ?? 1),
       damageDiceSides: Number(damage.sides ?? 6),
@@ -513,8 +516,8 @@ export class MonsterService {
 
     const merged = {
       name: input.name ?? fromPayload.name,
-      effectType: input.effectType ?? fromPayload.effectType,
-      effectCategory: input.effectCategory ?? fromPayload.effectCategory,
+      statusType: input.statusType ?? fromPayload.statusType,
+      statusElement: input.statusElement ?? fromPayload.statusElement,
       isActive: input.isActive ?? fromPayload.isActive,
       damageDiceCount: (input as any).damageDiceCount ?? fromPayload.damageDiceCount,
       damageDiceSides: (input as any).damageDiceSides ?? fromPayload.damageDiceSides,

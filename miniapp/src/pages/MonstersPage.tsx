@@ -16,7 +16,8 @@ export function MonstersPage() {
   const [statusSearch, setStatusSearch] = useState('');
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [statusName, setStatusName] = useState('');
-  const [statusEffectType, setStatusEffectType] = useState('poisoned');
+  const [statusType, setStatusType] = useState<'DAMAGE' | 'CONTROL' | 'DEBUFF'>('DAMAGE');
+  const [statusElement, setStatusElement] = useState<'FIRE' | 'POISON' | 'PHYSICAL'>('POISON');
   const [statusRounds, setStatusRounds] = useState(3);
   const [statusDamageDiceCount, setStatusDamageDiceCount] = useState(1);
   const [statusDamageDiceSides, setStatusDamageDiceSides] = useState(6);
@@ -95,7 +96,8 @@ export function MonstersPage() {
   const resetStatusForm = () => {
     setStatusEditingId('');
     setStatusName('');
-    setStatusEffectType('poisoned');
+    setStatusType('DAMAGE');
+    setStatusElement('POISON');
     setStatusRounds(3);
     setStatusDamageDiceCount(1);
     setStatusDamageDiceSides(6);
@@ -105,18 +107,6 @@ export function MonstersPage() {
     setStatusSaveOperator('>=');
     setStatusSaveTargetValue(10);
     setStatusColorHex('#5b9cff');
-  };
-
-  const resolveCategoryByEffectType = (effectType: string): 'DAMAGE' | 'CONTROL' | 'DEBUFF' => {
-    if (effectType === 'poisoned' || effectType === 'burning') {
-      return 'DAMAGE';
-    }
-
-    if (effectType === 'stunned') {
-      return 'CONTROL';
-    }
-
-    return 'DEBUFF';
   };
 
   const openCreateStatusModal = () => {
@@ -133,7 +123,8 @@ export function MonstersPage() {
 
     setStatusEditingId(template.id);
     setStatusName(template.name);
-    setStatusEffectType(template.effectType);
+    setStatusType((String(meta.statusType || 'DAMAGE').toUpperCase() as 'DAMAGE' | 'CONTROL' | 'DEBUFF'));
+    setStatusElement((String(meta.statusElement || 'POISON').toUpperCase() as 'FIRE' | 'POISON' | 'PHYSICAL'));
     setStatusRounds(Number(automation.roundsLeft || template.defaultDuration || 3));
     setStatusDamageDiceCount(Number(damage.count || 1));
     setStatusDamageDiceSides(Number(damage.sides || 6));
@@ -161,8 +152,8 @@ export function MonstersPage() {
       setError('');
       const payload = {
         name: statusName.trim(),
-        effectType: statusEffectType.trim() || 'poisoned',
-        effectCategory: resolveCategoryByEffectType(statusEffectType),
+        statusType,
+        statusElement,
         rounds: statusRounds,
         damageDiceCount: statusDamageDiceCount,
         damageDiceSides: statusDamageDiceSides,
@@ -367,7 +358,8 @@ export function MonstersPage() {
               const check = (save.check || {}) as Record<string, unknown>;
               const meta = (template.payload?.meta || {}) as Record<string, unknown>;
               const rounds = Number(automation.roundsLeft || template.defaultDuration || 0);
-              const category = String(meta.category || (automation.kind ? 'DAMAGE' : 'CONTROL'));
+              const templateStatusType = String(meta.statusType || (automation.kind ? 'DAMAGE' : 'CONTROL'));
+              const templateStatusElement = String(meta.statusElement || 'POISON');
               const damageText = damage.mode === 'dice'
                 ? `${damage.count || 1}d${damage.sides || 6}`
                 : `${automation.damagePerTick || 1}`;
@@ -382,7 +374,7 @@ export function MonstersPage() {
                 <div className="monster-list-item" key={template.id} style={{ borderLeft: `4px solid ${colorHex}` }}>
                   <div>
                     <strong>{template.name}</strong>
-                    <div className="meta-row">{category} • {rounds} раунд(ов)</div>
+                    <div className="meta-row">{templateStatusType} / {templateStatusElement} • {rounds} раунд(ов)</div>
                     <div className="meta-row">Урон: {damageText}</div>
                     <div className="meta-row">Спасбросок: получает {saveDamagePercent}% урона, если результат {saveDiceCount}д{saveDiceSides} + CON {saveOperator} {saveTarget}</div>
                   </div>
@@ -432,12 +424,18 @@ export function MonstersPage() {
                 onChange={(event) => setStatusName(event.target.value)}
               />
 
-              <select value={statusEffectType} onChange={(event) => setStatusEffectType(event.target.value)}>
-                <option value="poisoned">Урон: яд</option>
-                <option value="burning">Урон: ожог</option>
-                <option value="stunned">Контроль: оглушение</option>
-                <option value="cursed">Дебафф: проклятие</option>
-                <option value="slowed">Дебафф: замедление</option>
+              <label className="meta-row">Тип статуса</label>
+              <select value={statusType} onChange={(event) => setStatusType(event.target.value as 'DAMAGE' | 'CONTROL' | 'DEBUFF')}>
+                <option value="DAMAGE">Урон</option>
+                <option value="CONTROL">Контроль</option>
+                <option value="DEBUFF">Дебафф</option>
+              </select>
+
+              <label className="meta-row">Стихия статуса</label>
+              <select value={statusElement} onChange={(event) => setStatusElement(event.target.value as 'FIRE' | 'POISON' | 'PHYSICAL')}>
+                <option value="FIRE">Огонь</option>
+                <option value="POISON">Яд</option>
+                <option value="PHYSICAL">Физический</option>
               </select>
 
               <label className="meta-row">Количество раундов</label>

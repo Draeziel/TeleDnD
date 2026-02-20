@@ -1,7 +1,7 @@
 # Character Rules Graph Overhaul Roadmap
 
 **Last Updated**: 2026-02-20  
-**Status**: In progress (Phase 1 foundation + importer scaffold started)  
+**Status**: In progress (resolver-only cutover complete; next wave is content hardening + vertical expansion)  
 **Scope**: Backend/domain architecture and data pipeline only (no UI redesign in this stream)
 
 ---
@@ -274,6 +274,39 @@ Required for stream closure:
 - README documents rules graph and importer workflow.
 - No class/race hardcoded rule branches in sheet domain service.
 
+## 11.1) Post-cutover execution queue
+
+1. **Content schema freeze** — **NEXT**
+	- Freeze importer pack contract and required validation invariants.
+	- Lock field-level requirements for `classes/races/backgrounds/features/items/actions/spells/choices/dependencies`.
+	- Define breaking-change policy via schema versioning.
+
+2. **Capability-driven features** — **PARTIAL**
+	- Resolver-only sheet projection is complete.
+	- Runtime/combat capability consumption depth remains in progress.
+
+3. **Item metadata** — **PARTIAL**
+	- Schema and importer foundation are implemented.
+	- Coverage/validation expansion for broader catalog remains.
+
+4. **Action definitions** — **PARTIAL**
+	- Action model and import path are implemented.
+	- Rich payload contracts and runtime mapping expansion remain.
+
+5. **Vertical slice (Barbarian)** — **DONE**
+	- Demo content and golden resolver fixture are in place.
+
+6. **Vertical slice (Bard)** — **DONE**
+	- Demo content and golden resolver fixture are in place.
+
+7. **Class progression expansion** — **PARTIAL**
+	- `ClassLevelProgression` + progression-aware draft/domain logic are implemented.
+	- Broader class-level content coverage remains.
+
+8. **Content importer tooling** — **PARTIAL**
+	- Dry-run/apply, idempotent upsert, immutable `sourceRef` guard, structured report, and CI dry-run guard are implemented.
+	- Schema-freeze integration and stronger contract linting remain.
+
 ---
 
 ## 12) Risks and controls
@@ -402,3 +435,4 @@ Controls:
 15. Enforce fail-fast startup guard when legacy sheet fallback is enabled in production. ✅
 16. Remove remaining legacy sheet fallback branches and keep resolver-first projection only. ✅
 17. Remove transitional cutover/fallback wording from roadmap and runtime docs. ✅
+18. Freeze importer content pack schema (`schemaVersion=1.0.0`) and reject unknown top-level keys. ✅

@@ -87,6 +87,7 @@ type DependencyNode = {
 };
 
 type ContentPack = {
+  schemaVersion: string;
   contentSource: {
     name: string;
     rulesVersion?: string;
@@ -130,6 +131,21 @@ class ImportReportError extends Error {
 }
 
 const prisma = new PrismaClient();
+const SUPPORTED_PACK_SCHEMA_VERSION = '1.0.0';
+const ALLOWED_PACK_TOP_LEVEL_KEYS = [
+  'schemaVersion',
+  'contentSource',
+  'classes',
+  'races',
+  'backgrounds',
+  'features',
+  'choices',
+  'items',
+  'classLevelProgressions',
+  'actions',
+  'spells',
+  'dependencies',
+] as const;
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -228,6 +244,34 @@ function loadPack(filePath: string): ContentPack {
 function validatePack(pack: ContentPack): ImportIssue[] {
   const issues: ImportIssue[] = [];
   const allowedDependencyRelations: DependencyRelationType[] = ['depends_on', 'requires', 'excludes'];
+
+  if (!pack.schemaVersion?.trim()) {
+    issues.push({
+      severity: 'error',
+      path: 'schemaVersion',
+      rule: 'required_field',
+      reason: 'schemaVersion is required',
+    });
+  } else if (pack.schemaVersion !== SUPPORTED_PACK_SCHEMA_VERSION) {
+    issues.push({
+      severity: 'error',
+      path: 'schemaVersion',
+      rule: 'unsupported_schema_version',
+      reason: `Unsupported schemaVersion '${pack.schemaVersion}'. Expected '${SUPPORTED_PACK_SCHEMA_VERSION}'`,
+    });
+  }
+
+  const allowedKeySet = new Set<string>(ALLOWED_PACK_TOP_LEVEL_KEYS as readonly string[]);
+  Object.keys(pack).forEach((key) => {
+    if (!allowedKeySet.has(key)) {
+      issues.push({
+        severity: 'error',
+        path: key,
+        rule: 'unknown_top_level_key',
+        reason: `Unknown top-level key '${key}'. Allowed keys: ${ALLOWED_PACK_TOP_LEVEL_KEYS.join(', ')}`,
+      });
+    }
+  });
 
   if (!pack.contentSource?.name) {
     issues.push({

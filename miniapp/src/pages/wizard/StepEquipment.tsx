@@ -12,7 +12,7 @@ type Props = {
   refreshDraft?: (draftId: string) => void;
 };
 
-export const StepEquipment: React.FC<Props> = ({ draft, choiceSelections, setChoiceSelection, onSaveChoice, loading }) => {
+export const StepEquipment: React.FC<Props> = ({ draft, choiceSelections, setChoiceSelection, onSaveChoice, loading, refreshDraft }) => {
   const [templates, setTemplates] = useState<any[]>([]);
   const [adding, setAdding] = useState<string | null>(null);
 

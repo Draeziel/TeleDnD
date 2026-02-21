@@ -98,6 +98,9 @@ Implement fully:
 
 All content must be importable (no hardcoded definitions).
 
+- [x] Classes: Barbarian, Bard — added to `content/classes` and basic capabilities provided (completed 2026-02-21 12:03:56 +02:00)
+- [x] Features: `unarmored_defense`, `spellcasting` — added to `content/features` (completed 2026-02-21 12:03:56 +02:00)
+
 ---
 
 ## PHASE 2 — Import Pipeline
@@ -123,6 +126,8 @@ Add validation pass:
 - detect cycles
 - detect missing targets
 - detect orphan nodes
+
+- [x] Validation implemented: cycle detection and missing-reference reporting (`src/importer/validator.ts`) — completed 2026-02-21 12:03:56 +02:00
 
 Build graph index:
 
@@ -168,6 +173,8 @@ Resolver must NOT:
 - apply combat logic
 - branch by class or feature name
 
+- [x] Traversal-only resolver implemented (`src/resolver/dumbResolver.ts`) and content loader (`src/resolver/contentLoader.ts`) — completed 2026-02-21 12:03:56 +02:00
+
 ---
 
 ## PHASE 5 — Character Assembly Hardening
@@ -186,6 +193,8 @@ assembleCharacter(characterId):
 Finalize rule:
 
 if assembly incomplete -> reject
+
+- [x] `CharacterAssemblerService` now integrates the traversal resolver and validates assembled sheets — completed 2026-02-21 12:03:56 +02:00
 
 ---
 
@@ -289,6 +298,13 @@ Resolver remains unchanged.
 - [x] **Importer validation (missing refs / cycles)** — completed 2026-02-21 13:00:00 UTC
 - [~] **Tests / Golden** — in progress (unit tests added and passing locally) — last local run 2026-02-21 13:10:00 UTC
 - [~] **CI workflow** — in progress (`.github/workflows/ci.yml` added) — created 2026-02-21 13:15:00 UTC
+- [ ] **`--update --apply` importer automation** — not-started
+
+- [x] **Integrate resolver into `CharacterAssemblerService`** — completed 2026-02-21 12:03:56 +02:00
+- [x] **Expand content vertical slice (classes/features)** — completed 2026-02-21 12:03:56 +02:00
+- [x] **Importer validation (missing refs / cycles)** — completed 2026-02-21 12:03:56 +02:00
+- [~] **Tests / Golden** — in progress (unit tests added and passing locally) — last local run 2026-02-21 12:03:56 +02:00
+- [~] **CI workflow** — in progress (`.github/workflows/ci.yml` added) — created 2026-02-21 12:03:56 +02:00
 - [ ] **`--update --apply` importer automation** — not-started
 
 Notes:

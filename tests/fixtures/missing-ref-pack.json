@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0.0",
+  "contentSource": { "name": "test-pack" },
+  "classes": [
+    { "externalId": "class:demo:1", "name": "Demo" }
+  ],
+  "features": [],
+  "dependencies": [
+    { "sourceRef": "class:demo:1", "targetRef": "feature:missing_feature", "relationType": "depends_on" }
+  ]
+}

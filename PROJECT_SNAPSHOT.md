@@ -185,6 +185,17 @@ CharacterDraft
 - Session exposes resolver-backed combat capabilities feed (`GET /api/sessions/:id/combat/capabilities`)
 - Miniapp combat view consumes resolver-backed combat capabilities feed and renders available action names per attached character
 
+### ✅ Character Assembler & Assembly Validation
+
+- `CharacterAssemblerService` implemented (DB-backed deterministic assembly of character sheets).
+- Assembly completeness validation enforced: `header`, `abilities.base`, `abilities.effective`, `skills[]`, `savingThrows[]`, `derivedStats`, `inventory[]`, `equipment`, `capabilities[]`, and `unresolvedChoices === 0`.
+- Equipment validation: slot conflicts, proficiency requirements, and attribute (minStrength) requirements enforced during assembly.
+- Finalize flow now calls assembler inside a transaction and rejects finalize if assembly fails (no partial sheet persisted).
+- Unit, integration, and golden tests added (seed-path unit tests, equipment prof/attribute tests, `draft→finalize→assemble` integration, choice-dependency tests).
+- Golden fixtures added: `barbarian_lvl1_sheet.json`, `bard_lvl1_sheet.json` and a `scripts/verifySheetGolden.ts` verifier; `verify:ci` script (build + unit + golden) added.
+- Smoke integration: golden verification added to smoke scripts; local smoke run against compiled build reported: `Total: 28 | Passed: 28 | Failed: 0`.
+- Note: `ts-node-dev` dev-runner produced a TypeScript resolution runtime error in local dev; temporary workaround used: build + `node dist/server.js` for smoke/CI runs. Investigation and a permanent fix for the dev-runner is a near-term task.
+
 ### ✅ Monster Catalog MVP
 - Monster template catalog with scopes: `GLOBAL` (admin-managed) and `PERSONAL` (owner-managed)
 - Protected API endpoints: `GET /api/monsters/templates`, `POST /api/monsters/templates`
@@ -364,6 +375,8 @@ The project is functionally complete for MVP usage with:
 - Advanced anti-abuse controls (global quotas, per-user throttling, WAF rules)
 - Character progression/leveling
 - Deep observability (metrics dashboard, alerting)
+ - Fix `ts-node-dev` dev-runner TypeScript resolution error (workaround: use compiled build for smoke/CI currently)
+ - Ensure remote CI (GitHub Actions) integrates `test:sheet:golden`/`verify:ci` and smoke checks (scripts present; remote wiring pending validation)
 
 ---
 

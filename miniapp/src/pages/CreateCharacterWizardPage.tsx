@@ -12,13 +12,13 @@ import { StepBasicInfo } from './wizard/StepBasicInfo';
 import { StepClassRaceBackground } from './wizard/StepClassRaceBackground';
 import { StepAbilityScores } from './wizard/StepAbilityScores';
 import { StepChoicesFinalize } from './wizard/StepChoicesFinalize';
+import { StepEquipment } from './wizard/StepEquipment';
 
 const STEPS = [
   'Имя персонажа',
-  'Класс',
-  'Раса',
-  'Предыстория',
+  'Класс / Раса / Предыстория',
   'Характеристики',
+  'Снаряжение',
   'Выборы + завершение',
 ];
 
@@ -119,7 +119,7 @@ export function CreateCharacterWizardPage() {
         const updated = await draftApi.setRace(draft.id, raceId);
         setDraft(updated);
       }
-      setStep(3);
+      setStep(2);
     } catch {
       setError('Не удалось установить расу.');
     } finally {
@@ -137,7 +137,7 @@ export function CreateCharacterWizardPage() {
         const updated = await draftApi.setBackground(draft.id, backgroundId);
         setDraft(updated);
       }
-      setStep(4);
+      setStep(2);
     } catch {
       setError('Не удалось установить предысторию.');
     } finally {
@@ -163,7 +163,7 @@ export function CreateCharacterWizardPage() {
       });
       setDraft(updated);
       await refreshDraft(draft.id);
-      setStep(5);
+      setStep(3);
     } catch {
       setError('Не удалось сохранить характеристики.');
     } finally {
@@ -256,6 +256,12 @@ export function CreateCharacterWizardPage() {
       )}
 
       {step === 3 && (
+        <SectionCard title="Шаг: Снаряжение">
+          <StepEquipment draft={draft} />
+        </SectionCard>
+      )}
+
+      {step === 4 && (
         <SectionCard title="Шаг: Выборы и завершение">
           <StepChoicesFinalize
             draft={draft}

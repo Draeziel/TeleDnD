@@ -50,8 +50,8 @@ async function main() {
     // Add dependency: choiceExclude excludes the class sourceRef, so it should be filtered out
     dep = await prisma.ruleDependency.create({
       data: {
-        sourceRef: choiceExclude.sourceRef,
-        targetRef: cls.sourceRef,
+        sourceRef: choiceExclude.sourceRef ?? `choice:exclude:${Date.now()}`,
+        targetRef: cls.sourceRef ?? `cs:class:dep-${Date.now()}`,
         relationType: 'excludes',
       },
     });

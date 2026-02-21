@@ -8,6 +8,14 @@ function run(cmd: string, opts: any = {}) {
   return execSync(cmd, { stdio: 'inherit', shell: true, ...opts });
 }
 
+function runToFile(cmd: string, outFile: string, opts: any = {}) {
+  console.log('>', cmd, '->', outFile);
+  // Ensure parent dir
+  try { fs.mkdirSync(path.dirname(outFile), { recursive: true }); } catch (e) {}
+  // Run and capture output to file
+  execSync(`${cmd} > "${outFile}" 2>&1`, { shell: true, ...opts });
+}
+
 async function waitForPostgres(url: string, timeoutSec = 60) {
   const start = Date.now();
   while ((Date.now() - start) / 1000 < timeoutSec) {
@@ -57,15 +65,21 @@ async function main() {
       run('npm run seed', { cwd, env: { ...process.env, DATABASE_URL: databaseUrl } });
     }
 
-    // Run import with --update --apply against fixture
+    // Run import with --update --apply against fixture and capture logs
     const fixture = path.join(cwd, 'tests', 'fixtures', 'missing-ref-pack.json');
     const reportFile = path.join(cwd, '.artifacts', `import-rules-report.${Date.now()}.json`);
+    const importLog = path.join(cwd, '.artifacts', `import-rules-log.${Date.now()}.log`);
     fs.mkdirSync(path.dirname(reportFile), { recursive: true });
 
-    run(`npx ts-node scripts/importRulesContent.ts --apply --update --file ${fixture} --report-file ${reportFile}`, {
-      cwd,
-      env: { ...process.env, DATABASE_URL: databaseUrl },
-    });
+    try {
+      runToFile(`npx ts-node scripts/importRulesContent.ts --apply --update --file "${fixture}" --report-file "${reportFile}"`, importLog, {
+        cwd,
+        env: { ...process.env, DATABASE_URL: databaseUrl },
+      });
+    } catch (err) {
+      console.error('Import command failed; check log:', importLog);
+      throw err;
+    }
 
     // Verify DB contains created feature
     const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } } as any);
@@ -86,6 +100,18 @@ async function main() {
     // Cleanup docker container
     try {
       run(`docker rm -f ${containerName}`);
+    } catch (e) {
+      // ignore
+    }
+    // Print any report/logs for CI artifact collection
+    try {
+      const artifactsDir = path.join(cwd, '.artifacts');
+      if (fs.existsSync(artifactsDir)) {
+        const files = fs.readdirSync(artifactsDir);
+        for (const f of files) {
+          console.log('Artifact:', path.join(artifactsDir, f));
+        }
+      }
     } catch (e) {
       // ignore
     }

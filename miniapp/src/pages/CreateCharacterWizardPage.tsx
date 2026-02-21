@@ -7,6 +7,7 @@ import type { AbilityScorePayload } from '../api/draftApi';
 import type { ContentEntity, DraftState } from '../types/models';
 import { StatusBox } from '../components/StatusBox';
 import { SectionCard } from '../components/SectionCard';
+import { WizardControls } from '../components/WizardControls';
 
 const STEPS = [
   'Имя персонажа',
@@ -222,6 +223,7 @@ export function CreateCharacterWizardPage() {
 
       <SectionCard title="Мастер создания персонажа">
         <div className="steps">{STEPS.map((s, idx) => <span key={s} className={idx === step ? 'step active' : 'step'}>{idx + 1}. {s}</span>)}</div>
+        <WizardControls step={step} total={STEPS.length} onNext={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))} onPrev={() => setStep((s) => Math.max(0, s - 1))} />
       </SectionCard>
 
       {loading && <StatusBox type="info" message="Выполняется запрос..." />}

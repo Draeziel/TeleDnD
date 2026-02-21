@@ -78,20 +78,20 @@ describe('StepEquipment', () => {
       expect(characterApi.getItems).toHaveBeenCalled();
     });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Добавить в черновик' }));
+    await userEvent.click(screen.getByRole('button', { name: /Добавить .* в черновик/i }));
     expect(draftApi.addItem).toHaveBeenCalledWith('d1', 'item-1');
     expect(refreshDraft).toHaveBeenCalledWith('d1');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Экипировать' }));
+    await userEvent.click(screen.getByRole('button', { name: /Экипировать Longsword/i }));
     expect(draftApi.equipItem).toHaveBeenCalledWith('d1', 'item-1');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Снять' }));
+    await userEvent.click(screen.getByRole('button', { name: /Снять Leather/i }));
     expect(draftApi.unequipItem).toHaveBeenCalledWith('d1', 'item-2');
 
     await userEvent.click(screen.getByRole('radio', { name: /Shield/i }));
     expect(setChoiceSelection).toHaveBeenCalledWith('choice-equipment-1', 'opt-1');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Сохранить выбор снаряжения' }));
+    await userEvent.click(screen.getByRole('button', { name: /Сохранить выбор снаряжения choice-equipment-1/i }));
     expect(onSaveChoice).toHaveBeenCalledWith('choice-equipment-1');
   });
 });

@@ -13,9 +13,10 @@ export const StepAbilityScores: React.FC<Props> = ({ scores, onChange, onSubmit,
   return (
     <div>
       <form onSubmit={onSubmit} className="form-stack">
-        <label>
+        <label htmlFor="ability-method">
           Метод
           <select
+            id="ability-method"
             value={scores.method}
             onChange={(e) => onChange(() => ({ ...scores, method: e.target.value as any }))}
           >
@@ -31,8 +32,10 @@ export const StepAbilityScores: React.FC<Props> = ({ scores, onChange, onSubmit,
               {ability.toUpperCase()}
               <input
                 type="number"
+                inputMode="numeric"
                 value={scores[ability]}
                 onChange={(e) => onChange((prev) => ({ ...prev, [ability]: Number(e.target.value) }))}
+                aria-label={`Значение ${ability.toUpperCase()}`}
               />
             </label>
           ))}

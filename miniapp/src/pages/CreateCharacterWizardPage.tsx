@@ -217,11 +217,17 @@ export function CreateCharacterWizardPage() {
   return (
     <div className="page-stack">
       <div className="toolbar">
-        <button onClick={() => navigate('/')}>← Назад к персонажам</button>
+        <button onClick={() => navigate('/')} aria-label="Вернуться к списку персонажей">← Назад к персонажам</button>
       </div>
 
       <SectionCard title="Мастер создания персонажа">
-        <div className="steps">{STEPS.map((s, idx) => <span key={s} className={idx === step ? 'step active' : 'step'}>{idx + 1}. {s}</span>)}</div>
+        <ol className="steps" aria-label="Шаги мастера создания персонажа">
+          {STEPS.map((s, idx) => (
+            <li key={s} className={idx === step ? 'step active' : 'step'} aria-current={idx === step ? 'step' : undefined}>
+              {idx + 1}. {s}
+            </li>
+          ))}
+        </ol>
         <WizardControls step={step} total={STEPS.length} onNext={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))} onPrev={() => setStep((s) => Math.max(0, s - 1))} />
       </SectionCard>
 

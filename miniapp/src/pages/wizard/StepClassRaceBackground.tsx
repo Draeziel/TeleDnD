@@ -22,7 +22,7 @@ export const StepClassRaceBackground: React.FC<Props> = ({ draft, classes, races
               {classes.map((item) => (
                 <div key={item.id} className="list-item">
                   <div>{item.name}</div>
-                  <button onClick={() => onAssignClass(item.id)}>Выбрать</button>
+                  <button onClick={() => onAssignClass(item.id)} aria-label={`Выбрать класс ${item.name}`}>Выбрать</button>
                 </div>
               ))}
             </div>
@@ -35,7 +35,7 @@ export const StepClassRaceBackground: React.FC<Props> = ({ draft, classes, races
               {races.map((item) => (
                 <div key={item.id} className="list-item">
                   <div>{item.name}</div>
-                  <button onClick={() => onAssignRace(item.id)}>Выбрать</button>
+                  <button onClick={() => onAssignRace(item.id)} aria-label={`Выбрать расу ${item.name}`}>Выбрать</button>
                 </div>
               ))}
             </div>
@@ -48,7 +48,7 @@ export const StepClassRaceBackground: React.FC<Props> = ({ draft, classes, races
               {backgrounds.map((item) => (
                 <div key={item.id} className="list-item">
                   <div>{item.name}</div>
-                  <button onClick={() => onAssignBackground(item.id)}>Выбрать</button>
+                  <button onClick={() => onAssignBackground(item.id)} aria-label={`Выбрать предысторию ${item.name}`}>Выбрать</button>
                 </div>
               ))}
             </div>

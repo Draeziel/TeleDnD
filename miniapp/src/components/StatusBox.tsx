@@ -4,5 +4,12 @@ interface StatusBoxProps {
 }
 
 export function StatusBox({ type, message }: StatusBoxProps) {
-  return <div className={`status-box ${type}`}>{message}</div>;
+  const role = type === 'error' ? 'alert' : 'status';
+  const ariaLive = type === 'error' ? 'assertive' : 'polite';
+
+  return (
+    <div className={`status-box ${type}`} role={role} aria-live={ariaLive}>
+      {message}
+    </div>
+  );
 }

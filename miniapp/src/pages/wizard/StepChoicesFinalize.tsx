@@ -22,9 +22,10 @@ export const StepChoicesFinalize: React.FC<Props> = ({ draft, choiceSelections, 
         const options = Array.isArray(choice.options) ? choice.options : [];
 
         return (
-          <div key={choice.id} className="choice-block">
-            <div className="choice-title">Выбор {choice.id} · источник: {choice.sourceType} · нужно выбрать: {choice.chooseCount}</div>
-            <div className="choice-options">
+          <div key={choice.id} className="choice-block" role="group" aria-labelledby={`final-choice-${choice.id}`}>
+            <div className="choice-title" id={`final-choice-${choice.id}`}>Выбор {choice.id} · источник: {choice.sourceType} · нужно выбрать: {choice.chooseCount}</div>
+            <fieldset className="choice-options">
+              <legend style={{ position: 'absolute', left: '-10000px' }}>Выбор варианта для {choice.id}</legend>
               {options.map((option) => (
                 <label key={option.id}>
                   <input
@@ -37,17 +38,17 @@ export const StepChoicesFinalize: React.FC<Props> = ({ draft, choiceSelections, 
                   {option.name} {option.description ? `(${option.description})` : ''}
                 </label>
               ))}
-            </div>
+            </fieldset>
             <div className="inline-row">
-              <button onClick={() => onSaveChoice(choice.id)}>Сохранить выбор</button>
+              <button onClick={() => onSaveChoice(choice.id)} aria-label={`Сохранить выбор ${choice.id}`}>Сохранить выбор</button>
             </div>
           </div>
         );
       })}
 
       <div className="finalize-box">
-        <div>Осталось выборов: {draft.missingChoices.length}</div>
-        <button onClick={onFinalize} disabled={draft.missingChoices.length > 0 || loading}>Завершить черновик</button>
+        <div aria-live="polite">Осталось выборов: {draft.missingChoices.length}</div>
+        <button onClick={onFinalize} disabled={draft.missingChoices.length > 0 || loading} aria-label="Завершить создание персонажа">Завершить черновик</button>
       </div>
     </div>
   );

@@ -13,10 +13,18 @@ export const StepBasicInfo: React.FC<Props> = ({ name, onNameChange, onCreateDra
   return (
     <div>
       <form onSubmit={onCreateDraft} className="form-stack">
-        <input value={name} onChange={(e) => onNameChange(e.target.value)} placeholder="Имя персонажа" />
+        <label htmlFor="character-name-input">Имя персонажа</label>
+        <input
+          id="character-name-input"
+          value={name}
+          onChange={(e) => onNameChange(e.target.value)}
+          placeholder="Имя персонажа"
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? 'character-name-error' : undefined}
+        />
         <button type="submit" disabled={loading}>Создать черновик</button>
       </form>
-      {error && <div className="helper error">{error}</div>}
+      {error && <div id="character-name-error" className="helper error" role="alert">{error}</div>}
     </div>
   );
 };

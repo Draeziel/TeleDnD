@@ -1,0 +1,13 @@
+{
+  "id": "item:spear",
+  "type": "item",
+  "name": { "en": "Spear", "ru": "Копьё" },
+  "description": "Simple melee weapon",
+  "slot": "weapon",
+  "weaponCategory": "simple_melee",
+  "attackAbility": "str",
+  "damageFormula": "1d6+str",
+  "proficiencyRequirements": { "weapon": ["simple"] },
+  "dependsOn": [],
+  "grants": []
+}

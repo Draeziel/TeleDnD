@@ -11,6 +11,8 @@ function run() {
 
   if (!capIds.has('cap:rage:1')) throw new Error('missing cap:rage:1');
   if (!capIds.has('cap:inspire:1')) throw new Error('missing cap:inspire:1');
+  if (!capIds.has('cap:unarmored_defense:1')) throw new Error('missing cap:unarmored_defense:1');
+  if (!capIds.has('cap:spellcasting:1')) throw new Error('missing cap:spellcasting:1');
 
   console.log('dumbResolver test: PASS');
 }

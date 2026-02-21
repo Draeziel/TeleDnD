@@ -4,18 +4,22 @@
   "description": "A backend service for managing characters in a tabletop RPG using Node.js, TypeScript, Express, PostgreSQL, and Prisma.",
   "main": "src/server.ts",
   "scripts": {
-    "dev": "ts-node-dev src/server.ts",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev:fast": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "migrate": "prisma migrate dev",
     "seed": "ts-node scripts/seed.ts",
     "test:resolver:golden": "ts-node scripts/verifyResolverGolden.ts",
+    "test:assembler:resolver-integration": "ts-node tests/unit/assemblerResolverIntegration.test.ts",
     "test:character:unit": "ts-node tests/unit/characterAssembler.test.ts",
     "test:integration:draft": "ts-node tests/integration/draftFinalizeAssemble.test.ts",
     "test:integration:choices": "ts-node tests/integration/choiceDependency.test.ts",
     "test:sheet:contract": "ts-node tests/unit/sheetContract.test.ts",
     "test:equipment": "ts-node tests/unit/equipmentProficiency.test.ts",
     "test:sheet:golden": "ts-node scripts/verifySheetGolden.ts",
+    "test:equipment:attribute": "ts-node tests/unit/equipmentAttributeRequirement.test.ts",
+    "verify:ci": "npm run build && npm run test:character:unit && npm run test:assembler:resolver-integration && npm run test:sheet:golden",
     "test:resolver:golden:update": "ts-node scripts/verifyResolverGolden.ts --update",
     "import:rules:dry-run": "ts-node scripts/importRulesContent.ts --dry-run --file content/rules-pack.demo.json",
     "import:rules:ci": "ts-node scripts/importRulesContent.ts --dry-run --strict-warnings --file content/rules-pack.demo.json --report-file .artifacts/import-rules-report.json",
@@ -40,7 +44,8 @@
   },
   "devDependencies": {
     "ts-node": "^10.4.0",
-    "ts-node-dev": "^1.1.8"
+    "ts-node-dev": "^1.1.8",
+    "tsx": "^3.12.7"
   },
   "keywords": [
     "rpg",

@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { CapabilityResolverService } from './capabilityResolverService';
 import { CharacterSheetService } from './characterSheetService';
+import { buildContentIndexSync, loadNodeSyncFromIndex } from '../resolver/contentLoader';
+import { traverseResolverSync } from '../resolver/dumbResolver';
 
 export class CharacterAssemblerService {
   private prisma?: PrismaClient;
@@ -54,6 +56,52 @@ export class CharacterAssemblerService {
       sourceId: cap.sourceId,
       trigger: cap.trigger || null,
     }));
+
+    // Also attempt to resolve capabilities from local content files using the traversal resolver.
+    try {
+      const index = buildContentIndexSync();
+
+      // Heuristic: find class node in content index matching the sheet class name.
+      const className = sheet.character?.class?.name;
+      let startNodeId: string | undefined;
+      if (className) {
+        const lc = String(className).toLowerCase();
+        for (const [id, node] of index.entries()) {
+          if (node.type === 'class') {
+            const nodeName = typeof node.name === 'string' ? node.name : (node.name?.en || node.name?.ru);
+            if (nodeName && String(nodeName).toLowerCase() === lc) {
+              startNodeId = id;
+              break;
+            }
+            if (id.toLowerCase().includes(lc)) {
+              startNodeId = id;
+              break;
+            }
+          }
+        }
+      }
+
+      if (startNodeId) {
+        const traversed = traverseResolverSync([startNodeId], id => loadNodeSyncFromIndex(index, id));
+        const fileCaps = traversed.capabilities.map((cap: any) => ({
+          id: cap.id,
+          name: typeof cap.payload?.name === 'string' ? cap.payload.name : cap.id,
+          payloadType: cap.type || cap.payloadType,
+          payload: cap.payload,
+          sourceType: cap.sourceType || 'content',
+          sourceId: cap.sourceId || startNodeId,
+          trigger: cap.trigger || null,
+        }));
+
+        // Merge capabilities: keep existing order, append new ones not present yet (by id)
+        const existingIds = new Set(capabilities.map((c: any) => c.id));
+        for (const fc of fileCaps) {
+          if (!existingIds.has(fc.id)) capabilities.push(fc);
+        }
+      }
+    } catch (err) {
+      // Non-fatal: fallback to capabilities from resolver service only
+    }
 
     const assembled = {
       characterSheetVersion: '1.0.0',
@@ -131,6 +179,21 @@ export class CharacterAssemblerService {
           if (!profSet.has(sid)) {
             throw new Error(`Invalid equipment: missing proficiency '${sid}' for item '${e.item?.id || 'unknown'}'`);
           }
+        }
+      }
+    }
+
+    // Equipment attribute requirements (e.g., minimum strength)
+    const abilityEffective = assembled.abilities?.effective || null;
+    for (const e of assembled.equipment) {
+      const itemAny = e?.item as any;
+      if (!itemAny) continue;
+
+      const minStr = itemAny.minStrength ?? itemAny.requirements?.minStrength ?? null;
+      if (minStr !== null && minStr !== undefined) {
+        const strVal = abilityEffective?.str ?? null;
+        if (strVal === null || strVal === undefined || strVal < Number(minStr)) {
+          throw new Error(`Invalid equipment: requires Strength >= ${minStr} for item '${itemAny.id || 'unknown'}'`);
         }
       }
     }

@@ -1,0 +1,10 @@
+{
+  "id": "feature:spellcasting",
+  "type": "feature",
+  "name": { "en": "Spellcasting", "ru": "Колдовство" },
+  "capabilities": [
+    { "id": "cap:spellcasting:1", "type": "ACTIVE", "payload": { "name": "Cast Spell" } }
+  ],
+  "grants": [],
+  "dependsOn": []
+}

@@ -1,0 +1,10 @@
+{
+  "id": "feature:unarmored_defense",
+  "type": "feature",
+  "name": { "en": "Unarmored Defense", "ru": "Защита без брони" },
+  "capabilities": [
+    { "id": "cap:unarmored_defense:1", "type": "PASSIVE", "payload": { "name": "Unarmored Defense", "description": "Calculate AC without armor" } }
+  ],
+  "grants": [],
+  "dependsOn": []
+}

@@ -20,17 +20,20 @@ CREATE TABLE "character_draft_items" (
 CREATE UNIQUE INDEX "character_draft_items_draftId_itemId_key" ON "character_draft_items"("draftId", "itemId");
 
 
--- AddForeignKey
-ALTER TABLE "session_events" ADD CONSTRAINT "session_events_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- AddForeignKey (only if it doesn't already exist)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'session_events_sessionId_fkey'
+  ) THEN
+    ALTER TABLE "session_events" ADD CONSTRAINT "session_events_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END$$;
 
--- AddForeignKey
 ALTER TABLE "character_draft_items" ADD CONSTRAINT "character_draft_items_draftId_fkey" FOREIGN KEY ("draftId") REFERENCES "character_drafts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
 ALTER TABLE "character_draft_items" ADD CONSTRAINT "character_draft_items_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- RenameIndex
 ALTER INDEX "session_events_session_id_event_seq_idx" RENAME TO "session_events_sessionId_event_seq_idx";
 
--- RenameIndex
 ALTER INDEX "session_reaction_windows_session_id_target_type_target_ref_id_i" RENAME TO "session_reaction_windows_session_id_target_type_target_ref__idx";

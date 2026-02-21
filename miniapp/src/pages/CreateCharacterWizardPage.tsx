@@ -257,7 +257,13 @@ export function CreateCharacterWizardPage() {
 
       {step === 3 && (
         <SectionCard title="Шаг: Снаряжение">
-          <StepEquipment draft={draft} />
+          <StepEquipment
+            draft={draft}
+            choiceSelections={choiceSelections}
+            setChoiceSelection={(choiceId: string, optionId: string) => setChoiceSelections((prev) => ({ ...prev, [choiceId]: optionId }))}
+            onSaveChoice={saveChoice}
+            loading={loading}
+          />
         </SectionCard>
       )}
 

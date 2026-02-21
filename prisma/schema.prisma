@@ -8,64 +8,64 @@ datasource db {
 }
 
 model ContentSource {
-  id       String    @id @default(uuid())
-  name     String    @unique
-  classes  Class[]
-  features Feature[]
-  choices  Choice[]
-  races    Race[]
+  id          String       @id @default(uuid())
+  name        String       @unique
+  classes     Class[]
+  features    Feature[]
+  choices     Choice[]
+  races       Race[]
   backgrounds Background[]
-  items    Item[]
-  skills   Skill[]
-  actions  Action[]
-  spells   Spell[]
+  items       Item[]
+  skills      Skill[]
+  actions     Action[]
+  spells      Spell[]
 
   @@map("content_sources")
 }
 
 model Class {
-  id              String              @id @default(uuid())
-  name            String              @unique
-  contentSourceId String
-  rulesVersion    String              @default("v1")
-  sourceRef       String?             @unique
-  contentSource   ContentSource       @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
-  classFeatures   ClassFeature[]
-  levelProgressions ClassLevelProgression[]
+  id                       String                        @id @default(uuid())
+  name                     String                        @unique
+  contentSourceId          String
+  rulesVersion             String                        @default("v1")
+  sourceRef                String?                       @unique
+  contentSource            ContentSource                 @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  classFeatures            ClassFeature[]
+  levelProgressions        ClassLevelProgression[]
   savingThrowProficiencies ClassSavingThrowProficiency[]
-  characters      Character[]
-  drafts          CharacterDraft[]
+  characters               Character[]
+  drafts                   CharacterDraft[]
 
   @@map("classes")
 }
 
 model User {
-  id                 String          @id @default(uuid())
-  telegramId         String          @unique
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  ownedCharacters    Character[]
-  createdSessions    Session[]       @relation("SessionCreator")
-  gmSessions         Session[]       @relation("SessionGM")
-  sessionPlayers     SessionPlayer[]
-  monsterTemplates   MonsterTemplate[]
+  id               String            @id @default(uuid())
+  telegramId       String            @unique
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  ownedCharacters  Character[]
+  createdSessions  Session[]         @relation("SessionCreator")
+  gmSessions       Session[]         @relation("SessionGM")
+  sessionPlayers   SessionPlayer[]
+  monsterTemplates MonsterTemplate[]
 
   @@map("users")
 }
 
 model Feature {
-  id                 String             @id @default(uuid())
-  name               String             @unique
-  description        String?
-  contentSourceId    String
-  rulesVersion       String             @default("v1")
-  sourceRef          String?
-  contentSource      ContentSource      @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
-  classFeatures      ClassFeature[]
+  id                     String                  @id @default(uuid())
+  name                   String                  @unique
+  description            String?
+  contentSourceId        String
+  rulesVersion           String                  @default("v1")
+  sourceRef              String?
+  contentSource          ContentSource           @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  classFeatures          ClassFeature[]
   classLevelProgressions ClassLevelProgression[]
-  raceFeatures       RaceFeature[]
-  backgroundFeatures BackgroundFeature[]
-  actions            Action[]
+  raceFeatures           RaceFeature[]
+  backgroundFeatures     BackgroundFeature[]
+  actions                Action[]
 
   @@map("features")
 }
@@ -115,14 +115,14 @@ model Action {
 }
 
 model Choice {
-  id                    String                @id @default(uuid())
+  id                    String                 @id @default(uuid())
   contentSourceId       String
-  rulesVersion          String                @default("v1")
+  rulesVersion          String                 @default("v1")
   sourceRef             String?
-  contentSource         ContentSource         @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  contentSource         ContentSource          @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
   sourceType            String
   sourceId              String
-  chooseCount           Int                   @default(1)
+  chooseCount           Int                    @default(1)
   optionsJson           Json
   characterChoices      CharacterChoice[]
   characterDraftChoices CharacterDraftChoice[]
@@ -131,12 +131,12 @@ model Choice {
 }
 
 model Race {
-  id              String         @id @default(uuid())
-  name            String         @unique
+  id              String           @id @default(uuid())
+  name            String           @unique
   contentSourceId String
-  rulesVersion    String         @default("v1")
-  sourceRef       String?        @unique
-  contentSource   ContentSource  @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  rulesVersion    String           @default("v1")
+  sourceRef       String?          @unique
+  contentSource   ContentSource    @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
   raceFeatures    RaceFeature[]
   characters      Character[]
   drafts          CharacterDraft[]
@@ -145,21 +145,22 @@ model Race {
 }
 
 model Item {
-  id              String         @id @default(uuid())
-  name            String         @unique
-  description     String?
-  slot            String?
-  weaponCategory  String?
-  attackAbility   String?
-  damageFormula   String?
+  id                      String               @id @default(uuid())
+  name                    String               @unique
+  description             String?
+  slot                    String?
+  weaponCategory          String?
+  attackAbility           String?
+  damageFormula           String?
   proficiencyRequirements Json?
-  armorType       String?
-  rulesVersion    String         @default("v1")
-  sourceRef       String?
-  contentSourceId String
-  contentSource   ContentSource  @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
-  spells          Spell[]
-  characterItems  CharacterItem[]
+  armorType               String?
+  rulesVersion            String               @default("v1")
+  sourceRef               String?
+  contentSourceId         String
+  contentSource           ContentSource        @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  spells                  Spell[]
+  characterItems          CharacterItem[]
+  CharacterDraftItem      CharacterDraftItem[]
 
   @@map("items")
 }
@@ -177,32 +178,32 @@ model CharacterItem {
 }
 
 model Skill {
-  id              String                        @id @default(uuid())
-  name            String                        @unique
+  id              String                      @id @default(uuid())
+  name            String                      @unique
   ability         String
   contentSourceId String?
-  contentSource   ContentSource?                @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  contentSource   ContentSource?              @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
   proficiencies   CharacterSkillProficiency[]
 
   @@map("skills")
 }
 
 model ClassSavingThrowProficiency {
-  id        String @id @default(uuid())
-  classId   String
-  ability   String
-  class     Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  id      String @id @default(uuid())
+  classId String
+  ability String
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   @@unique([classId, ability])
   @@map("class_saving_throw_proficiencies")
 }
 
 model CharacterSkillProficiency {
-  id          String     @id @default(uuid())
+  id          String    @id @default(uuid())
   characterId String
   skillId     String
-  character   Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  skill        Skill      @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  skill       Skill     @relation(fields: [skillId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, skillId])
   @@map("character_skill_proficiencies")
@@ -220,29 +221,30 @@ model RaceFeature {
 }
 
 model Background {
-  id              String         @id @default(uuid())
-  name            String         @unique
-  contentSourceId String
-  rulesVersion    String         @default("v1")
-  sourceRef       String?        @unique
-  contentSource   ContentSource  @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
+  id                 String              @id @default(uuid())
+  name               String              @unique
+  contentSourceId    String
+  rulesVersion       String              @default("v1")
+  sourceRef          String?             @unique
+  contentSource      ContentSource       @relation(fields: [contentSourceId], references: [id], onDelete: Cascade)
   backgroundFeatures BackgroundFeature[]
-  characters      Character[]
-  drafts          CharacterDraft[]
+  characters         Character[]
+  drafts             CharacterDraft[]
+
   @@map("backgrounds")
 }
 
 model Modifier {
-  id         String   @id @default(uuid())
-  sourceType String
-  sourceId   String
-  target     String
-  targetKey  String?
-  operation  String
-  value      Int?
-  rulesVersion String @default("v1")
-  sourceRef  String?
-  createdAt  DateTime @default(now())
+  id           String   @id @default(uuid())
+  sourceType   String
+  sourceId     String
+  target       String
+  targetKey    String?
+  operation    String
+  value        Int?
+  rulesVersion String   @default("v1")
+  sourceRef    String?
+  createdAt    DateTime @default(now())
 
   @@index([sourceType, sourceId], name: "modifiers_source_idx")
   @@map("modifiers")
@@ -295,64 +297,64 @@ model BackgroundFeature {
 }
 
 model AbilityScoreSet {
-  id        String      @id @default(uuid())
-  method    String      // "standard_array", "point_buy", "manual", "roll"
-  str       Int
-  dex       Int
-  con       Int
-  int       Int
-  wis       Int
-  cha       Int
+  id         String           @id @default(uuid())
+  method     String // "standard_array", "point_buy", "manual", "roll"
+  str        Int
+  dex        Int
+  con        Int
+  int        Int
+  wis        Int
+  cha        Int
   characters Character[]
-  drafts    CharacterDraft[]
+  drafts     CharacterDraft[]
 
   @@map("ability_score_sets")
 }
 
 model Character {
-  id               String             @id @default(uuid())
-  name             String
-  level            Int                @default(1)
-  ownerUserId      String?
-  classId          String
-  raceId           String?
-  backgroundId     String?
-  abilityScoreSetId String?
-  owner            User?              @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
-  class            Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
-  race             Race?              @relation(fields: [raceId], references: [id], onDelete: SetNull)
-  background       Background?        @relation(fields: [backgroundId], references: [id], onDelete: SetNull)
-  abilityScores    AbilityScoreSet?   @relation(fields: [abilityScoreSetId], references: [id], onDelete: SetNull)
-  characterChoices CharacterChoice[]
-  inventory        CharacterItem[]
+  id                 String                      @id @default(uuid())
+  name               String
+  level              Int                         @default(1)
+  ownerUserId        String?
+  classId            String
+  raceId             String?
+  backgroundId       String?
+  abilityScoreSetId  String?
+  owner              User?                       @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  class              Class                       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  race               Race?                       @relation(fields: [raceId], references: [id], onDelete: SetNull)
+  background         Background?                 @relation(fields: [backgroundId], references: [id], onDelete: SetNull)
+  abilityScores      AbilityScoreSet?            @relation(fields: [abilityScoreSetId], references: [id], onDelete: SetNull)
+  characterChoices   CharacterChoice[]
+  inventory          CharacterItem[]
   skillProficiencies CharacterSkillProficiency[]
-  sessionCharacters SessionCharacter[]
+  sessionCharacters  SessionCharacter[]
 
   @@index([ownerUserId])
   @@map("characters")
 }
 
 model Session {
-  id              String              @id @default(uuid())
-  name            String
-  gmUserId        String
-  createdByUserId String
-  joinCode        String              @unique
-  initiativeLocked Boolean            @default(false) @map("initiative_locked")
-  encounterActive Boolean             @default(false) @map("encounter_active")
-  combatRound     Int                 @default(1) @map("combat_round")
-  activeTurnSessionCharacterId String? @map("active_turn_session_character_id")
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  gmUser          User                @relation("SessionGM", fields: [gmUserId], references: [id], onDelete: Cascade)
-  createdByUser   User                @relation("SessionCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
-  players         SessionPlayer[]
-  characters      SessionCharacter[]
-  monsters        SessionMonster[]
-  events          SessionEvent[]
-  combatSnapshot  SessionCombatSnapshot?
-  combatActions   SessionCombatAction[]
-  reactionWindows SessionReactionWindow[]
+  id                           String                  @id @default(uuid())
+  name                         String
+  gmUserId                     String
+  createdByUserId              String
+  joinCode                     String                  @unique
+  initiativeLocked             Boolean                 @default(false) @map("initiative_locked")
+  encounterActive              Boolean                 @default(false) @map("encounter_active")
+  combatRound                  Int                     @default(1) @map("combat_round")
+  activeTurnSessionCharacterId String?                 @map("active_turn_session_character_id")
+  createdAt                    DateTime                @default(now())
+  updatedAt                    DateTime                @updatedAt
+  gmUser                       User                    @relation("SessionGM", fields: [gmUserId], references: [id], onDelete: Cascade)
+  createdByUser                User                    @relation("SessionCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  players                      SessionPlayer[]
+  characters                   SessionCharacter[]
+  monsters                     SessionMonster[]
+  events                       SessionEvent[]
+  combatSnapshot               SessionCombatSnapshot?
+  combatActions                SessionCombatAction[]
+  reactionWindows              SessionReactionWindow[]
 
   @@index([gmUserId])
   @@index([createdByUserId])
@@ -360,39 +362,39 @@ model Session {
 }
 
 model MonsterTemplate {
-  id                 String          @id @default(uuid())
-  name               String
-  size               String?
-  creatureType       String?         @map("creature_type")
-  alignment          String?
-  armorClass         Int             @map("armor_class")
-  maxHp              Int             @map("max_hp")
-  hitDice            String?         @map("hit_dice")
-  speed              String?
-  strength           Int             @default(10)
-  dexterity          Int             @default(10)
-  constitution       Int             @default(10)
-  intelligence       Int             @default(10)
-  wisdom             Int             @default(10)
-  charisma           Int             @default(10)
-  initiativeModifier Int             @default(0) @map("initiative_modifier")
-  challengeRating    String?         @map("challenge_rating")
-  damageImmunities   String?         @map("damage_immunities")
-  conditionImmunities String?        @map("condition_immunities")
-  senses             String?
-  languages          String?
-  traits             String?
-  actions            String?
-  legendaryActions   String?         @map("legendary_actions")
-  iconUrl            String?         @map("icon_url")
-  imageUrl           String?         @map("image_url")
-  source             String?
-  scope              String          @default("PERSONAL")
-  ownerUserId        String?         @map("owner_user_id")
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  owner              User?           @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
-  sessionMonsters    SessionMonster[]
+  id                  String           @id @default(uuid())
+  name                String
+  size                String?
+  creatureType        String?          @map("creature_type")
+  alignment           String?
+  armorClass          Int              @map("armor_class")
+  maxHp               Int              @map("max_hp")
+  hitDice             String?          @map("hit_dice")
+  speed               String?
+  strength            Int              @default(10)
+  dexterity           Int              @default(10)
+  constitution        Int              @default(10)
+  intelligence        Int              @default(10)
+  wisdom              Int              @default(10)
+  charisma            Int              @default(10)
+  initiativeModifier  Int              @default(0) @map("initiative_modifier")
+  challengeRating     String?          @map("challenge_rating")
+  damageImmunities    String?          @map("damage_immunities")
+  conditionImmunities String?          @map("condition_immunities")
+  senses              String?
+  languages           String?
+  traits              String?
+  actions             String?
+  legendaryActions    String?          @map("legendary_actions")
+  iconUrl             String?          @map("icon_url")
+  imageUrl            String?          @map("image_url")
+  source              String?
+  scope               String           @default("PERSONAL")
+  ownerUserId         String?          @map("owner_user_id")
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  owner               User?            @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  sessionMonsters     SessionMonster[]
 
   @@index([scope])
   @@index([ownerUserId])
@@ -400,18 +402,18 @@ model MonsterTemplate {
 }
 
 model SessionMonster {
-  id                String           @id @default(uuid())
+  id                String                 @id @default(uuid())
   sessionId         String
-  monsterTemplateId String?          @map("monster_template_id")
-  nameSnapshot      String           @map("name_snapshot")
-  currentHp         Int              @map("current_hp")
-  maxHpSnapshot     Int              @map("max_hp_snapshot")
+  monsterTemplateId String?                @map("monster_template_id")
+  nameSnapshot      String                 @map("name_snapshot")
+  currentHp         Int                    @map("current_hp")
+  maxHpSnapshot     Int                    @map("max_hp_snapshot")
   initiative        Int?
   notes             String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  session           Session          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  monsterTemplate   MonsterTemplate? @relation(fields: [monsterTemplateId], references: [id], onDelete: SetNull)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  session           Session                @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  monsterTemplate   MonsterTemplate?       @relation(fields: [monsterTemplateId], references: [id], onDelete: SetNull)
   effects           SessionMonsterEffect[]
 
   @@index([sessionId])
@@ -434,16 +436,16 @@ model SessionMonsterEffect {
 }
 
 model SessionEvent {
-  id              String    @id @default(uuid())
+  id              String   @id @default(uuid())
   sessionId       String
-  eventSeq        BigInt    @default(autoincrement()) @unique @map("event_seq")
+  eventSeq        BigInt   @unique @default(autoincrement()) @map("event_seq")
   type            String
-  eventCategory   String    @default("GENERAL") @map("event_category")
+  eventCategory   String   @default("GENERAL") @map("event_category")
   message         String
   payload         Json?
   actorTelegramId String
-  createdAt       DateTime  @default(now())
-  session         Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  session         Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, createdAt])
   @@index([sessionId, eventSeq])
@@ -451,32 +453,32 @@ model SessionEvent {
 }
 
 model SessionCombatSnapshot {
-  id                        String   @id @default(uuid())
-  sessionId                 String   @unique @map("session_id")
-  encounterActive           Boolean  @default(false) @map("encounter_active")
-  combatRound               Int      @default(1) @map("combat_round")
-  activeTurnSessionCharacterId String? @map("active_turn_session_character_id")
-  initiativeOrder           Json     @map("initiative_order")
-  actors                    Json
-  updatedAt                 DateTime @updatedAt @map("updated_at")
-  session                   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  id                           String   @id @default(uuid())
+  sessionId                    String   @unique @map("session_id")
+  encounterActive              Boolean  @default(false) @map("encounter_active")
+  combatRound                  Int      @default(1) @map("combat_round")
+  activeTurnSessionCharacterId String?  @map("active_turn_session_character_id")
+  initiativeOrder              Json     @map("initiative_order")
+  actors                       Json
+  updatedAt                    DateTime @updatedAt @map("updated_at")
+  session                      Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, updatedAt])
   @@map("session_combat_snapshots")
 }
 
 model SessionCombatAction {
-  id             String   @id @default(uuid())
-  sessionId      String   @map("session_id")
-  actorUserId    String   @map("actor_user_id")
-  idempotencyKey String   @map("idempotency_key")
-  actionType     String   @map("action_type")
-  status         String   @default("completed")
-  requestPayload Json     @map("request_payload")
-  responsePayload Json?   @map("response_payload")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-  session        Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  id              String   @id @default(uuid())
+  sessionId       String   @map("session_id")
+  actorUserId     String   @map("actor_user_id")
+  idempotencyKey  String   @map("idempotency_key")
+  actionType      String   @map("action_type")
+  status          String   @default("completed")
+  requestPayload  Json     @map("request_payload")
+  responsePayload Json?    @map("response_payload")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  session         Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, idempotencyKey])
   @@index([sessionId, createdAt])
@@ -484,20 +486,20 @@ model SessionCombatAction {
 }
 
 model SessionReactionWindow {
-  id               String   @id @default(uuid())
-  sessionId        String   @map("session_id")
-  targetType       String   @map("target_type")
-  targetRefId      String   @map("target_ref_id")
-  reactionType     String   @map("reaction_type")
-  status           String   @default("PENDING")
-  deadlineAt       DateTime @map("deadline_at")
-  requestedByUserId String  @map("requested_by_user_id")
-  resolvedByUserId String?  @map("resolved_by_user_id")
-  responsePayload  Json?    @map("response_payload")
-  resolvedAt       DateTime? @map("resolved_at")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-  session          Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  id                String    @id @default(uuid())
+  sessionId         String    @map("session_id")
+  targetType        String    @map("target_type")
+  targetRefId       String    @map("target_ref_id")
+  reactionType      String    @map("reaction_type")
+  status            String    @default("PENDING")
+  deadlineAt        DateTime  @map("deadline_at")
+  requestedByUserId String    @map("requested_by_user_id")
+  resolvedByUserId  String?   @map("resolved_by_user_id")
+  responsePayload   Json?     @map("response_payload")
+  resolvedAt        DateTime? @map("resolved_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  session           Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, status, deadlineAt])
   @@index([sessionId, targetType, targetRefId])
@@ -505,14 +507,14 @@ model SessionReactionWindow {
 }
 
 model SessionPlayer {
-  id        String      @id @default(uuid())
+  id        String   @id @default(uuid())
   sessionId String
   userId    String
   role      String
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  session   Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, userId])
   @@index([userId])
@@ -520,15 +522,15 @@ model SessionPlayer {
 }
 
 model SessionCharacter {
-  id        String                 @id @default(uuid())
-  sessionId String
+  id          String                 @id @default(uuid())
+  sessionId   String
   characterId String
-  createdAt DateTime               @default(now())
-  updatedAt DateTime               @updatedAt
-  session   Session                @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  character Character              @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  state     SessionCharacterState?
-  effects   SessionEffect[]
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  session     Session                @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  character   Character              @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  state       SessionCharacterState?
+  effects     SessionEffect[]
 
   @@unique([sessionId, characterId])
   @@index([characterId])
@@ -592,19 +594,21 @@ model CharacterChoice {
 }
 
 model CharacterDraft {
-  id                    String                @id @default(uuid())
+  id                    String                 @id @default(uuid())
   name                  String
-  level                 Int                   @default(1)
+  level                 Int                    @default(1)
   classId               String?
   raceId                String?
   backgroundId          String?
   abilityScoreSetId     String?
-  class                 Class?                @relation(fields: [classId], references: [id], onDelete: SetNull)
-  race                  Race?                 @relation(fields: [raceId], references: [id], onDelete: SetNull)
-  background            Background?           @relation(fields: [backgroundId], references: [id], onDelete: SetNull)
-  abilityScores         AbilityScoreSet?      @relation(fields: [abilityScoreSetId], references: [id], onDelete: SetNull)
-  createdAt             DateTime              @default(now())
+  class                 Class?                 @relation(fields: [classId], references: [id], onDelete: SetNull)
+  race                  Race?                  @relation(fields: [raceId], references: [id], onDelete: SetNull)
+  background            Background?            @relation(fields: [backgroundId], references: [id], onDelete: SetNull)
+  abilityScores         AbilityScoreSet?       @relation(fields: [abilityScoreSetId], references: [id], onDelete: SetNull)
+  createdAt             DateTime               @default(now())
   characterDraftChoices CharacterDraftChoice[]
+
+  characterDraftItems CharacterDraftItem[]
 
   @@map("character_drafts")
 }
@@ -619,4 +623,16 @@ model CharacterDraftChoice {
 
   @@unique([draftId, choiceId])
   @@map("character_draft_choices")
+}
+
+model CharacterDraftItem {
+  id       String         @id @default(uuid())
+  draftId  String
+  itemId   String
+  equipped Boolean        @default(false)
+  draft    CharacterDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  item     Item           @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([draftId, itemId])
+  @@map("character_draft_items")
 }

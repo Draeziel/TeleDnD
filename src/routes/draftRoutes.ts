@@ -14,6 +14,9 @@ export default function draftRoutes(prisma: PrismaClient) {
   router.post('/:id/ability-scores', draftController.setAbilityScores.bind(draftController));
   router.post('/:id/choices', draftController.saveChoice.bind(draftController));
   router.post('/:id/finalize', draftController.finalizeDraft.bind(draftController));
+  router.post('/:id/items', draftController.addItem.bind(draftController));
+  router.post('/:id/items/:itemId/equip', draftController.equipItem.bind(draftController));
+  router.post('/:id/items/:itemId/unequip', draftController.unequipItem.bind(draftController));
 
   return router;
 }

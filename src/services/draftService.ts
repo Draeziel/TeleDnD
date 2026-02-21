@@ -746,4 +746,58 @@ export class DraftService {
       },
     };
   }
+
+  /**
+   * Add an item to a draft's temporary inventory
+   */
+  async addItemToDraft(draftId: string, itemId: string): Promise<any> {
+    const draft = await this.prisma.characterDraft.findUnique({ where: { id: draftId } });
+    if (!draft) {
+      throw new Error(`Draft with ID ${draftId} not found`);
+    }
+
+    const item = await this.prisma.item.findUnique({ where: { id: itemId } });
+    if (!item) {
+      throw new Error(`Item with ID ${itemId} not found`);
+    }
+
+    // Upsert-like behavior: create if not exists
+    const existing = await this.prisma.characterDraftItem.findUnique({ where: { draftId_itemId: { draftId, itemId } } });
+    if (existing) {
+      return existing;
+    }
+
+    const created = await this.prisma.characterDraftItem.create({ data: { draftId, itemId } });
+    return created;
+  }
+
+  async equipDraftItem(draftId: string, itemId: string): Promise<any> {
+    const draft = await this.prisma.characterDraft.findUnique({ where: { id: draftId } });
+    if (!draft) {
+      throw new Error(`Draft with ID ${draftId} not found`);
+    }
+
+    const entry = await this.prisma.characterDraftItem.findUnique({ where: { draftId_itemId: { draftId, itemId } } });
+    if (!entry) {
+      throw new Error(`Draft item not found: ${itemId}`);
+    }
+
+    const updated = await this.prisma.characterDraftItem.update({ where: { id: entry.id }, data: { equipped: true } });
+    return updated;
+  }
+
+  async unequipDraftItem(draftId: string, itemId: string): Promise<any> {
+    const draft = await this.prisma.characterDraft.findUnique({ where: { id: draftId } });
+    if (!draft) {
+      throw new Error(`Draft with ID ${draftId} not found`);
+    }
+
+    const entry = await this.prisma.characterDraftItem.findUnique({ where: { draftId_itemId: { draftId, itemId } } });
+    if (!entry) {
+      throw new Error(`Draft item not found: ${itemId}`);
+    }
+
+    const updated = await this.prisma.characterDraftItem.update({ where: { id: entry.id }, data: { equipped: false } });
+    return updated;
+  }
 }

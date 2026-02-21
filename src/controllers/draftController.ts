@@ -207,6 +207,75 @@ export class DraftController {
     }
   }
 
+  public async addItem(req: Request, res: Response): Promise<void> {
+    try {
+      const { id: draftId } = req.params;
+      const { itemId } = req.body;
+
+      if (!itemId) {
+        res.status(400).json({ message: 'itemId is required' });
+        return;
+      }
+
+      const draft = await this.draftService.getDraft(draftId);
+      if (!draft) {
+        res.status(404).json({ message: 'Draft not found' });
+        return;
+      }
+
+      const entry = await this.draftService.addItemToDraft(draftId, itemId);
+      res.status(201).json(entry);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        res.status(404).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'Error adding item to draft', error });
+      }
+    }
+  }
+
+  public async equipItem(req: Request, res: Response): Promise<void> {
+    try {
+      const { id: draftId, itemId } = req.params;
+
+      const draft = await this.draftService.getDraft(draftId);
+      if (!draft) {
+        res.status(404).json({ message: 'Draft not found' });
+        return;
+      }
+
+      const entry = await this.draftService.equipDraftItem(draftId, itemId);
+      res.status(200).json(entry);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        res.status(404).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'Error equipping draft item', error });
+      }
+    }
+  }
+
+  public async unequipItem(req: Request, res: Response): Promise<void> {
+    try {
+      const { id: draftId, itemId } = req.params;
+
+      const draft = await this.draftService.getDraft(draftId);
+      if (!draft) {
+        res.status(404).json({ message: 'Draft not found' });
+        return;
+      }
+
+      const entry = await this.draftService.unequipDraftItem(draftId, itemId);
+      res.status(200).json(entry);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        res.status(404).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'Error unequipping draft item', error });
+      }
+    }
+  }
+
   /**
    * POST /api/drafts/:id/finalize
    * Validate and create character from draft

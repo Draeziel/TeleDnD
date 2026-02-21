@@ -748,6 +748,19 @@ export class DraftService {
         });
       }
 
+        // Recompute required choices for the created character (same rules as CharacterSheetService)
+        const choiceFiltersForChar: any[] = [{ sourceType: 'class', sourceId: draft.classId }];
+        if (draft.raceId) choiceFiltersForChar.push({ sourceType: 'race', sourceId: draft.raceId });
+        if (draft.backgroundId) choiceFiltersForChar.push({ sourceType: 'background', sourceId: draft.backgroundId });
+
+        const requiredChoicesForChar = await tx.choice.findMany({ where: { OR: choiceFiltersForChar } });
+        const selectedChoicesForChar = await tx.characterChoice.findMany({ where: { characterId: character.id } });
+        const selectedSet = new Set(selectedChoicesForChar.map(sc => sc.choiceId));
+        const missing = requiredChoicesForChar.filter(rc => !selectedSet.has(rc.id));
+        if (missing.length > 0) {
+          throw new Error(`Cannot finalize draft: missing required choices (${missing.length})`);
+        }
+
       // Validate assembly using CharacterAssemblerService (uses tx client)
       const assembler = new CharacterAssemblerService(tx as any);
       await assembler.assembleCharacter(character.id);

@@ -1,0 +1,13 @@
+{
+  "id": "item:dagger",
+  "type": "item",
+  "name": { "en": "Dagger", "ru": "Кинжал" },
+  "description": "Simple melee weapon, light and throwable",
+  "slot": "weapon",
+  "weaponCategory": "simple_melee",
+  "attackAbility": "str",
+  "damageFormula": "1d4+str",
+  "proficiencyRequirements": { "weapon": ["simple"] },
+  "dependsOn": [],
+  "grants": []
+}

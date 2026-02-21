@@ -1,0 +1,13 @@
+{
+  "id": "item:handaxe",
+  "type": "item",
+  "name": { "en": "Handaxe", "ru": "Топор" },
+  "description": "Simple melee weapon",
+  "slot": "weapon",
+  "weaponCategory": "simple_melee",
+  "attackAbility": "str",
+  "damageFormula": "1d6+str",
+  "proficiencyRequirements": { "weapon": ["simple"] },
+  "dependsOn": [],
+  "grants": []
+}

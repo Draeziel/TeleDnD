@@ -1,0 +1,13 @@
+{
+  "id": "item:longsword",
+  "type": "item",
+  "name": { "en": "Longsword", "ru": "Длинный меч" },
+  "description": "Martial melee weapon",
+  "slot": "weapon",
+  "weaponCategory": "martial_melee",
+  "attackAbility": "str",
+  "damageFormula": "1d8+str",
+  "proficiencyRequirements": { "weapon": ["martial"] },
+  "dependsOn": [],
+  "grants": []
+}

@@ -1,0 +1,13 @@
+{
+  "id": "item:shortbow",
+  "type": "item",
+  "name": { "en": "Shortbow", "ru": "Короткий лук" },
+  "description": "Simple ranged weapon",
+  "slot": "weapon",
+  "weaponCategory": "simple_ranged",
+  "attackAbility": "dex",
+  "damageFormula": "1d6+dex",
+  "proficiencyRequirements": { "weapon": ["simple"] },
+  "dependsOn": [],
+  "grants": []
+}

@@ -1,0 +1,10 @@
+{
+  "id": "class:barbarian:1",
+  "type": "class",
+  "name": { "ru": "Варвар", "en": "Barbarian" },
+  "capabilities": [
+    { "id": "cap:rage:1", "type": "ACTIVE", "payload": { "name": "Rage" } }
+  ],
+  "grants": ["feature:unarmored_defense"],
+  "dependsOn": []
+}

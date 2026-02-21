@@ -1,0 +1,10 @@
+{
+  "id": "class:bard:1",
+  "type": "class",
+  "name": { "ru": "Бард", "en": "Bard" },
+  "capabilities": [
+    { "id": "cap:inspire:1", "type": "ACTIVE", "payload": { "name": "Inspire" } }
+  ],
+  "grants": ["feature:spellcasting"],
+  "dependsOn": []
+}

@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { Prisma, PrismaClient } from '@prisma/client';
+import { validateContentIndex } from '../src/importer/validator';
+import { ContentNode } from '../src/types/dependencyMap';
 
 type ImportIssue = {
   severity: 'error' | 'warning';
@@ -1233,6 +1235,74 @@ async function main() {
   const { filePath, dryRun, reportFile, strictWarnings } = parseArgs();
   const pack = loadPack(filePath);
   const validationIssues = validatePack(pack);
+
+  // Build a temporary content index from the pack to validate dependency references and cycles
+  const index = new Map<string, ContentNode>();
+
+  function addNode(id: string, type: string, name?: { ru?: string; en?: string }) {
+    if (!index.has(id)) {
+      index.set(id, {
+        id,
+        type: (type as any) || 'feature',
+        name,
+        grants: [],
+        dependsOn: [],
+        capabilities: [],
+      } as ContentNode);
+    }
+  }
+
+  // populate basic nodes
+  for (const c of ensureArray(pack.classes)) addNode(c.externalId, 'class', { en: c.name });
+  for (const r of ensureArray(pack.races)) addNode(r.externalId, 'race', { en: r.name });
+  for (const b of ensureArray(pack.backgrounds)) addNode(b.externalId, 'background', { en: b.name });
+  for (const f of ensureArray(pack.features)) addNode(f.externalId, 'feature', { en: f.name });
+  for (const it of ensureArray(pack.items)) addNode(it.externalId, 'item', { en: it.name });
+  for (const a of ensureArray(pack.actions)) addNode(a.externalId, 'action', { en: a.name });
+  for (const s of ensureArray(pack.spells)) addNode(s.externalId, 'spell', { en: s.name });
+
+  // class level progressions create implicit grants from class to feature
+  for (const p of ensureArray(pack.classLevelProgressions)) {
+    addNode(p.classExternalId, 'class');
+    addNode(p.featureExternalId, 'feature');
+    const src = index.get(p.classExternalId)!;
+    src.grants = src.grants || [];
+    src.grants.push(p.featureExternalId);
+  }
+
+  // dependencies map to graph edges
+  for (const d of ensureArray(pack.dependencies)) {
+    addNode(d.sourceRef, d.sourceType || 'feature');
+    addNode(d.targetRef, d.targetType || 'feature');
+    const src = index.get(d.sourceRef)!;
+    src.grants = src.grants || [];
+    src.grants.push(d.targetRef);
+    // also add dependsOn for traversal completeness
+    src.dependsOn = src.dependsOn || [];
+    src.dependsOn.push(d.targetRef);
+  }
+
+  const contentValidation = validateContentIndex(index);
+  if (!contentValidation.valid) {
+    // convert to ImportIssue entries
+    for (const miss of contentValidation.missingReferences) {
+      validationIssues.push({
+        severity: 'error',
+        path: `dependencies->${miss}`,
+        rule: 'missing_reference',
+        reason: `Referenced node not found in pack: ${miss}`,
+      });
+    }
+
+    for (const cycle of contentValidation.cycles) {
+      validationIssues.push({
+        severity: 'error',
+        path: `cycle:${cycle.join('->')}`,
+        rule: 'dependency_cycle',
+        reason: `Detected cycle in dependency graph: ${cycle.join(' -> ')}`,
+      });
+    }
+  }
 
   const report = await runImport(pack, dryRun, filePath, validationIssues);
 

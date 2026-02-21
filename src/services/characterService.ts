@@ -63,6 +63,17 @@ export class CharacterService {
         });
     }
 
+    async fetchItems() {
+        return await this.prisma.item.findMany({
+            include: {
+                contentSource: true,
+            },
+            orderBy: {
+                name: 'asc',
+            },
+        });
+    }
+
     async addCharacter(characterData: any, telegramUserId: string) {
         const user = await this.resolveUserByTelegramId(telegramUserId);
 

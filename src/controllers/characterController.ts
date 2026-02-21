@@ -85,6 +85,15 @@ export class CharacterController {
         }
     }
 
+        public async getItemTemplates(req: Request, res: Response): Promise<void> {
+            try {
+                const items = await this.characterService.fetchItems();
+                res.status(200).json(items);
+            } catch (error) {
+                res.status(500).json({ message: 'Error retrieving item templates', error });
+            }
+        }
+
     public async getCharacter(req: Request, res: Response): Promise<void> {
         try {
             const telegramUserId = getTelegramUserId(res);

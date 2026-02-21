@@ -22,6 +22,11 @@ export const characterApi = {
     return Array.isArray(data) ? data : [];
   },
 
+  async getItems(): Promise<any[]> {
+    const { data } = await http.get<any[]>('/characters/items/templates');
+    return Array.isArray(data) ? data : [];
+  },
+
   async getCharacterSheet(characterId: string): Promise<CharacterSheet> {
     const { data } = await http.get<CharacterSheet>(`/characters/${characterId}/sheet`);
     return data;

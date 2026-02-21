@@ -336,6 +336,11 @@ export class DraftService {
             choice: true,
           },
         },
+        characterDraftItems: {
+          include: {
+            item: true,
+          },
+        },
       },
     });
 
@@ -413,6 +418,12 @@ export class DraftService {
         chooseCount: choice.chooseCount,
         options: choice.optionsJson,
       })),
+      draftItems: draft.characterDraftItems ? draft.characterDraftItems.map((di: any) => ({
+        id: di.id,
+        itemId: di.itemId,
+        equipped: di.equipped,
+        item: di.item ? { id: di.item.id, name: di.item.name, slot: di.item.slot, description: di.item.description } : null,
+      })) : [],
     };
   }
 

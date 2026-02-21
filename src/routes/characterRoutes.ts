@@ -10,6 +10,7 @@ export default function characterRoutes(prisma: PrismaClient) {
     router.get('/classes', characterController.getClasses.bind(characterController));
     router.get('/races', characterController.getRaces.bind(characterController));
     router.get('/backgrounds', characterController.getBackgrounds.bind(characterController));
+    router.get('/items/templates', characterController.getItemTemplates.bind(characterController));
 
     router.use(telegramAuthMiddleware());
 

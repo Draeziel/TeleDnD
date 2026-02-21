@@ -54,4 +54,19 @@ export const draftApi = {
     const { data } = await http.post<FinalizeDraftResponse>(`/drafts/${draftId}/finalize`);
     return data;
   },
+
+  async addItem(draftId: string, itemId: string): Promise<any> {
+    const { data } = await http.post<any>(`/drafts/${draftId}/items`, { itemId });
+    return data;
+  },
+
+  async equipItem(draftId: string, itemId: string): Promise<any> {
+    const { data } = await http.post<any>(`/drafts/${draftId}/items/${itemId}/equip`);
+    return data;
+  },
+
+  async unequipItem(draftId: string, itemId: string): Promise<any> {
+    const { data } = await http.post<any>(`/drafts/${draftId}/items/${itemId}/unequip`);
+    return data;
+  },
 };

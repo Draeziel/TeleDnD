@@ -282,6 +282,19 @@ Resolver remains unchanged.
 - **CI workflow**: in progress — added `.github/workflows/ci.yml` to run import validation and `verify:ci` on PRs/pushes.
 - **`--update --apply` importer automation**: not-started — planned after import validation CI stabilizes.
 
+## Progress (status snapshot)
+
+- [x] **Integrate resolver into `CharacterAssemblerService`** — completed 2026-02-21 12:30:00 UTC
+- [x] **Expand content vertical slice (classes/features)** — completed 2026-02-21 12:45:00 UTC
+- [x] **Importer validation (missing refs / cycles)** — completed 2026-02-21 13:00:00 UTC
+- [~] **Tests / Golden** — in progress (unit tests added and passing locally) — last local run 2026-02-21 13:10:00 UTC
+- [~] **CI workflow** — in progress (`.github/workflows/ci.yml` added) — created 2026-02-21 13:15:00 UTC
+- [ ] **`--update --apply` importer automation** — not-started
+
+Notes:
+- For the current state of automated checks, run `npm run verify:ci` locally or check the CI workflow in `.github/workflows/ci.yml`.
+- I keep the in-repo TODO tracked via `tests` and the workflow; if you want, I can also add an explicit checklist section to this file reflecting the same todo list.
+
 Notes:
 - For the current state of automated checks, run `npm run verify:ci` locally or check the CI workflow in `.github/workflows/ci.yml`.
 - I keep the in-repo TODO tracked via `tests` and the workflow; if you want, I can also add an explicit checklist section to this file reflecting the same todo list.

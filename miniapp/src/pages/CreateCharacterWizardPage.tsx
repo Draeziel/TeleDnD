@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { characterApi } from '../api/characterApi';
@@ -8,6 +8,10 @@ import type { ContentEntity, DraftState } from '../types/models';
 import { StatusBox } from '../components/StatusBox';
 import { SectionCard } from '../components/SectionCard';
 import { WizardControls } from '../components/WizardControls';
+import { StepBasicInfo } from './wizard/StepBasicInfo';
+import { StepClassRaceBackground } from './wizard/StepClassRaceBackground';
+import { StepAbilityScores } from './wizard/StepAbilityScores';
+import { StepChoicesFinalize } from './wizard/StepChoicesFinalize';
 
 const STEPS = [
   'Имя персонажа',
@@ -61,12 +65,7 @@ export function CreateCharacterWizardPage() {
     loadRefs();
   }, []);
 
-  const selectedChoiceSet = useMemo(() => {
-    const selectedChoices = Array.isArray(draft?.selectedChoices)
-      ? draft.selectedChoices
-      : [];
-    return new Set(selectedChoices.map((item) => item.choiceId));
-  }, [draft]);
+  // selectedChoiceSet was moved to choices component; remove unused local variable
 
   const createDraft = async (e: FormEvent) => {
     e.preventDefault();
@@ -232,142 +231,40 @@ export function CreateCharacterWizardPage() {
 
       {step === 0 && (
         <SectionCard title="Шаг 1: Имя и создание черновика">
-          <form onSubmit={createDraft} className="form-stack">
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Имя персонажа" />
-            <button type="submit">Создать черновик</button>
-          </form>
+          <StepBasicInfo name={name} onNameChange={setName} onCreateDraft={createDraft} loading={loading} error={error} />
         </SectionCard>
       )}
 
-      {step === 1 && draft && (
-        <SectionCard title="Шаг 2: Выбор класса">
-          <div className="list-grid">
-            {classes.map((item) => (
-              <div key={item.id} className="list-item">
-                <div>{item.name}</div>
-                <button onClick={() => assignClass(item.id)}>Выбрать</button>
-              </div>
-            ))}
-          </div>
+      {step === 1 && (
+        <SectionCard title="Шаги: Класс / Раса / Предыстория">
+          <StepClassRaceBackground
+            draft={draft}
+            classes={classes}
+            races={races}
+            backgrounds={backgrounds}
+            onAssignClass={assignClass}
+            onAssignRace={assignRace}
+            onAssignBackground={assignBackground}
+          />
         </SectionCard>
       )}
 
-      {step === 2 && draft && (
-        <SectionCard title="Шаг 3: Выбор расы">
-          <div className="toolbar">
-            <button onClick={() => assignRace(null)}>Пропустить расу</button>
-          </div>
-          <div className="list-grid">
-            {races.map((item) => (
-              <div key={item.id} className="list-item">
-                <div>{item.name}</div>
-                <button onClick={() => assignRace(item.id)}>Выбрать</button>
-              </div>
-            ))}
-          </div>
+      {step === 2 && (
+        <SectionCard title="Шаг: Характеристики">
+          <StepAbilityScores scores={scores} onChange={(updater) => setScores(updater)} onSubmit={submitScores} loading={loading} />
         </SectionCard>
       )}
 
-      {step === 3 && draft && (
-        <SectionCard title="Шаг 4: Выбор предыстории">
-          <div className="toolbar">
-            <button onClick={() => assignBackground(null)}>Пропустить предысторию</button>
-          </div>
-          <div className="list-grid">
-            {backgrounds.map((item) => (
-              <div key={item.id} className="list-item">
-                <div>{item.name}</div>
-                <button onClick={() => assignBackground(item.id)}>Выбрать</button>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      )}
-
-      {step === 4 && draft && (
-        <SectionCard title="Шаг 5: Распределение характеристик">
-          <form onSubmit={submitScores} className="form-stack">
-            <label>
-              Метод
-              <select
-                value={scores.method}
-                onChange={(e) => setScores((prev) => ({ ...prev, method: e.target.value as AbilityScorePayload['method'] }))}
-              >
-                <option value="standard_array">Стандартный массив</option>
-                <option value="point_buy">Покупка очков</option>
-                <option value="manual">Ручной ввод</option>
-                <option value="roll">Броски</option>
-              </select>
-            </label>
-            <div className="grid-3">
-              {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((ability) => (
-                <label key={ability}>
-                  {ability.toUpperCase()}
-                  <input
-                    type="number"
-                    value={scores[ability]}
-                    onChange={(e) =>
-                      setScores((prev) => ({
-                        ...prev,
-                        [ability]: Number(e.target.value),
-                      }))
-                    }
-                  />
-                </label>
-              ))}
-            </div>
-            <button type="submit">Сохранить характеристики</button>
-          </form>
-        </SectionCard>
-      )}
-
-      {step === 5 && draft && (
-        <SectionCard title="Шаг 6: Выборы и завершение">
-          {(Array.isArray(draft.requiredChoices) ? draft.requiredChoices : []).length === 0 && <div>Обязательные выборы отсутствуют.</div>}
-
-          {(Array.isArray(draft.requiredChoices) ? draft.requiredChoices : []).map((choice) => {
-            const selectedValue = choiceSelections[choice.id] || '';
-            const alreadySaved = selectedChoiceSet.has(choice.id);
-            const options = Array.isArray(choice.options) ? choice.options : [];
-
-            return (
-              <div key={choice.id} className="choice-block">
-                <div className="choice-title">
-                  Выбор {choice.id} · источник: {choice.sourceType} · нужно выбрать: {choice.chooseCount}
-                </div>
-                <div className="choice-options">
-                  {options.map((option) => (
-                    <label key={option.id}>
-                      <input
-                        type="radio"
-                        name={`choice-${choice.id}`}
-                        value={option.id}
-                        checked={selectedValue === option.id}
-                        onChange={(e) =>
-                          setChoiceSelections((prev) => ({
-                            ...prev,
-                            [choice.id]: e.target.value,
-                          }))
-                        }
-                      />
-                      {option.name} {option.description ? `(${option.description})` : ''}
-                    </label>
-                  ))}
-                </div>
-                <div className="inline-row">
-                  <button onClick={() => saveChoice(choice.id)}>Сохранить выбор</button>
-                  <span>{alreadySaved ? 'Сохранено' : 'Не сохранено'}</span>
-                </div>
-              </div>
-            );
-          })}
-
-          <div className="finalize-box">
-            <div>Осталось выборов: {draft.missingChoices.length}</div>
-            <button onClick={finalize} disabled={draft.missingChoices.length > 0 || loading}>
-              Завершить черновик
-            </button>
-          </div>
+      {step === 3 && (
+        <SectionCard title="Шаг: Выборы и завершение">
+          <StepChoicesFinalize
+            draft={draft}
+            choiceSelections={choiceSelections}
+            setChoiceSelection={(choiceId: string, optionId: string) => setChoiceSelections((prev) => ({ ...prev, [choiceId]: optionId }))}
+            onSaveChoice={saveChoice}
+            onFinalize={finalize}
+            loading={loading}
+          />
         </SectionCard>
       )}
     </div>

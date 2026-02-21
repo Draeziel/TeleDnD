@@ -263,6 +263,8 @@ export function CreateCharacterWizardPage() {
             setChoiceSelection={(choiceId: string, optionId: string) => setChoiceSelections((prev) => ({ ...prev, [choiceId]: optionId }))}
             onSaveChoice={saveChoice}
             loading={loading}
+            // pass refresh so equipment step can reload draft after add/equip
+            refreshDraft={refreshDraft}
           />
         </SectionCard>
       )}

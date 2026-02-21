@@ -9,6 +9,7 @@ type Props = {
   setChoiceSelection: (choiceId: string, optionId: string) => void;
   onSaveChoice: (choiceId: string) => Promise<void>;
   loading?: boolean;
+  refreshDraft?: (draftId: string) => void;
 };
 
 export const StepEquipment: React.FC<Props> = ({ draft, choiceSelections, setChoiceSelection, onSaveChoice, loading }) => {
@@ -39,9 +40,9 @@ export const StepEquipment: React.FC<Props> = ({ draft, choiceSelections, setCho
     setAdding(itemId);
     try {
       await draftApi.addItem(draft.id, itemId);
-      const fresh = await draftApi.getDraft(draft.id);
-      // update parent by emitting an event or relying on parent refresh; here we'll attempt to update window state if available
-      // parent CreateCharacterWizardPage refreshes draft after saves — rely on that for now
+      if (typeof refreshDraft === 'function') {
+        refreshDraft(draft.id);
+      }
     } finally {
       setAdding(null);
     }
@@ -51,8 +52,10 @@ export const StepEquipment: React.FC<Props> = ({ draft, choiceSelections, setCho
     if (!draft) return;
     try {
       await draftApi.equipItem(draft.id, itemId);
+      if (typeof refreshDraft === 'function') {
+        refreshDraft(draft.id);
+      }
     } finally {
-      // rely on parent refresh
     }
   };
 
@@ -60,8 +63,10 @@ export const StepEquipment: React.FC<Props> = ({ draft, choiceSelections, setCho
     if (!draft) return;
     try {
       await draftApi.unequipItem(draft.id, itemId);
+      if (typeof refreshDraft === 'function') {
+        refreshDraft(draft.id);
+      }
     } finally {
-      // rely on parent refresh
     }
   };
 

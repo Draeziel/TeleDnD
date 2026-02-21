@@ -299,6 +299,7 @@ Resolver remains unchanged.
 - [~] **Tests / Golden** — in progress (unit tests added and passing locally) — last local run 2026-02-21 13:10:00 UTC
 - [~] **CI workflow** — in progress (`.github/workflows/ci.yml` added) — created 2026-02-21 13:15:00 UTC
 - [ ] **`--update --apply` importer automation** — not-started
+ - [x] **`--update --apply` importer automation** — completed 2026-02-21 12:10:28 +02:00
 
 - [x] **Integrate resolver into `CharacterAssemblerService`** — completed 2026-02-21 12:03:56 +02:00
 - [x] **Expand content vertical slice (classes/features)** — completed 2026-02-21 12:03:56 +02:00

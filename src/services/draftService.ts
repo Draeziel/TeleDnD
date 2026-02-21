@@ -670,6 +670,11 @@ export class DraftService {
             choice: true,
           },
         },
+        characterDraftItems: {
+          include: {
+            item: true,
+          },
+        },
       },
     });
 
@@ -717,7 +722,7 @@ export class DraftService {
       if (draft.classId) createData.class = { connect: { id: draft.classId } };
       if (draft.raceId) createData.race = { connect: { id: draft.raceId } };
       if (draft.backgroundId) createData.background = { connect: { id: draft.backgroundId } };
-      if (draft.abilityScoreSetId) createData.abilityScoreSet = { connect: { id: draft.abilityScoreSetId } };
+      if (draft.abilityScoreSetId) createData.abilityScores = { connect: { id: draft.abilityScoreSetId } };
 
       const character = await tx.character.create({ data: createData as any });
 
@@ -728,6 +733,17 @@ export class DraftService {
             characterId: character.id,
             choiceId: dc.choiceId,
             selectedOption: dc.selectedOption!,
+          })),
+        });
+      }
+
+      // Create character inventory items from draft items
+      if (draft.characterDraftItems && draft.characterDraftItems.length > 0) {
+        await tx.characterItem.createMany({
+          data: draft.characterDraftItems.map((di: any) => ({
+            characterId: character.id,
+            itemId: di.itemId,
+            equipped: di.equipped || false,
           })),
         });
       }

@@ -160,3 +160,57 @@ jobs:
           name: importer-artifacts
           path: .artifacts
           if-no-files-found: warn
+
+  ci-auto-apply-importer:
+    runs-on: ubuntu-latest
+    needs: build-and-smoke
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      services:
+        postgres:
+          image: postgres:16
+          env:
+            POSTGRES_DB: rpg_character_db
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+          ports:
+            - 5432:5432
+          options: >-
+            --health-cmd "pg_isready -U postgres -d rpg_character_db"
+            --health-interval 10s
+            --health-timeout 5s
+            --health-retries 10
+
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rpg_character_db?schema=public
+        NODE_ENV: test
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Prisma migrate deploy
+        run: npx prisma migrate deploy
+
+      - name: Seed database
+        run: npm run seed
+
+      - name: Run auto-apply importer (--update --apply)
+        run: npm run import:rules:auto-apply -- --file content/rules-pack.demo.json --apply
+
+      - name: Upload importer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: importer-auto-apply-artifacts
+          path: .artifacts
+          if-no-files-found: warn

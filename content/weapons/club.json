@@ -1,0 +1,13 @@
+{
+  "id": "item:club",
+  "type": "item",
+  "name": { "en": "Club", "ru": "Дубина" },
+  "description": "Simple melee weapon, cheap and reliable.",
+  "slot": "weapon",
+  "weaponCategory": "simple_melee",
+  "attackAbility": "str",
+  "damageFormula": "1d4+str",
+  "proficiencyRequirements": { "weapon": ["simple"] },
+  "dependsOn": [],
+  "grants": []
+}

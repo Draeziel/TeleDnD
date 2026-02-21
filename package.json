@@ -24,6 +24,7 @@
     "import:rules:dry-run": "ts-node scripts/importRulesContent.ts --dry-run --file content/rules-pack.demo.json",
     "import:rules:ci": "ts-node scripts/importRulesContent.ts --dry-run --strict-warnings --file content/rules-pack.demo.json --report-file .artifacts/import-rules-report.json",
     "import:rules:apply": "ts-node scripts/importRulesContent.ts --apply --file content/rules-pack.demo.json",
+    "import:rules:auto-apply": "ts-node scripts/autoApplyImport.ts",
     "test:importer:update": "ts-node tests/unit/importerAutoUpdate.test.ts",
     "test:integration:importer-apply": "ts-node tests/integration/importerApply.integration.ts",
     "verify:localdb": "powershell -ExecutionPolicy Bypass -File ./scripts/verify-local-db.ps1",

@@ -1,0 +1,12 @@
+{
+  "id": "item:chain-mail",
+  "type": "item",
+  "name": { "en": "Chain Mail", "ru": "Кольчуга" },
+  "description": "Heavy armor providing substantial protection at the cost of dexterity.",
+  "slot": "armor",
+  "armorType": "heavy",
+  "armorClassFormula": "16",
+  "proficiencyRequirements": { "armor": ["heavy"] },
+  "dependsOn": [],
+  "grants": []
+}

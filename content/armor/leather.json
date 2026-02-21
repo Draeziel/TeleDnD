@@ -1,0 +1,12 @@
+{
+  "id": "item:leather-armor",
+  "type": "item",
+  "name": { "en": "Leather Armor", "ru": "Кожаная броня" },
+  "description": "Light armor that allows freedom of movement.",
+  "slot": "armor",
+  "armorType": "light",
+  "armorClassFormula": "11 + dex",
+  "proficiencyRequirements": { "armor": ["light"] },
+  "dependsOn": [],
+  "grants": []
+}
